@@ -1,17 +1,17 @@
-var taskBase = require('taskBase');
+var move = require('moveUtil');
 
 function run(creep) {
     var spawn = Game.spawns['Spawn1'];
     if (!spawn) return;
     if (creep.body.length < 6) {
         if (spawn.recycleCreep(creep) === ERR_NOT_IN_RANGE) {
-            taskBase.moveCreep(creep, spawn, { visualizePathStyle: { stroke: '#ff8800' } });
+            move.moveCreep(creep, spawn, { visualizePathStyle: { stroke: '#ff8800' } });
         }
         return;
     }
     var res = spawn.renewCreep(creep);
     if (res === ERR_NOT_IN_RANGE) {
-        taskBase.moveCreep(creep, spawn, { visualizePathStyle: { stroke: '#88ffff' } });
+        move.moveCreep(creep, spawn, { visualizePathStyle: { stroke: '#88ffff' } });
     }
 }
 
