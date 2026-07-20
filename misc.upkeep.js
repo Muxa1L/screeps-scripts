@@ -1,5 +1,6 @@
 var assert = require('assert');
 var spawnUtil = require('spawnUtil');
+var constructionPlanner = require('constructionPlanner');
 
 var RAMPART_TARGET_HITS = 100000;
 var SAFE_MODE_TRIGGER_HITS = 5000;
@@ -22,6 +23,14 @@ function run() {
         _lastTick = Game.time;
         _recyclesThisTick = 0;
     }
+
+    assert.safeRun('constructionPlanner', function () {
+        for (var rn in Game.rooms) {
+            var r = Game.rooms[rn];
+            if (!r.controller || !r.controller.my) continue;
+            constructionPlanner.tick(r);
+        }
+    });
 
     assert.safeRun('towers', function () {
         for (var name in Game.structures) {

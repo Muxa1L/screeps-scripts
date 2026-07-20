@@ -2,6 +2,7 @@ var logger = require('logger');
 var taskBase = require('taskBase');
 
 var CREEP_COST = 0xff;
+var MOVE_FAIL_THRESHOLD = 5;
 
 function markCreeps(matrix, roomName, self) {
     var room = Game.rooms[roomName];
@@ -36,9 +37,14 @@ function moveCreep(creep, target, opts) {
     }, opts || {}));
 
     creep.memory._lastMoveResult = mvr;
-    if (mvr === OK || mvr === ERR_TIRED || mvr === ERR_BUSY) return;
-    if (Memory.flags && Memory.flags.debugStuck) {
-        console.log('[stuck] ' + creep.name + ' moveTo ' + target.id + ' -> ' + mvr);
+    if (mvr === ERR_NO_PATH) {
+        creep.memory._moveFailures = (creep.memory._moveFailures || 0) + 1;
+    } else if (mvr === OK || mvr === ERR_TIRED || mvr === ERR_BUSY) {
+        creep.memory._moveFailures = 0;
+    } else {
+        if (Memory.flags && Memory.flags.debugStuck) {
+            console.log('[stuck] ' + creep.name + ' moveTo ' + (target.id || '?') + ' -> ' + mvr);
+        }
     }
 }
 
@@ -49,6 +55,5 @@ function action(creep, verb) {
 module.exports = {
     moveCreep: moveCreep,
     action: action,
+    MOVE_FAIL_THRESHOLD: MOVE_FAIL_THRESHOLD,
 };
-
-

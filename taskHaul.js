@@ -9,14 +9,14 @@ function findDeposit(creep, sourceContainerId) {
         var nearest = creep.pos.findClosestByPath(snap.energyStructures);
         if (nearest) return nearest;
     }
-    if (snap && snap.storage && _.sum(snap.storage.store) < snap.storage.storeCapacity) {
+    if (snap && snap.storage && _.sum(snap.storage.store) < snap.storage.store.getCapacity()) {
         return snap.storage;
     }
     if (snap && snap.containers) {
         var usable = [];
         for (var i = 0; i < snap.containers.length; i++) {
             var c = snap.containers[i];
-            if (c.id !== sourceContainerId && _.sum(c.store) < c.storeCapacity) {
+            if (c.id !== sourceContainerId && _.sum(c.store) < c.store.getCapacity()) {
                 usable.push(c);
             }
         }
@@ -54,6 +54,14 @@ module.exports = new TaskType({
             }
             return true;
         }
+        var containerEnergy = container.store[RESOURCE_ENERGY] || 0;
+        if (containerEnergy > 0 && creep.carry.energy < creep.carryCapacity) {
+            move.action(creep, 'withdraw@' + container.id);
+            if (creep.withdraw(container, RESOURCE_ENERGY) === ERR_NOT_IN_RANGE) {
+                move.moveCreep(creep, container, { visualizePathStyle: { stroke: '#ffffaa' } });
+            }
+            return true;
+        }
         if (creep.carry.energy > 0) {
             var deposit2 = findDeposit(creep, container.id);
             if (deposit2) {
@@ -64,10 +72,6 @@ module.exports = new TaskType({
                 return true;
             }
         }
-        move.action(creep, 'withdraw@' + container.id);
-        if (creep.withdraw(container, RESOURCE_ENERGY) === ERR_NOT_IN_RANGE) {
-            move.moveCreep(creep, container, { visualizePathStyle: { stroke: '#ffffaa' } });
-        }
-        return true;
+        return false;
     },
 });

@@ -60,17 +60,25 @@ function bestTaskFor(creep, taskList, allowed) {
         if (isFull && (t.type === 'harvest' || t.type === 'mine')) continue;
         var priority = t.priority;
         if (needsHarvest && t.type === 'harvest') priority = 5;
+        if (creep.memory._failedTasks && creep.memory._failedTasks[t.id]) continue;
         var approx = taskBase.approxDistance(creep, target);
         candidates.push({ task: t, priority: priority, approx: approx });
     }
+    if (candidates.length === 0) return null;
     candidates.sort(function (a, b) {
         return (a.priority * 1000 + a.approx) - (b.priority * 1000 + b.approx);
     });
+    var minPriority = candidates[0].priority;
+    var tier = [];
+    for (var j = 0; j < candidates.length; j++) {
+        if (candidates[j].priority === minPriority) tier.push(candidates[j]);
+        else break;
+    }
+    var limit = Math.min(tier.length, 5);
     var best = null;
     var bestScore = Infinity;
-    var limit = Math.min(candidates.length, 3);
-    for (var j = 0; j < limit; j++) {
-        var c = candidates[j];
+    for (var k = 0; k < limit; k++) {
+        var c = tier[k];
         var dist = tasks.score(c.task.type, creep, c.task.target);
         var score = c.priority * 1000 + dist;
         if (score < bestScore) {
@@ -122,6 +130,22 @@ function runCreep(creep) {
     }
 
     checkStuck(creep);
+
+    if (creep.memory._moveFailures && creep.memory._moveFailures >= move.MOVE_FAIL_THRESHOLD) {
+        if (creep.memory.taskId) {
+            logger.event('creep', '[' + Game.time + '] [unreachable] ' + creep.name + ' releasing task ' + creep.memory.taskId + ' after ' + creep.memory._moveFailures + ' move failures');
+            if (!creep.memory._failedTasks) creep.memory._failedTasks = {};
+            creep.memory._failedTasks[creep.memory.taskId] = Game.time + 50;
+            creep.memory.taskId = null;
+        }
+        creep.memory._moveFailures = 0;
+    }
+    if (creep.memory._failedTasks) {
+        var now = Game.time;
+        for (var ftk in creep.memory._failedTasks) {
+            if (creep.memory._failedTasks[ftk] <= now) delete creep.memory._failedTasks[ftk];
+        }
+    }
 
     var taskList = _taskListCache[room.name];
     if (!taskList) {
