@@ -1,4 +1,4 @@
-var tasks = require('tasks.index');
+var tasks = require('tasksIndex');
 
 module.exports = {
     run: function (type, creep, task) {

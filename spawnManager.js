@@ -1,7 +1,7 @@
 var sourceRegistry = require('sourceRegistry');
 var logger = require('logger');
-var bodies = require('creeps.bodies');
-var quotas = require('creeps.quotas');
+var bodies = require('creepsBodies');
+var quotas = require('creepsQuotas');
 
 var BUCKET_SPAWN_THRESHOLD = 2000;
 var MIN_BODY_ENERGY = 200;

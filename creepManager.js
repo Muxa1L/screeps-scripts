@@ -1,7 +1,7 @@
 var taskBase = require('taskBase');
 var taskRegistry = require('taskRegistry');
 var taskHandlers = require('taskHandlers');
-var tasks = require('tasks.index');
+var tasks = require('tasksIndex');
 var renew = require('taskRenew');
 var logger = require('logger');
 

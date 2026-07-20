@@ -1,5 +1,5 @@
 var ROOM_TICK_SAMPLE_INTERVAL = 20;
-var assert = require('utils.assert');
+var assert = require('assert');
 
 function init() {
     assert.init();

@@ -1,5 +1,5 @@
 var taskBase = require('taskBase');
-var move = require('utils.move');
+var move = require('moveUtil');
 
 function TaskType(spec) {
     this.type = spec.type;

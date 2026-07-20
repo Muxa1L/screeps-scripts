@@ -1,6 +1,6 @@
-var TaskType = require('task.base');
+var TaskType = require('taskBaseClass');
 var taskBase = require('taskBase');
-var move = require('utils.move');
+var move = require('moveUtil');
 
 module.exports = new TaskType({
     type: 'repair',

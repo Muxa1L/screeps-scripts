@@ -1,4 +1,4 @@
-var assert = require('utils.assert');
+var assert = require('assert');
 
 var RAMPART_TARGET_HITS = 100000;
 var SAFE_MODE_TRIGGER_HITS = 5000;

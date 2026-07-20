@@ -1,14 +1,14 @@
 var taskBase = require('taskBase');
 
-var harvest = require('task.harvest');
-var mine = require('task.mine');
-var haul = require('task.haul');
-var sweep = require('task.sweep');
-var build = require('task.build');
-var repair = require('task.repair');
-var upgrade = require('task.upgrade');
-var defend = require('task.defend');
-var heal = require('task.heal');
+var harvest = require('taskHarvest');
+var mine = require('taskMine');
+var haul = require('taskHaul');
+var sweep = require('taskSweep');
+var build = require('taskBuild');
+var repair = require('taskRepair');
+var upgrade = require('taskUpgrade');
+var defend = require('taskDefend');
+var heal = require('taskHeal');
 
 var registry = {
     harvest: harvest,

@@ -1,4 +1,4 @@
-var tasks = require('tasks.index');
+var tasks = require('tasksIndex');
 var roomManager = require('roomManager');
 
 module.exports = {
