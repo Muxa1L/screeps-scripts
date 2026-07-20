@@ -5,6 +5,16 @@ var renew = require('taskRenew');
 
 var RENEW_THRESHOLD = 400;
 
+function approxDistance(creep, target) {
+    if (!target || !target.pos) return 9999;
+    if (creep.pos.roomName !== target.pos.roomName) {
+        return 50 + (Game.map.getRoomLinearDistance(creep.pos.roomName, target.pos.roomName) || 1) * 50;
+    }
+    var dx = Math.abs(creep.pos.x - target.pos.x);
+    var dy = Math.abs(creep.pos.y - target.pos.y);
+    return Math.max(dx, dy);
+}
+
 function bestTaskFor(creep, tasks, allowed) {
     var best = null;
     var bestScore = Infinity;
@@ -15,8 +25,7 @@ function bestTaskFor(creep, tasks, allowed) {
         if (!taskBase.creepCanDo(creep, t.type)) continue;
         var target = t.target;
         if (!target || !target.pos) continue;
-        var dist = creep.pos.findPathTo(target.pos).length;
-        if (dist === 0) dist = 1;
+        var dist = approxDistance(creep, target);
         var score = t.priority * 1000 + dist;
         if (score < bestScore) {
             bestScore = score;
