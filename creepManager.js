@@ -41,40 +41,22 @@ function bestTaskFor(creep, taskList, allowed) {
     var bestScore = Infinity;
     var needsHarvest = creep.carry.energy === 0;
     var isFull = creep.carry.energy === creep.carryCapacity;
-    var debug = Memory.flags && Memory.flags.debugTasks;
     for (var i = 0; i < taskList.length; i++) {
         var t = taskList[i];
-        if (allowed && allowed.indexOf(t.type) === -1) {
-            if (debug) console.log('[' + Game.time + '] [eval] ' + creep.name + ' skip ' + t.type + ' (not allowed)');
-            continue;
-        }
-        if (!tasks.canDo(t.type, creep)) {
-            if (debug) console.log('[' + Game.time + '] [eval] ' + creep.name + ' skip ' + t.type + ' (canDo=false)');
-            continue;
-        }
+        if (allowed && allowed.indexOf(t.type) === -1) continue;
+        if (!tasks.canDo(t.type, creep)) continue;
         var target = t.target;
-        if (!target || !target.pos) {
-            if (debug) console.log('[' + Game.time + '] [eval] ' + creep.name + ' skip ' + t.type + ' (no target)');
-            continue;
-        }
+        if (!target || !target.pos) continue;
         var cap = tasks.cap(t.type);
         if (cap < 99 && getClaimCount(t.id) >= cap) {
-            if (debug) console.log('[' + Game.time + '] [eval] ' + creep.name + ' skip ' + t.type + ' (cap=' + cap + ' claims=' + getClaimCount(t.id) + ')');
             continue;
         }
-        if (needsHarvest && (t.type === 'build' || t.type === 'repair' || t.type === 'upgrade')) {
-            if (debug) console.log('[' + Game.time + '] [eval] ' + creep.name + ' skip ' + t.type + ' (needsHarvest)');
-            continue;
-        }
-        if (isFull && (t.type === 'harvest' || t.type === 'mine')) {
-            if (debug) console.log('[' + Game.time + '] [eval] ' + creep.name + ' skip ' + t.type + ' (isFull)');
-            continue;
-        }
+        if (needsHarvest && (t.type === 'build' || t.type === 'repair' || t.type === 'upgrade')) continue;
+        if (isFull && (t.type === 'harvest' || t.type === 'mine')) continue;
         var dist = tasks.score(t.type, creep, target);
         var priority = t.priority;
         if (needsHarvest && t.type === 'harvest') priority = 5;
         var score = priority * 1000 + dist;
-        if (debug) console.log('[' + Game.time + '] [eval] ' + creep.name + ' candidate ' + t.type + ' prio=' + priority + ' dist=' + dist + ' score=' + score + ' best=' + bestScore);
         if (score < bestScore) {
             bestScore = score;
             best = t;
@@ -152,19 +134,6 @@ function runCreep(creep) {
         } else if (best.type !== current.type && best.priority < current.priority) {
             assigned = best;
         }
-    }
-    if (Memory.flags && Memory.flags.debugTasks) {
-        var dbgCur = current ? (current.type + ':' + current.priority) : 'null';
-        var dbgBest = best ? (best.type + ':' + best.priority) : 'null';
-        var dbgAsg = assigned ? (assigned.type + ':' + assigned.priority) : 'null';
-        console.log('[' + Game.time + '] [decide] ' + creep.name + ' cur=' + dbgCur + ' best=' + dbgBest + ' -> ' + dbgAsg);
-    }
-    if (Game.time % 50 === 0) {
-        var dbgCarry = creep.carry.energy + '/' + creep.carryCapacity;
-        var dbgRole = creep.memory.role;
-        var dbgAllowed = allowed ? JSON.stringify(allowed) : 'all';
-        var dbgAssigned = assigned ? (assigned.type + '@' + assigned.id) : 'null';
-        console.log('[' + Game.time + '] [pick] ' + creep.name + ' role=' + dbgRole + ' carry=' + dbgCarry + ' allowed=' + dbgAllowed + ' -> ' + dbgAssigned);
     }
     if (assigned) {
         var prev = creep.memory.taskId;
