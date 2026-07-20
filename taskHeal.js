@@ -22,8 +22,9 @@ module.exports = new TaskType({
             return true;
         }
         move.action(creep, 'healing@' + target.id);
-        if (creep.heal(target) === ERR_NOT_IN_RANGE) {
-            if (creep.pos.isNearTo(target)) {
+        var res = creep.heal(target);
+        if (res === ERR_NOT_IN_RANGE) {
+            if (creep.pos.inRangeTo(target, 3)) {
                 creep.rangedHeal(target);
             } else {
                 move.moveCreep(creep, target, { visualizePathStyle: { stroke: '#00ff00' } });
