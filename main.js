@@ -28,6 +28,11 @@ module.exports.loop = function () {
             return _.sum(object.store) > 10;
         }
     });
+    var ruins = mainRoom.find(FIND_RUINS, {
+        filter: function(object) {
+            return _.sum(object.store) > 10;
+        }
+    });
     for(var name in Game.creeps) {
         var creep = Game.creeps[name];
         if ((drops.length > 0) && creep.carry.energy == 0){
@@ -46,6 +51,18 @@ module.exports.loop = function () {
             if (creep.withdraw(tombStones[0],resource) == ERR_NOT_IN_RANGE){
                 creep.moveTo(tombStones[0]);
                 creep.say('sweeping');
+            }
+            continue;
+        }
+        if ((ruins.length > 0) && creep.carry.energy == 0){
+            if (creep.withdraw(ruins[0],RESOURCE_ENERGY) == ERR_NOT_IN_RANGE){
+                creep.moveTo(ruins[0]);
+                creep.say('sweeping ruins');
+            }
+            var resource = Object.keys(ruins[0])[1];
+            if (creep.withdraw(ruins[0],resource) == ERR_NOT_IN_RANGE){
+                creep.moveTo(ruins[0]);
+                creep.say('sweeping ruins');
             }
             continue;
         }
