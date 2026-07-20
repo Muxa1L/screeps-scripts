@@ -132,29 +132,32 @@ function runCreep(creep) {
     }
     var allowed = RESTRICTED_TASKS[creep.memory.role];
 
-    var assigned = null;
+    var current = null;
     if (creep.memory.taskId) {
         for (var i = 0; i < taskList.length; i++) {
             if (taskList[i].id === creep.memory.taskId) {
-                assigned = taskList[i];
+                current = taskList[i];
                 break;
             }
         }
-        if (!assigned) {
+        if (!current) {
             creep.memory.taskId = null;
         }
     }
-    if (!assigned) {
-        assigned = bestTaskFor(creep, taskList, allowed);
-    } else {
-        var candidate = bestTaskFor(creep, taskList, allowed);
-        if (candidate && candidate.type !== assigned.type) {
-            var curPrio = assigned.priority;
-            var newPrio = candidate.priority;
-            if (newPrio < curPrio) {
-                assigned = candidate;
-            }
+    var best = bestTaskFor(creep, taskList, allowed);
+    var assigned = current;
+    if (best) {
+        if (!current) {
+            assigned = best;
+        } else if (best.type !== current.type && best.priority < current.priority) {
+            assigned = best;
         }
+    }
+    if (Memory.flags && Memory.flags.debugTasks) {
+        var dbgCur = current ? (current.type + ':' + current.priority) : 'null';
+        var dbgBest = best ? (best.type + ':' + best.priority) : 'null';
+        var dbgAsg = assigned ? (assigned.type + ':' + assigned.priority) : 'null';
+        console.log('[' + Game.time + '] [decide] ' + creep.name + ' cur=' + dbgCur + ' best=' + dbgBest + ' -> ' + dbgAsg);
     }
     if (Game.time % 50 === 0) {
         var dbgCarry = creep.carry.energy + '/' + creep.carryCapacity;
