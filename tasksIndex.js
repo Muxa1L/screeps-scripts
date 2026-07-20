@@ -56,6 +56,12 @@ function cap(type) {
     return tt.cap;
 }
 
+function score(type, creep, target) {
+    var tt = get(type);
+    if (!tt || !tt.score) return taskBase.approxDistance(creep, target);
+    return tt.score(creep, target);
+}
+
 function all() {
     return registry;
 }
@@ -66,6 +72,7 @@ module.exports = {
     run: run,
     canDo: canDo,
     cap: cap,
+    score: score,
     all: all,
     taskBase: taskBase,
 };

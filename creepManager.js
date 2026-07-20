@@ -11,16 +11,6 @@ var nearestSpawn = spawnUtil.nearestSpawn;
 var RENEW_THRESHOLD = 400;
 var STUCK_THRESHOLD = 200;
 
-function approxDistance(creep, target) {
-    if (!target || !target.pos) return 9999;
-    if (creep.pos.roomName !== target.pos.roomName) {
-        return 50 + (Game.map.getRoomLinearDistance(creep.pos.roomName, target.pos.roomName) || 1) * 50;
-    }
-    var dx = Math.abs(creep.pos.x - target.pos.x);
-    var dy = Math.abs(creep.pos.y - target.pos.y);
-    return Math.max(dx, dy);
-}
-
 var RESTRICTED_TASKS = {
     miner:  ['mine'],
     hauler: ['haul', 'sweep'],
@@ -62,7 +52,7 @@ function bestTaskFor(creep, taskList, allowed) {
         }
         if (needsHarvest && (t.type === 'build' || t.type === 'repair' || t.type === 'upgrade')) continue;
         if (isFull && (t.type === 'harvest' || t.type === 'mine')) continue;
-        var dist = approxDistance(creep, target);
+        var dist = tasks.score(t.type, creep, target);
         var priority = t.priority;
         if (needsHarvest && t.type === 'harvest') priority = 5;
         var score = priority * 1000 + dist;
