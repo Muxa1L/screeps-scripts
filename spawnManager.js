@@ -85,7 +85,11 @@ function tick() {
         sourceRegistry.ensureRegistry(room);
     }
 
-    var role = quotas.nextRoleToSpawn(counts, rcl);
+    var controllerState = room.controller ? {
+        ticksToDowngrade: room.controller.ticksToDowngrade,
+        level: room.controller.level,
+    } : null;
+    var role = quotas.nextRoleToSpawn(counts, rcl, controllerState);
     if (!role) {
         summaryLog(spawn, counts, rcl);
         return;
@@ -98,9 +102,13 @@ function tick() {
 }
 
 function summaryLog(spawn, counts, rcl) {
+    var ctl = spawn.room.controller;
+    var ttd = (ctl && ctl.ticksToDowngrade !== undefined) ? ctl.ticksToDowngrade : 'n/a';
+    var ttdWarn = (typeof ttd === 'number' && ttd < 2000) ? ' *CRITICAL*' : '';
     logger.periodic('spawn', 50, 'tick',
         '[' + Game.time + '] [spawn-state] RCL=' + rcl +
         ' energy=' + spawn.room.energyAvailable + '/' + spawn.room.energyCapacityAvailable +
+        ' ttd=' + ttd + ttdWarn +
         ' spawn=' + (spawn.spawning ? spawn.spawning.name : 'idle') +
         ' creeps=' + JSON.stringify(counts)
     );

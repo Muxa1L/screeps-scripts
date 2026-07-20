@@ -2,13 +2,32 @@ var TaskType = require('taskBaseClass');
 var taskBase = require('taskBase');
 var move = require('moveUtil');
 
+var UPGRADE_CRITICAL_THRESHOLD = 3000;
+var UPGRADE_URGENT_THRESHOLD = 1500;
+var UPGRADE_EMERGENCY_THRESHOLD = 500;
+
+function upgradePriority(snapshot) {
+    if (!snapshot || !snapshot.controller) return taskBase.PRIORITY.UPGRADE;
+    var c = snapshot.controller;
+    if (c.safeModeActive && c.safeModeActive > 0) {
+        return 25;
+    }
+    var ttd = c.ticksToDowngrade;
+    if (ttd === undefined || ttd === null) return taskBase.PRIORITY.UPGRADE;
+    if (ttd < UPGRADE_EMERGENCY_THRESHOLD) return 1;
+    if (ttd < UPGRADE_URGENT_THRESHOLD) return 5;
+    if (ttd < UPGRADE_CRITICAL_THRESHOLD) return taskBase.PRIORITY.SWEEP;
+    return taskBase.PRIORITY.UPGRADE;
+}
+
 module.exports = new TaskType({
     type: 'upgrade',
     priority: taskBase.PRIORITY.UPGRADE,
-    cap: 2,
+    cap: 4,
     canDo: function (creep) {
         return creep.getActiveBodyparts(WORK) > 0 && creep.getActiveBodyparts(CARRY) > 0;
     },
+    priorityFor: upgradePriority,
     tasks: function (room, snap) {
         if (room.controller && room.controller.my) {
             return [{ target: room.controller }];
@@ -29,3 +48,4 @@ module.exports = new TaskType({
         return true;
     },
 });
+

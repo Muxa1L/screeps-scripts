@@ -273,7 +273,19 @@ module.exports = {
                 byTask['idle'] = (byTask['idle'] || 0) + 1;
             }
         }
-        logger.periodic('summary', 50, 'tick', '[' + Game.time + '] [summary] ' + total + ' creeps | roles=' + JSON.stringify(byRole) + ' | tasks=' + JSON.stringify(byTask));
+        var ctrlParts = [];
+        for (var rn in Game.rooms) {
+            var rm = Game.rooms[rn];
+            if (!rm.controller || !rm.controller.my) continue;
+            var ctl = rm.controller;
+            var ttd = ctl.ticksToDowngrade;
+            if (typeof ttd === 'number' && ttd < 5000) {
+                ctrlParts.push('ctrl[' + rn + ']=rcl' + ctl.level + ':ttd' + ttd);
+            }
+        }
+        var summary = '[' + Game.time + '] [summary] ' + total + ' creeps | roles=' + JSON.stringify(byRole) + ' | tasks=' + JSON.stringify(byTask);
+        if (ctrlParts.length > 0) summary += ' | ' + ctrlParts.join(' ');
+        logger.periodic('summary', 50, 'tick', summary);
 
         for (var name in Game.creeps) {
             try {

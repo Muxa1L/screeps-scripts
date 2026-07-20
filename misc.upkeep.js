@@ -2,9 +2,12 @@ var assert = require('assert');
 
 var RAMPART_TARGET_HITS = 100000;
 var SAFE_MODE_TRIGGER_HITS = 5000;
+var SAFE_MODE_TTD_THRESHOLD = 3000;
 var CRITICAL_CREEP_AGE = 5;
 var STUCK_THRESHOLD = 200;
 var MAX_RECYCLES_PER_TICK = 3;
+var _lastSafeModeActivate = 0;
+var SAFE_MODE_COOLDOWN_TICKS = 5000;
 
 var _recyclesThisTick = 0;
 var _lastTick = -1;
@@ -28,10 +31,24 @@ function run() {
     assert.safeRun('safeMode', function () {
         var spawn = Game.spawns['Spawn1'];
         if (!spawn) return;
-        if (spawn.hits < SAFE_MODE_TRIGGER_HITS && spawn.my && spawn.room && spawn.room.controller) {
-            if (spawn.room.controller.safeModeAvailable > 0 && !spawn.room.controller.safeMode) {
-                var res = spawn.room.controller.activateSafeMode();
-                if (Game.time % 100 === 0) console.log('[' + Game.time + '] [safe-mode] activate -> ' + res);
+        var controller = spawn.room && spawn.room.controller;
+        if (!controller || !controller.my) return;
+
+        var lowHealth = spawn.hits < SAFE_MODE_TRIGGER_HITS;
+        var hostiles = spawn.room.find(FIND_HOSTILE_CREEPS);
+        var ttd = controller.ticksToDowngrade;
+        var lowTtd = typeof ttd === 'number' && ttd < SAFE_MODE_TTD_THRESHOLD && hostiles.length > 0;
+
+        if ((lowHealth || lowTtd) &&
+            controller.safeModeAvailable > 0 &&
+            !controller.safeMode &&
+            Game.time - _lastSafeModeActivate > SAFE_MODE_COOLDOWN_TICKS) {
+            var res = controller.activateSafeMode();
+            if (res === OK) {
+                _lastSafeModeActivate = Game.time;
+                console.log('[' + Game.time + '] [safe-mode] activate -> ' + res + (lowTtd ? ' (ttd=' + ttd + ')' : ' (spawn-low)'));
+            } else if (Game.time % 100 === 0) {
+                console.log('[' + Game.time + '] [safe-mode] activate -> ' + res);
             }
         }
     });

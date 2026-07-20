@@ -12,12 +12,37 @@ var QUOTAS = {
 
 var ROLE_PRIORITY = ['fighter', 'healer', 'hauler', 'miner', 'harvester', 'upgrader', 'builder'];
 
+var URGENT_TTD = 500;
+var CRITICAL_TTD = 2000;
+var WARN_TTD = 5000;
+
 function quotasFor(rcl) {
     return QUOTAS[rcl] || QUOTAS[0];
 }
 
-function nextRoleToSpawn(creepCounts, rcl) {
-    var q = quotasFor(rcl);
+function dynamicQuota(rcl, controller) {
+    var q = {};
+    var base = quotasFor(rcl);
+    for (var k in base) {
+        if (base.hasOwnProperty(k)) q[k] = base[k];
+    }
+    if (controller && controller.ticksToDowngrade !== undefined && controller.ticksToDowngrade !== null) {
+        var ttd = controller.ticksToDowngrade;
+        var baseUpgraders = q.upgrader || 0;
+        if (ttd < URGENT_TTD) {
+            q.upgrader = Math.max(baseUpgraders, 4);
+            q.hauler = Math.max(q.hauler || 0, 1);
+        } else if (ttd < CRITICAL_TTD) {
+            q.upgrader = Math.max(baseUpgraders, 3);
+        } else if (ttd < WARN_TTD) {
+            q.upgrader = Math.max(baseUpgraders, baseUpgraders + 1);
+        }
+    }
+    return q;
+}
+
+function nextRoleToSpawn(creepCounts, rcl, controller) {
+    var q = controller ? dynamicQuota(rcl, controller) : quotasFor(rcl);
     for (var i = 0; i < ROLE_PRIORITY.length; i++) {
         var role = ROLE_PRIORITY[i];
         var target = q[role];
@@ -35,8 +60,10 @@ function spawnPriority(role) {
 
 module.exports = {
     quotasFor: quotasFor,
+    dynamicQuota: dynamicQuota,
     nextRoleToSpawn: nextRoleToSpawn,
     spawnPriority: spawnPriority,
     ROLE_PRIORITY: ROLE_PRIORITY,
     QUOTAS: QUOTAS,
 };
+

@@ -9,6 +9,7 @@ function TaskType(spec) {
     this.tasks = spec.tasks || function () { return []; };
     this.run = spec.run || function () { return true; };
     this.describe = spec.describe || taskBase.describeTask;
+    this.priorityFor = spec.priorityFor || function (snapshot) { return this.priority; };
 }
 
 TaskType.prototype.score = function (creep, target) {
@@ -17,11 +18,12 @@ TaskType.prototype.score = function (creep, target) {
 
 TaskType.prototype.listFor = function (room, snapshot) {
     var list = this.tasks(room, snapshot) || [];
+    var priority = this.priorityFor(snapshot);
     var out = [];
     for (var i = 0; i < list.length; i++) {
         var t = list[i];
         if (!t || !t.target) continue;
-        out.push(taskBase.makeTask(this.type, this.priority, t.target, room.name));
+        out.push(taskBase.makeTask(this.type, priority, t.target, room.name));
     }
     return out;
 };

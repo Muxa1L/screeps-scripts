@@ -46,6 +46,20 @@ function snapshotFor(room) {
         filter: function (s) { return s.structureType === STRUCTURE_CONTAINER; },
     });
 
+    var controller = room.controller;
+    var controllerState = null;
+    if (controller) {
+        controllerState = {
+            level: controller.level,
+            progress: controller.progress,
+            progressTotal: controller.progressTotal,
+            ticksToDowngrade: controller.ticksToDowngrade,
+            upgradeBlocked: controller.upgradeBlocked || 0,
+            safeModeAvailable: controller.safeModeAvailable || 0,
+            safeModeActive: controller.safeMode || 0,
+        };
+    }
+
     return {
         roomName: room.name,
         hostiles: hostiles,
@@ -59,6 +73,7 @@ function snapshotFor(room) {
         sources: sources,
         energyStructures: energyStructures,
         containers: containers,
+        controller: controllerState,
     };
 }
 
