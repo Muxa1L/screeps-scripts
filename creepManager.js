@@ -18,6 +18,7 @@ function approxDistance(creep, target) {
 function bestTaskFor(creep, tasks, allowed) {
     var best = null;
     var bestScore = Infinity;
+    var needsHarvest = creep.carry.energy === 0;
     for (var i = 0; i < tasks.length; i++) {
         var t = tasks[i];
         if (allowed && allowed.indexOf(t.type) === -1) continue;
@@ -33,7 +34,11 @@ function bestTaskFor(creep, tasks, allowed) {
             }
         }
         var dist = approxDistance(creep, target);
-        var score = t.priority * 1000 + dist;
+        var priority = t.priority;
+        if (needsHarvest && t.type === 'harvest') priority = 5;
+        if (needsHarvest && (t.type === 'build' || t.type === 'repair' || t.type === 'upgrade')) continue;
+        if (!needsHarvest && (creep.carry.energy === creep.carryCapacity) && (t.type === 'harvest' || t.type === 'mine')) continue;
+        var score = priority * 1000 + dist;
         if (score < bestScore) {
             bestScore = score;
             best = t;
@@ -61,11 +66,11 @@ var TARGET_CAPS = {
     build:    2,
     repair:   2,
     sweep:    2,
-    upgrade:  1,
+    upgrade:  2,
     haul:     2,
     defend:   4,
-    harvest:  1,
-    mine:     1,
+    harvest:  2,
+    mine:     4,
 };
 
 var _claimCounts = {};
@@ -139,20 +144,20 @@ function runCreep(creep) {
         var forceTarget = forceTargetFor(creep, room);
         if (forceTarget) {
             if (!creep.pos.isNearTo(forceTarget)) {
-                var r2 = creep.moveTo(forceTarget, { visualizePathStyle: { stroke: '#ff00ff' } });
+                var r2 = creep.moveTo(forceTarget, { visualizePathStyle: { stroke: '#ff00ff' }, reusePath: 10 });
                 if (r2 !== OK && r2 !== ERR_TIRED && Memory.flags && Memory.flags.debugStuck) {
                     console.log('[stuck] ' + creep.name + ' force moveTo ' + forceTarget.id + ' -> ' + r2);
                 }
             } else {
                 var ha = creep.harvest(forceTarget);
                 if (ha === ERR_NOT_IN_RANGE) {
-                    creep.moveTo(forceTarget, { visualizePathStyle: { stroke: '#ff00ff' } });
+                    creep.moveTo(forceTarget, { visualizePathStyle: { stroke: '#ff00ff' }, reusePath: 10 });
                 }
             }
             return;
         }
         if (Game.spawns['Spawn1'] && !creep.pos.isNearTo(Game.spawns['Spawn1'])) {
-            creep.moveTo(Game.spawns['Spawn1'], { visualizePathStyle: { stroke: '#888888' } });
+            creep.moveTo(Game.spawns['Spawn1'], { visualizePathStyle: { stroke: '#888888' }, reusePath: 10 });
         }
         return;
     }

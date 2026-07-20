@@ -87,10 +87,11 @@ function moveCreep(creep, target, opts) {
                         pathCache.advance(key);
                         return;
                     }
+                    if (mv === ERR_TIRED || mv === ERR_BUSY) return;
+                    pathCache.del(key);
                 }
             }
         }
-        pathCache.advance(key);
     }
 
     var ret = PathFinder.search(
@@ -106,7 +107,10 @@ function moveCreep(creep, target, opts) {
             return;
         }
     }
-    creep.moveTo(target, opts || { visualizePathStyle: { stroke: '#ffffff' } });
+    var mvr = creep.moveTo(target, Object.assign({ reusePath: 10, maxOps: 1500 }, opts || {}));
+    if (mvr !== OK && mvr !== ERR_TIRED && mvr !== ERR_BUSY) {
+        pathCache.del(key);
+    }
 }
 
 module.exports = {

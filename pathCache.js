@@ -24,6 +24,10 @@ function advance(key) {
     if (entry && entry.idx < entry.path.length - 1) entry.idx++;
 }
 
+function del(key) {
+    delete cache._cache[key];
+}
+
 function cleanup() {
     if (Game.time - cache._lastCleanup < 100) return;
     var now = Game.time;
@@ -37,5 +41,6 @@ module.exports = {
     get: get,
     set: set,
     advance: advance,
+    del: del,
     cleanup: cleanup,
 };
