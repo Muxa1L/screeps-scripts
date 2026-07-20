@@ -8,7 +8,7 @@ var miscUpkeep = require('misc.upkeep');
 module.exports.loop = function () {
 
     miscUpkeep.run();
-    var mainRoom = Game.spawns['Spawn1'].room
+    var mainRoom = Game.spawns['Spawn1'].room;
     //console.log(mainRoom.energyAvailable + ':' + mainRoom.energyCapacityAvailable);
     var consSites = mainRoom.find(FIND_MY_CONSTRUCTION_SITES);
     var energySites = mainRoom.find(FIND_STRUCTURES, {
