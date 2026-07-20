@@ -1,22 +1,22 @@
-var snapshots = {};
-var lastTick = -1;
+let snapshots = {};
+let lastTick = -1;
 
 function snapshotFor(room) {
-    var hostiles = room.find(FIND_HOSTILE_CREEPS);
-    var damagedFriendlies = room.find(FIND_MY_CREEPS, {
+    const hostiles = room.find(FIND_HOSTILE_CREEPS);
+    const damagedFriendlies = room.find(FIND_MY_CREEPS, {
         filter: function (c) { return c.hits < c.hitsMax; },
     });
-    var constructionSites = room.find(FIND_MY_CONSTRUCTION_SITES);
-    var droppedEnergy = room.find(FIND_DROPPED_RESOURCES, {
+    const constructionSites = room.find(FIND_MY_CONSTRUCTION_SITES);
+    const droppedEnergy = room.find(FIND_DROPPED_RESOURCES, {
         filter: function (r) { return r.amount > 10; },
     });
-    var tombstones = room.find(FIND_TOMBSTONES, {
+    const tombstones = room.find(FIND_TOMBSTONES, {
         filter: function (t) { return _.sum(t.store) > 10; },
     });
-    var ruins = room.find(FIND_RUINS, {
+    const ruins = room.find(FIND_RUINS, {
         filter: function (r) { return _.sum(r.store) > 10; },
     });
-    var damagedCritical = room.find(FIND_STRUCTURES, {
+    const damagedCritical = room.find(FIND_STRUCTURES, {
         filter: function (s) {
             if (s.structureType === STRUCTURE_RAMPART || s.structureType === STRUCTURE_WALL) {
                 return s.hits < 10000;
@@ -24,15 +24,15 @@ function snapshotFor(room) {
             return false;
         },
     });
-    var damagedNonCritical = room.find(FIND_STRUCTURES, {
+    const damagedNonCritical = room.find(FIND_STRUCTURES, {
         filter: function (s) {
             if (s.structureType === STRUCTURE_RAMPART || s.structureType === STRUCTURE_WALL) return false;
             if (s.hits >= s.hitsMax) return false;
             return s.structureType === STRUCTURE_CONTAINER || s.structureType === STRUCTURE_ROAD;
         },
     });
-    var sources = room.find(FIND_SOURCES_ACTIVE);
-    var energyStructures = room.find(FIND_STRUCTURES, {
+    const sources = room.find(FIND_SOURCES_ACTIVE);
+    const energyStructures = room.find(FIND_STRUCTURES, {
         filter: function (s) {
             return (s.structureType === STRUCTURE_EXTENSION ||
                     s.structureType === STRUCTURE_SPAWN ||
@@ -40,15 +40,15 @@ function snapshotFor(room) {
                    s.energy < s.energyCapacity;
         },
     });
-    var containers = room.find(FIND_STRUCTURES, {
+    const containers = room.find(FIND_STRUCTURES, {
         filter: function (s) { return s.structureType === STRUCTURE_CONTAINER; },
     });
-    var links = room.find(FIND_STRUCTURES, {
+    const links = room.find(FIND_STRUCTURES, {
         filter: function (s) { return s.structureType === STRUCTURE_LINK; },
     });
 
-    var controller = room.controller;
-    var controllerState = null;
+    const controller = room.controller;
+    let controllerState = null;
     if (controller) {
         controllerState = {
             level: controller.level,
@@ -84,8 +84,8 @@ function tick() {
     if (Game.time === lastTick) return;
     lastTick = Game.time;
     snapshots = {};
-    for (var name in Game.rooms) {
-        var room = Game.rooms[name];
+    for (const name in Game.rooms) {
+        const room = Game.rooms[name];
         if (!room.controller || !room.controller.my) continue;
         snapshots[name] = snapshotFor(room);
     }

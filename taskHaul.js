@@ -1,21 +1,21 @@
-var TaskType = require('taskBaseClass');
-var taskBase = require('taskBase');
-var move = require('moveUtil');
-var roomManager = require('roomManager');
+const TaskType = require('taskBaseClass');
+const taskBase = require('taskBase');
+const move = require('moveUtil');
+const roomManager = require('roomManager');
 
 function findDeposit(creep, sourceContainerId) {
-    var snap = roomManager.get(creep.room.name);
+    const snap = roomManager.get(creep.room.name);
     if (snap && snap.energyStructures && snap.energyStructures.length > 0) {
-        var nearest = creep.pos.findClosestByPath(snap.energyStructures);
+        const nearest = creep.pos.findClosestByPath(snap.energyStructures);
         if (nearest) return nearest;
     }
     if (snap && snap.storage && _.sum(snap.storage.store) < snap.storage.store.getCapacity()) {
         return snap.storage;
     }
     if (snap && snap.containers) {
-        var usable = [];
-        for (var i = 0; i < snap.containers.length; i++) {
-            var c = snap.containers[i];
+        const usable = [];
+        for (let i = 0; i < snap.containers.length; i++) {
+            const c = snap.containers[i];
             if (c.id !== sourceContainerId && _.sum(c.store) < c.store.getCapacity()) {
                 usable.push(c);
             }
@@ -35,18 +35,18 @@ module.exports = new TaskType({
         return creep.getActiveBodyparts(CARRY) > 0;
     },
     tasks: function (room, snap) {
-        var out = [];
-        for (var i = 0; i < snap.containers.length; i++) {
-            var c = snap.containers[i];
+        const out = [];
+        for (let i = 0; i < snap.containers.length; i++) {
+            const c = snap.containers[i];
             if (c.store[RESOURCE_ENERGY] >= 50) out.push({ target: c });
         }
         return out;
     },
     run: function (creep, task) {
-        var container = task.target;
+        const container = task.target;
         if (!container) return false;
         if (creep.store[RESOURCE_ENERGY] >= creep.store.getCapacity()) {
-            var deposit = findDeposit(creep, container.id);
+            const deposit = findDeposit(creep, container.id);
             if (!deposit) return false;
             move.action(creep, 'transfer@' + deposit.id);
             if (creep.transfer(deposit, RESOURCE_ENERGY) === ERR_NOT_IN_RANGE) {
@@ -54,7 +54,7 @@ module.exports = new TaskType({
             }
             return true;
         }
-        var containerEnergy = container.store[RESOURCE_ENERGY] || 0;
+        const containerEnergy = container.store[RESOURCE_ENERGY] || 0;
         if (containerEnergy > 0 && creep.store[RESOURCE_ENERGY] < creep.store.getCapacity()) {
             move.action(creep, 'withdraw@' + container.id);
             if (creep.withdraw(container, RESOURCE_ENERGY) === ERR_NOT_IN_RANGE) {
@@ -63,7 +63,7 @@ module.exports = new TaskType({
             return true;
         }
         if (creep.store[RESOURCE_ENERGY] > 0) {
-            var deposit2 = findDeposit(creep, container.id);
+            const deposit2 = findDeposit(creep, container.id);
             if (deposit2) {
                 move.action(creep, 'transfer@' + deposit2.id);
                 if (creep.transfer(deposit2, RESOURCE_ENERGY) === ERR_NOT_IN_RANGE) {

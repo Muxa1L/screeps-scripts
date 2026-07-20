@@ -1,4 +1,4 @@
-var _lastPeriodic = {};
+const _lastPeriodic = {};
 
 function getMode() {
     if (!Memory.flags) return 'normal';
@@ -8,19 +8,19 @@ function getMode() {
 }
 
 function shouldLog(category) {
-    var mode = getMode();
+    const mode = getMode();
     if (mode === 'quiet') return false;
     if (mode === 'verbose') return true;
-    var enabled = Memory.logCategories;
+    const enabled = Memory.logCategories;
     if (enabled && enabled[category] === false) return false;
     return true;
 }
 
 function periodic(category, interval, key, message) {
     if (!shouldLog(category)) return;
-    var t = Game.time;
-    var slot = Math.floor(t / interval);
-    var id = category + ':' + key + ':' + slot;
+    const t = Game.time;
+    const slot = Math.floor(t / interval);
+    const id = category + ':' + key + ':' + slot;
     if (_lastPeriodic[id] === slot) return;
     _lastPeriodic[id] = slot;
     console.log(message);
@@ -32,11 +32,11 @@ function event(category, message) {
 }
 
 function statusLine(creep) {
-    var role = creep.memory.role || 'unknown';
-    var task = creep.memory.taskId || 'none';
-    var carry = (creep.store[RESOURCE_ENERGY] || 0) + '/' + (creep.store.getCapacity() || 0);
-    var pos = creep.pos.x + ',' + creep.pos.y;
-    var action = creep.memory._action || '';
+    const role = creep.memory.role || 'unknown';
+    const task = creep.memory.taskId || 'none';
+    const carry = (creep.store[RESOURCE_ENERGY] || 0) + '/' + (creep.store.getCapacity() || 0);
+    const pos = creep.pos.x + ',' + creep.pos.y;
+    const action = creep.memory._action || '';
     return creep.name + ' [' + role + '] task=' + task + ' carry=' + carry + ' pos=' + pos + (action ? ' (' + action + ')' : '');
 }
 

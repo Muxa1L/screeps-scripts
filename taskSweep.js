@@ -1,6 +1,6 @@
-var TaskType = require('taskBaseClass');
-var taskBase = require('taskBase');
-var move = require('moveUtil');
+const TaskType = require('taskBaseClass');
+const taskBase = require('taskBase');
+const move = require('moveUtil');
 
 module.exports = new TaskType({
     type: 'sweep',
@@ -10,16 +10,16 @@ module.exports = new TaskType({
         return creep.getActiveBodyparts(CARRY) > 0;
     },
     tasks: function (room, snap) {
-        var out = [];
-        for (var i = 0; i < snap.droppedEnergy.length; i++) {
+        const out = [];
+        for (let i = 0; i < snap.droppedEnergy.length; i++) {
             out.push({ target: snap.droppedEnergy[i] });
         }
-        for (var j = 0; j < snap.tombstones.length; j++) {
-            var t = snap.tombstones[j];
+        for (let j = 0; j < snap.tombstones.length; j++) {
+            const t = snap.tombstones[j];
             if (_.sum(t.store) > 0) out.push({ target: t });
         }
-        for (var k = 0; k < snap.ruins.length; k++) {
-            var r = snap.ruins[k];
+        for (let k = 0; k < snap.ruins.length; k++) {
+            const r = snap.ruins[k];
             if (_.sum(r.store) > 0) out.push({ target: r });
         }
         return out;
@@ -28,16 +28,16 @@ module.exports = new TaskType({
         return taskBase.pathScore(creep, target);
     },
     run: function (creep, task) {
-        var t = task.target;
+        const t = task.target;
         if (!t) return false;
         if (!t.pos) return false;
         if (creep.store.getCapacity() === 0) return false;
 
-        var amount;
-        var pick;
+        let amount;
+        let pick;
         if (t.store) {
-            var keys = Object.keys(t.store);
-            for (var i = 0; i < keys.length; i++) {
+            const keys = Object.keys(t.store);
+            for (let i = 0; i < keys.length; i++) {
                 if (t.store[keys[i]] > 0) { pick = keys[i]; break; }
             }
             if (!pick) return false;
@@ -50,7 +50,7 @@ module.exports = new TaskType({
         if (creep.store[RESOURCE_ENERGY] >= creep.store.getCapacity()) return false;
 
         if (creep.pos.isNearTo(t)) {
-            var res;
+            let res;
             if (t.store) {
                 res = creep.withdraw(t, pick);
                 move.action(creep, 'withdraw@' + t.id);

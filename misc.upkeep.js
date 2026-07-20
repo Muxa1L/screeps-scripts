@@ -1,15 +1,15 @@
-var assert = require('assert');
-var spawnUtil = require('spawnUtil');
-var constructionPlanner = require('constructionPlanner');
+const assert = require('assert');
+const spawnUtil = require('spawnUtil');
+const constructionPlanner = require('constructionPlanner');
 
-var RAMPART_TARGET_HITS = 100000;
-var SAFE_MODE_TRIGGER_HITS = 5000;
-var SAFE_MODE_TTD_THRESHOLD = 3000;
-var CRITICAL_CREEP_AGE = 5;
-var STUCK_THRESHOLD = 200;
-var MAX_RECYCLES_PER_TICK = 3;
-var SAFE_MODE_COOLDOWN_TICKS = 5000;
-var SAFE_MODE_MEMORY_KEY = 'lastSafeModeActivate';
+const RAMPART_TARGET_HITS = 100000;
+const SAFE_MODE_TRIGGER_HITS = 5000;
+const SAFE_MODE_TTD_THRESHOLD = 3000;
+const CRITICAL_CREEP_AGE = 5;
+const STUCK_THRESHOLD = 200;
+const MAX_RECYCLES_PER_TICK = 3;
+const SAFE_MODE_COOLDOWN_TICKS = 5000;
+const SAFE_MODE_MEMORY_KEY = 'lastSafeModeActivate';
 
 function getLastSafeModeActivate(roomName) {
     if (!Memory.rooms) return 0;
@@ -23,12 +23,12 @@ function setLastSafeModeActivate(roomName, tick) {
     Memory.rooms[roomName][SAFE_MODE_MEMORY_KEY] = tick;
 }
 
-var TOWER_MIN_ATTACK_ENERGY = 10;
-var TOWER_MIN_HEAL_ENERGY = 250;
-var TOWER_MIN_REPAIR_ENERGY = 500;
+const TOWER_MIN_ATTACK_ENERGY = 10;
+const TOWER_MIN_HEAL_ENERGY = 250;
+const TOWER_MIN_REPAIR_ENERGY = 500;
 
-var _recyclesThisTick = 0;
-var _lastTick = -1;
+let _recyclesThisTick = 0;
+let _lastTick = -1;
 
 function run() {
     if (_lastTick !== Game.time) {
@@ -37,16 +37,16 @@ function run() {
     }
 
     assert.safeRun('constructionPlanner', function () {
-        for (var rn in Game.rooms) {
-            var r = Game.rooms[rn];
+        for (const rn in Game.rooms) {
+            const r = Game.rooms[rn];
             if (!r.controller || !r.controller.my) continue;
             constructionPlanner.tick(r);
         }
     });
 
     assert.safeRun('towers', function () {
-        for (var name in Game.structures) {
-            var s = Game.structures[name];
+        for (const name in Game.structures) {
+            const s = Game.structures[name];
             if (!s.structureType) continue;
             if (s.structureType === STRUCTURE_TOWER) {
                 runTower(s);
@@ -55,8 +55,8 @@ function run() {
     });
 
     assert.safeRun('links', function () {
-        for (var lname in Game.structures) {
-            var link = Game.structures[lname];
+        for (const lname in Game.structures) {
+            const link = Game.structures[lname];
             if (!link.structureType || link.structureType !== STRUCTURE_LINK) continue;
             if (link.cooldown > 0) continue;
             runLink(link);
@@ -64,26 +64,26 @@ function run() {
     });
 
     assert.safeRun('safeMode', function () {
-        for (var rn in Game.rooms) {
-            var room = Game.rooms[rn];
-            var controller = room.controller;
+        for (const rn in Game.rooms) {
+            const room = Game.rooms[rn];
+            const controller = room.controller;
             if (!controller || !controller.my) continue;
-            var spawnsHere = spawnUtil.spawnsInRoom(room);
+            const spawnsHere = spawnUtil.spawnsInRoom(room);
             if (spawnsHere.length === 0) continue;
-            var lowHealth = false;
-            for (var i = 0; i < spawnsHere.length; i++) {
+            let lowHealth = false;
+            for (let i = 0; i < spawnsHere.length; i++) {
                 if (spawnsHere[i].hits < SAFE_MODE_TRIGGER_HITS) { lowHealth = true; break; }
             }
-            var hostiles = room.find(FIND_HOSTILE_CREEPS);
-            var ttd = controller.ticksToDowngrade;
-            var lowTtd = typeof ttd === 'number' && ttd < SAFE_MODE_TTD_THRESHOLD && hostiles.length > 0;
+            const hostiles = room.find(FIND_HOSTILE_CREEPS);
+            const ttd = controller.ticksToDowngrade;
+            const lowTtd = typeof ttd === 'number' && ttd < SAFE_MODE_TTD_THRESHOLD && hostiles.length > 0;
 
-            var lastSafeMode = getLastSafeModeActivate(rn);
+            const lastSafeMode = getLastSafeModeActivate(rn);
             if ((lowHealth || lowTtd) &&
                 controller.safeModeAvailable > 0 &&
                 !controller.safeMode &&
                 Game.time - lastSafeMode > SAFE_MODE_COOLDOWN_TICKS) {
-                var res = controller.activateSafeMode();
+                const res = controller.activateSafeMode();
                 if (res === OK) {
                     setLastSafeModeActivate(rn, Game.time);
                     console.log('[' + Game.time + '] [safe-mode] [' + rn + '] activate -> ' + res + (lowTtd ? ' (ttd=' + ttd + ')' : ' (spawn-low)'));
@@ -96,14 +96,14 @@ function run() {
 
     assert.safeRun('creepMemoryCleanup', function () {
         if (!Memory.creeps) return;
-        for (var cname in Memory.creeps) {
+        for (const cname in Memory.creeps) {
             if (Game.creeps[cname]) continue;
             delete Memory.creeps[cname];
             if (Memory.sources) {
-                for (var sid in Memory.sources) {
-                    var slots = Memory.sources[sid].slots;
+                for (const sid in Memory.sources) {
+                    const slots = Memory.sources[sid].slots;
                     if (!slots) continue;
-                    for (var si = 0; si < slots.length; si++) {
+                    for (let si = 0; si < slots.length; si++) {
                         if (slots[si].claimedBy === cname) slots[si].claimedBy = null;
                     }
                 }
@@ -114,14 +114,14 @@ function run() {
     assert.safeRun('stuckRecycle', function () {
         if (!Memory.flags || !Memory.flags.stuckRecycle) return;
         if (_recyclesThisTick >= MAX_RECYCLES_PER_TICK) return;
-        for (var name in Game.creeps) {
+        for (const name in Game.creeps) {
             if (_recyclesThisTick >= MAX_RECYCLES_PER_TICK) break;
-            var c = Game.creeps[name];
+            const c = Game.creeps[name];
             if (c.ticksToLive < 100) continue;
-            var lastChange = c.memory._lastTaskChange || 0;
+            const lastChange = c.memory._lastTaskChange || 0;
             if (Game.time - lastChange < STUCK_THRESHOLD) continue;
             if (c.getActiveBodyparts(MOVE) === 0) continue;
-            var spawn = spawnUtil.nearestSpawn(c);
+            const spawn = spawnUtil.nearestSpawn(c);
             if (!spawn) continue;
             console.log('[' + Game.time + '] [stuck-recycle] ' + c.name + ' idle for ' + (Game.time - lastChange) + ' ticks');
             if (spawn.recycleCreep(c) === ERR_NOT_IN_RANGE) {
@@ -135,8 +135,8 @@ function run() {
     assert.safeRun('memoryWatchdog', function () {
         if (!Memory.creeps) return;
         if (Game.time % 50 !== 0) return;
-        var ghostCount = 0;
-        for (var cname in Memory.creeps) {
+        let ghostCount = 0;
+        for (const cname in Memory.creeps) {
             if (Game.creeps[cname]) continue;
             ghostCount++;
         }
@@ -149,14 +149,14 @@ function run() {
 }
 
 function runTower(tower) {
-    var energy = tower.energy;
-    var closestHostile = tower.pos.findClosestByRange(FIND_HOSTILE_CREEPS);
+    const energy = tower.energy;
+    const closestHostile = tower.pos.findClosestByRange(FIND_HOSTILE_CREEPS);
     if (closestHostile && energy >= TOWER_MIN_ATTACK_ENERGY) {
         tower.attack(closestHostile);
         return;
     }
     if (energy >= TOWER_MIN_HEAL_ENERGY) {
-        var closestDamagedCreep = tower.pos.findClosestByRange(FIND_MY_CREEPS, {
+        const closestDamagedCreep = tower.pos.findClosestByRange(FIND_MY_CREEPS, {
             filter: function (c) { return c.hits < c.hitsMax; },
         });
         if (closestDamagedCreep) {
@@ -165,7 +165,7 @@ function runTower(tower) {
         }
     }
     if (energy >= TOWER_MIN_REPAIR_ENERGY) {
-        var damaged = tower.pos.findClosestByRange(FIND_STRUCTURES, {
+        const damaged = tower.pos.findClosestByRange(FIND_STRUCTURES, {
             filter: function (s) {
                 if (s.structureType === STRUCTURE_WALL || s.structureType === STRUCTURE_RAMPART) {
                     return s.hits < RAMPART_TARGET_HITS;
@@ -184,12 +184,12 @@ function runTower(tower) {
 }
 
 function runLink(link) {
-    var room = link.room;
+    const room = link.room;
     if (!room) return;
 
-    var isSourceLink = false;
-    var sources = room.find(FIND_SOURCES);
-    for (var i = 0; i < sources.length; i++) {
+    let isSourceLink = false;
+    const sources = room.find(FIND_SOURCES);
+    for (let i = 0; i < sources.length; i++) {
         if (link.pos.inRangeTo(sources[i].pos, 3)) {
             isSourceLink = true;
             break;
@@ -199,12 +199,12 @@ function runLink(link) {
 
     if (link.store[RESOURCE_ENERGY] < 50) return;
 
-    var storageLink = null;
+    let storageLink = null;
     if (room.storage) {
-        var allLinks = room.find(FIND_STRUCTURES, {
+        const allLinks = room.find(FIND_STRUCTURES, {
             filter: function (s) { return s.structureType === STRUCTURE_LINK; },
         });
-        for (var j = 0; j < allLinks.length; j++) {
+        for (let j = 0; j < allLinks.length; j++) {
             if (allLinks[j].id === link.id) continue;
             if (allLinks[j].pos.inRangeTo(room.storage.pos, 3)) {
                 storageLink = allLinks[j];
@@ -213,12 +213,12 @@ function runLink(link) {
         }
     }
 
-    var controllerLink = null;
+    let controllerLink = null;
     if (room.controller && room.controller.my) {
-        var allLinks2 = room.find(FIND_STRUCTURES, {
+        const allLinks2 = room.find(FIND_STRUCTURES, {
             filter: function (s) { return s.structureType === STRUCTURE_LINK; },
         });
-        for (var k = 0; k < allLinks2.length; k++) {
+        for (let k = 0; k < allLinks2.length; k++) {
             if (allLinks2[k].id === link.id) continue;
             if (allLinks2[k].pos.inRangeTo(room.controller.pos, 3)) {
                 controllerLink = allLinks2[k];
@@ -227,7 +227,7 @@ function runLink(link) {
         }
     }
 
-    var target = controllerLink || storageLink;
+    const target = controllerLink || storageLink;
     if (!target) return;
     if (target.store[RESOURCE_ENERGY] >= target.store.getCapacity(RESOURCE_ENERGY) - 10) return;
 

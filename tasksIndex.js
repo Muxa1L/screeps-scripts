@@ -1,16 +1,16 @@
-var taskBase = require('taskBase');
+const taskBase = require('taskBase');
 
-var harvest = require('taskHarvest');
-var mine = require('taskMine');
-var haul = require('taskHaul');
-var sweep = require('taskSweep');
-var build = require('taskBuild');
-var repair = require('taskRepair');
-var upgrade = require('taskUpgrade');
-var defend = require('taskDefend');
-var heal = require('taskHeal');
+const harvest = require('taskHarvest');
+const mine = require('taskMine');
+const haul = require('taskHaul');
+const sweep = require('taskSweep');
+const build = require('taskBuild');
+const repair = require('taskRepair');
+const upgrade = require('taskUpgrade');
+const defend = require('taskDefend');
+const heal = require('taskHeal');
 
-var registry = {
+const registry = {
     harvest: harvest,
     mine: mine,
     haul: haul,
@@ -28,36 +28,36 @@ function get(type) {
 
 function list(room, snapshot) {
     if (!room || !snapshot) return [];
-    var out = [];
-    var types = Object.keys(registry);
-    for (var t = 0; t < types.length; t++) {
-        var tt = registry[types[t]];
-        var items = tt.listFor(room, snapshot);
-        for (var i = 0; i < items.length; i++) out.push(items[i]);
+    const out = [];
+    const types = Object.keys(registry);
+    for (let t = 0; t < types.length; t++) {
+        const tt = registry[types[t]];
+        const items = tt.listFor(room, snapshot);
+        for (let i = 0; i < items.length; i++) out.push(items[i]);
     }
     return out;
 }
 
 function run(type, creep, task) {
-    var tt = get(type);
+    const tt = get(type);
     if (!tt) return true;
     return tt.run(creep, task);
 }
 
 function canDo(type, creep) {
-    var tt = get(type);
+    const tt = get(type);
     if (!tt) return false;
     return tt.canDo(creep);
 }
 
 function cap(type) {
-    var tt = get(type);
+    const tt = get(type);
     if (!tt) return 99;
     return tt.cap;
 }
 
 function score(type, creep, target) {
-    var tt = get(type);
+    const tt = get(type);
     if (!tt || !tt.score) return taskBase.approxDistance(creep, target);
     return tt.score(creep, target);
 }

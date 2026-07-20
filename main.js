@@ -1,4 +1,4 @@
-var assert = require('assert');
+const assert = require('assert');
 
 module.exports.loop = function () {
     assert.safeTick('globals',    function () { require('globals').tick(); });
@@ -15,7 +15,7 @@ module.exports.loop = function () {
     }
 
     if (Game.time % 100 === 0) {
-        var meta = '[' + Game.time + '] [meta] bucket=' + Game.cpu.bucket +
+        const meta = '[' + Game.time + '] [meta] bucket=' + Game.cpu.bucket +
             ' gcl=' + (Game.gcl ? Game.gcl.level : '?') +
             ' cpu=' + Game.cpu.getUsed().toFixed(2) +
             ' errors=' + (Memory.stats && Memory.stats.errors ? Object.keys(Memory.stats.errors).length : 0);

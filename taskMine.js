@@ -1,7 +1,7 @@
-var TaskType = require('taskBaseClass');
-var taskBase = require('taskBase');
-var move = require('moveUtil');
-var sourceRegistry = require('sourceRegistry');
+const TaskType = require('taskBaseClass');
+const taskBase = require('taskBase');
+const move = require('moveUtil');
+const sourceRegistry = require('sourceRegistry');
 
 module.exports = new TaskType({
     type: 'mine',
@@ -10,17 +10,17 @@ module.exports = new TaskType({
     canDo: function (creep) {
         return creep.getActiveBodyparts(WORK) > 0 && creep.getActiveBodyparts(CARRY) === 0;
     },
-    tasks: function (room, snap) {
+    tasks: function (room, _snap) {
         if (!Memory.sources) return [];
-        var out = [];
-        for (var id in Memory.sources) {
+        const out = [];
+        for (const id in Memory.sources) {
             if (Memory.sources[id].roomName !== room.name) continue;
             out.push({ target: { id: id, pos: { x: Memory.sources[id].x, y: Memory.sources[id].y, roomName: room.name } } });
         }
         return out;
     },
     run: function (creep, task) {
-        var sourceId = task.target.id;
+        const sourceId = task.target.id;
         if (!creep.memory.sourceId) {
             creep.memory.sourceId = sourceId;
             if (!sourceRegistry.claimSlot(sourceId, creep.name)) {
@@ -35,19 +35,19 @@ module.exports = new TaskType({
                 return false;
             }
         }
-        var slot = sourceRegistry.slotPos(sourceId, creep.name);
+        const slot = sourceRegistry.slotPos(sourceId, creep.name);
         if (slot && !creep.pos.isEqualTo(slot)) {
             move.action(creep, 'moving->mine@' + sourceId);
             move.moveCreep(creep, slot, { visualizePathStyle: { stroke: '#ffaa00' } });
             return true;
         }
-        var source = Game.getObjectById(sourceId);
+        const source = Game.getObjectById(sourceId);
         if (!source) {
             sourceRegistry.releaseClaim(creep.name);
             creep.memory.sourceId = null;
             return false;
         }
-        var ret = creep.harvest(source);
+        const ret = creep.harvest(source);
         if (ret === OK) {
             move.action(creep, 'harvesting@' + sourceId);
             return true;

@@ -1,5 +1,5 @@
-var _lastErrors = [];
-var MAX_ERRORS = 50;
+let _lastErrors = [];
+const MAX_ERRORS = 50;
 
 function init() {
     if (!Memory.stats) Memory.stats = {};
@@ -11,7 +11,7 @@ function init() {
 function recordError(module, error) {
     init();
     Memory.stats.errors[module] = (Memory.stats.errors[module] || 0) + 1;
-    var entry = {
+    const entry = {
         tick: Game.time,
         module: module,
         message: (error && error.message) || String(error),
@@ -43,7 +43,7 @@ function safeTick(module, fn) {
 
 function assert(cond, message) {
     if (cond) return true;
-    var msg = message || 'assertion failed';
+    const msg = message || 'assertion failed';
     recordError('assert', { message: msg });
     return false;
 }

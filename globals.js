@@ -1,4 +1,4 @@
-var assert = require('assert');
+const assert = require('assert');
 
 function init() {
     assert.init();
@@ -22,10 +22,10 @@ function ensureRoomMemory(room) {
 
 function tick() {
     init();
-    for (var name in Game.rooms) {
-        var room = Game.rooms[name];
+    for (const name in Game.rooms) {
+        const room = Game.rooms[name];
         if (!room.controller || !room.controller.my) continue;
-        var mem = ensureRoomMemory(room);
+        const mem = ensureRoomMemory(room);
         mem.lastSeen = Game.time;
     }
 }

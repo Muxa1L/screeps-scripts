@@ -1,6 +1,6 @@
-var TaskType = require('taskBaseClass');
-var taskBase = require('taskBase');
-var move = require('moveUtil');
+const TaskType = require('taskBaseClass');
+const taskBase = require('taskBase');
+const move = require('moveUtil');
 
 module.exports = new TaskType({
     type: 'harvest',
@@ -16,12 +16,12 @@ module.exports = new TaskType({
         return taskBase.pathScore(creep, target);
     },
     run: function (creep, task) {
-        var source = task.target;
+        const source = task.target;
         if (!source) return false;
         if (creep.store[RESOURCE_ENERGY] >= creep.store.getCapacity()) {
             return false;
         }
-        var ret = creep.harvest(source);
+        const ret = creep.harvest(source);
         if (ret === OK) {
             move.action(creep, 'harvesting@' + source.id);
             return true;

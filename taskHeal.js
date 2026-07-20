@@ -1,6 +1,6 @@
-var TaskType = require('taskBaseClass');
-var taskBase = require('taskBase');
-var move = require('moveUtil');
+const TaskType = require('taskBaseClass');
+const taskBase = require('taskBase');
+const move = require('moveUtil');
 
 module.exports = new TaskType({
     type: 'heal',
@@ -14,7 +14,7 @@ module.exports = new TaskType({
     },
     run: function (creep, task) {
         if (creep.getActiveBodyparts(HEAL) === 0) return false;
-        var target = task.target;
+        const target = task.target;
         if (!target) return false;
         if (creep.hits < creep.hitsMax) {
             move.action(creep, 'self-heal');
@@ -22,7 +22,7 @@ module.exports = new TaskType({
             return true;
         }
         move.action(creep, 'healing@' + target.id);
-        var res = creep.heal(target);
+        const res = creep.heal(target);
         if (res === ERR_NOT_IN_RANGE) {
             if (creep.pos.inRangeTo(target, 3)) {
                 creep.rangedHeal(target);

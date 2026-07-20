@@ -1,4 +1,4 @@
-var BODYPART_COST = {
+const BODYPART_COST = {
     [MOVE]:   50,
     [WORK]:   100,
     [CARRY]:  50,
@@ -10,14 +10,14 @@ var BODYPART_COST = {
 };
 
 function bodyCost(body) {
-    var total = 0;
-    for (var i = 0; i < body.length; i++) {
+    let total = 0;
+    for (let i = 0; i < body.length; i++) {
         total += BODYPART_COST[body[i]] || 0;
     }
     return total;
 }
 
-var MINER_BODIES = {
+const MINER_BODIES = {
     200:  [WORK, MOVE],
     300:  [WORK, WORK, MOVE],
     550:  [WORK, WORK, WORK, WORK, MOVE, MOVE],
@@ -28,7 +28,7 @@ var MINER_BODIES = {
     5600: [WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE],
 };
 
-var HAULER_BODIES = {
+const HAULER_BODIES = {
     200:  [CARRY, MOVE],
     300:  [CARRY, CARRY, MOVE, MOVE],
     550:  [CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE],
@@ -39,7 +39,7 @@ var HAULER_BODIES = {
     5600: [CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE],
 };
 
-var HARVESTER_BODIES = {
+const HARVESTER_BODIES = {
     200:  [WORK, CARRY, MOVE],
     300:  [WORK, CARRY, CARRY, MOVE, MOVE],
     400:  [WORK, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE],
@@ -49,7 +49,7 @@ var HARVESTER_BODIES = {
     1800: [WORK, WORK, WORK, WORK, WORK, WORK, WORK, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE],
 };
 
-var UPGRADER_BODIES = {
+const UPGRADER_BODIES = {
     200:  [WORK, CARRY, MOVE],
     300:  [WORK, CARRY, CARRY, MOVE, MOVE],
     550:  [WORK, WORK, WORK, CARRY, CARRY, MOVE, MOVE, MOVE],
@@ -60,19 +60,19 @@ var UPGRADER_BODIES = {
     5600: [WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE],
 };
 
-var FIGHTER_BODIES = {
+const FIGHTER_BODIES = {
     720:  [TOUGH, TOUGH, TOUGH, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, ATTACK, ATTACK, ATTACK],
     1300: [TOUGH, TOUGH, TOUGH, TOUGH, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, ATTACK, ATTACK, ATTACK, ATTACK, ATTACK],
     2000: [TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, ATTACK, ATTACK, ATTACK, ATTACK, ATTACK, ATTACK, ATTACK, ATTACK],
 };
 
-var HEALER_BODIES = {
+const HEALER_BODIES = {
     720:  [TOUGH, TOUGH, TOUGH, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, HEAL, HEAL, HEAL],
     1300: [TOUGH, TOUGH, TOUGH, TOUGH, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, HEAL, HEAL, HEAL, HEAL, HEAL],
     2000: [TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, HEAL, HEAL, HEAL, HEAL, HEAL, HEAL, HEAL, HEAL],
 };
 
-var BUILDER_BODIES = {
+const BUILDER_BODIES = {
     200:  [WORK, CARRY, MOVE],
     300:  [WORK, CARRY, CARRY, MOVE, MOVE],
     400:  [WORK, WORK, CARRY, CARRY, MOVE, MOVE],
@@ -83,7 +83,7 @@ var BUILDER_BODIES = {
     2300: [WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE],
 };
 
-var BODIES = {
+const BODIES = {
     miner:    MINER_BODIES,
     hauler:   HAULER_BODIES,
     harvester:HARVESTER_BODIES,
@@ -98,11 +98,11 @@ function bestBodyForAvailable(role, capacity, available) {
 }
 
 function bestBodyForCapacity(role, capacity) {
-    var table = BODIES[role];
+    const table = BODIES[role];
     if (!table) return null;
-    var keys = Object.keys(table).map(Number).sort(function (a, b) { return a - b; });
-    var chosenKey = null;
-    for (var i = 0; i < keys.length; i++) {
+    const keys = Object.keys(table).map(Number).sort(function (a, b) { return a - b; });
+    let chosenKey = null;
+    for (let i = 0; i < keys.length; i++) {
         if (keys[i] <= capacity) chosenKey = keys[i];
         else break;
     }

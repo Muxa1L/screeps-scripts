@@ -1,6 +1,6 @@
-var TaskType = require('taskBaseClass');
-var taskBase = require('taskBase');
-var move = require('moveUtil');
+const TaskType = require('taskBaseClass');
+const taskBase = require('taskBase');
+const move = require('moveUtil');
 
 module.exports = new TaskType({
     type: 'build',
@@ -16,10 +16,10 @@ module.exports = new TaskType({
         return taskBase.pathScore(creep, target);
     },
     run: function (creep, task) {
-        var site = task.target;
+        const site = task.target;
         if (!site) return false;
         if (creep.store[RESOURCE_ENERGY] === 0) return false;
-        var res = creep.build(site);
+        const res = creep.build(site);
         if (res === ERR_NOT_IN_RANGE) {
             move.action(creep, 'moving->build@' + site.id);
             move.moveCreep(creep, site, { visualizePathStyle: { stroke: '#ffffff' } });

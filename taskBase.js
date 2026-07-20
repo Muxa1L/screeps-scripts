@@ -1,4 +1,4 @@
-var PRIORITY = {
+const PRIORITY = {
     DEFEND: 10,
     RENEW: 20,
     HEAL: 30,
@@ -13,7 +13,7 @@ var PRIORITY = {
     IDLE: 100,
 };
 
-var TASK_TYPE = {
+const TASK_TYPE = {
     DEFEND: 'defend',
     HEAL: 'heal',
     SWEEP: 'sweep',
@@ -35,16 +35,16 @@ function approxDistance(creep, target) {
     if (creep.pos.roomName !== target.pos.roomName) {
         return 50 + (Game.map.getRoomLinearDistance(creep.pos.roomName, target.pos.roomName) || 1) * 50;
     }
-    var dx = Math.abs(creep.pos.x - target.pos.x);
-    var dy = Math.abs(creep.pos.y - target.pos.y);
+    const dx = Math.abs(creep.pos.x - target.pos.x);
+    const dy = Math.abs(creep.pos.y - target.pos.y);
     return Math.max(dx, dy);
 }
 
 function describeTask(task) {
     if (!task) return 'none';
-    var tgt = task.target;
-    var tgtId = (tgt && tgt.id) || '?';
-    var tgtName = '';
+    const tgt = task.target;
+    const tgtId = (tgt && tgt.id) || '?';
+    let tgtName = '';
     if (tgt) {
         if (tgt.structureType) tgtName = tgt.structureType;
         else if (tgt.name) tgtName = tgt.name;
@@ -63,26 +63,26 @@ function makeTask(type, priority, target, roomName) {
     };
 }
 
-var _pathScoreCache = {};
-var PATH_SCORE_TTL = 10;
-var PATH_SCORE_CLEANUP_INTERVAL = 50;
+const _pathScoreCache = {};
+const PATH_SCORE_TTL = 10;
+const PATH_SCORE_CLEANUP_INTERVAL = 50;
 
 function pathScore(creep, target) {
     if (!target || !target.pos) return 9999;
     if (creep.pos.roomName !== target.pos.roomName) {
         return approxDistance(creep, target);
     }
-    var key = creep.pos.roomName + ':' + creep.pos.x + ',' + creep.pos.y + ':' + target.id;
-    var entry = _pathScoreCache[key];
+    const key = creep.pos.roomName + ':' + creep.pos.x + ',' + creep.pos.y + ':' + target.id;
+    const entry = _pathScoreCache[key];
     if (entry && Game.time - entry.time < PATH_SCORE_TTL) {
         return entry.length;
     }
-    var path = creep.pos.findPathTo(target, {
+    const path = creep.pos.findPathTo(target, {
         ignoreCreeps: true,
         swampCost: 5,
         plainCost: 2,
     });
-    var len = path ? path.length : 9999;
+    const len = path ? path.length : 9999;
     _pathScoreCache[key] = { time: Game.time, length: len };
 
     if (Game.time % PATH_SCORE_CLEANUP_INTERVAL === 0) {
@@ -92,8 +92,8 @@ function pathScore(creep, target) {
 }
 
 function cleanupPathScoreCache() {
-    var now = Game.time;
-    for (var k in _pathScoreCache) {
+    const now = Game.time;
+    for (const k in _pathScoreCache) {
         if (now - _pathScoreCache[k].time > PATH_SCORE_TTL * 2) {
             delete _pathScoreCache[k];
         }

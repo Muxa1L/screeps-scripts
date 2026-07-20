@@ -1,4 +1,4 @@
-var QUOTAS = {
+const QUOTAS = {
     0: {},
     1: { harvester: 3, upgrader: 1 },
     2: { harvester: 5, upgrader: 2 },
@@ -10,29 +10,29 @@ var QUOTAS = {
     8: { miner: 8, hauler: 8, upgrader: 3, builder: 2 },
 };
 
-var ROLE_PRIORITY = ['fighter', 'healer', 'hauler', 'miner', 'harvester', 'builder', 'upgrader'];
+const ROLE_PRIORITY = ['fighter', 'healer', 'hauler', 'miner', 'harvester', 'builder', 'upgrader'];
 
-var URGENT_TTD = 500;
-var CRITICAL_TTD = 2000;
-var WARN_TTD = 5000;
+const URGENT_TTD = 500;
+const CRITICAL_TTD = 2000;
+const WARN_TTD = 5000;
 
 function quotasFor(rcl) {
     return QUOTAS[rcl] || QUOTAS[0];
 }
 
 function dynamicQuota(rcl, controller) {
-    var q = {};
-    var base = quotasFor(rcl);
-    var keys = Object.keys(base);
-    for (var i = 0; i < keys.length; i++) {
+    const q = {};
+    const base = quotasFor(rcl);
+    const keys = Object.keys(base);
+    for (let i = 0; i < keys.length; i++) {
         q[keys[i]] = base[keys[i]];
     }
     if (controller && controller.ticksToDowngrade !== undefined && controller.ticksToDowngrade !== null) {
-        var ttd = controller.ticksToDowngrade;
-        var baseUpgraders = q.upgrader || 0;
-        var totalQuota = 0;
-        for (var k in q) totalQuota += q[k];
-        var maxUpgraders = Math.max(1, Math.floor(totalQuota / 2));
+        const ttd = controller.ticksToDowngrade;
+        const baseUpgraders = q.upgrader || 0;
+        let totalQuota = 0;
+        for (const k in q) totalQuota += q[k];
+        const maxUpgraders = Math.max(1, Math.floor(totalQuota / 2));
         if (ttd < URGENT_TTD) {
             q.upgrader = Math.max(baseUpgraders, Math.min(4, maxUpgraders));
             q.hauler = Math.max(q.hauler || 0, 1);
@@ -46,19 +46,19 @@ function dynamicQuota(rcl, controller) {
 }
 
 function nextRoleToSpawn(creepCounts, rcl, controller) {
-    var q = controller ? dynamicQuota(rcl, controller) : quotasFor(rcl);
-    for (var i = 0; i < ROLE_PRIORITY.length; i++) {
-        var role = ROLE_PRIORITY[i];
-        var target = q[role];
+    const q = controller ? dynamicQuota(rcl, controller) : quotasFor(rcl);
+    for (let i = 0; i < ROLE_PRIORITY.length; i++) {
+        const role = ROLE_PRIORITY[i];
+        const target = q[role];
         if (!target) continue;
-        var have = creepCounts[role] || 0;
+        const have = creepCounts[role] || 0;
         if (have < target) return role;
     }
     return null;
 }
 
 function spawnPriority(role) {
-    var idx = ROLE_PRIORITY.indexOf(role);
+    const idx = ROLE_PRIORITY.indexOf(role);
     return idx === -1 ? 999 : idx;
 }
 
