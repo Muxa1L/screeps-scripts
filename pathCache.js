@@ -10,12 +10,13 @@ function get(key) {
     return entry;
 }
 
-function set(key, path) {
+function set(key, path, origin) {
     if (!path || path.length === 0) return;
     cache._cache[key] = {
         time: Game.time,
         path: path,
         idx: 0,
+        origin: origin || null,
     };
 }
 

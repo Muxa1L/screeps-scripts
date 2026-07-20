@@ -90,6 +90,15 @@ function moveCreep(creep, target, opts) {
     var key = creep.pos.roomName + ':' + target.id + ':' + creep.name;
     var entry = pathCache.get(key);
     if (entry && entry.path && entry.idx < entry.path.length) {
+        if (entry.origin &&
+            (entry.origin.x !== creep.pos.x ||
+             entry.origin.y !== creep.pos.y ||
+             entry.origin.roomName !== creep.pos.roomName)) {
+            pathCache.del(key);
+            entry = null;
+        }
+    }
+    if (entry && entry.path && entry.idx < entry.path.length) {
         var next = entry.path[entry.idx];
         if (next && next.x !== undefined) {
             if (creep.pos.isEqualTo(next)) {
@@ -127,7 +136,7 @@ function moveCreep(creep, target, opts) {
         }
     );
     if (!ret.incomplete && ret.path && ret.path.length > 0) {
-        pathCache.set(key, ret.path);
+        pathCache.set(key, ret.path, { x: creep.pos.x, y: creep.pos.y, roomName: creep.pos.roomName });
         var d = creep.pos.getDirectionTo(ret.path[0]);
         if (d && d > 0) {
             creep.move(d);
