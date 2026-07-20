@@ -58,21 +58,39 @@ handlers.heal = function (creep, task) {
 handlers.sweep = function (creep, task) {
     var t = task.target;
     if (!t) return false;
-    if (creep.carry.energy > 0) return false;
+    if (!t.pos) return false;
     if (creep.carryCapacity === 0) return false;
-    var resource;
+
+    var amount;
+    var pick;
     if (t.store) {
-        resource = Object.keys(t.store).find(function (k) { return t.store[k] > 0; });
+        var keys = Object.keys(t.store);
+        for (var i = 0; i < keys.length; i++) {
+            if (t.store[keys[i]] > 0) { pick = keys[i]; break; }
+        }
+        if (!pick) return false;
+        amount = t.store[pick];
+    } else {
+        pick = RESOURCE_ENERGY;
+        amount = t.amount;
     }
-    if (!resource) resource = RESOURCE_ENERGY;
-    var amount = t.store ? t.store[resource] : t.amount;
     if (!amount || amount <= 0) return false;
-    var res = creep.pickup ? creep.withdraw(t, resource) : ERR_INVALID_ARGS;
-    if (res === undefined || res === ERR_INVALID_ARGS) {
-        if (t.amount !== undefined) res = creep.pickup(t);
+
+    if (creep.carry.energy >= creep.carryCapacity) return false;
+
+    if (creep.pos.isNearTo(t)) {
+        var res;
+        if (t.store) {
+            res = creep.withdraw(t, pick);
+        } else {
+            res = creep.pickup(t);
+        }
+        return res !== ERR_NOT_IN_RANGE;
     }
-    if (res === ERR_NOT_IN_RANGE) {
-        taskBase.moveCreep(creep, t, { visualizePathStyle: { stroke: '#ffff00' } });
+
+    taskBase.moveCreep(creep, t, { visualizePathStyle: { stroke: '#ffff00' } });
+    if (Game.time % 50 === 0 && Memory.flags && Memory.flags.debugSweep) {
+        console.log('[sweep] ' + creep.name + ' -> ' + t.id + ' carry=' + creep.carry.energy + '/' + creep.carryCapacity);
     }
     return true;
 };

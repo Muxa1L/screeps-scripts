@@ -59,11 +59,11 @@ function spawnBody(spawn, body, name, role, extraMem) {
 
 function tick() {
     var spawn = Game.spawns['Spawn1'];
-    if (!spawn) { debug('no spawn'); return; }
-    if (Game.cpu.bucket < BUCKET_SPAWN_THRESHOLD) { debug('bucket low: ' + Game.cpu.bucket); return; }
-    if (spawn.spawning) { debug('already spawning ' + spawn.spawning.name); return; }
+    if (!spawn) return;
+    if (Game.cpu.bucket < BUCKET_SPAWN_THRESHOLD) return;
+    if (spawn.spawning) return;
     var room = spawn.room;
-    if (!room.controller || !room.controller.my) { debug('no controller'); return; }
+    if (!room.controller || !room.controller.my) return;
 
     var hostiles = room.find(FIND_HOSTILE_CREEPS);
     if (hostiles.length > 0) {
@@ -81,7 +81,10 @@ function tick() {
 
     var capacity = room.energyCapacityAvailable;
     var available = room.energyAvailable;
-    if (available < MIN_BODY_ENERGY) { debug('low energy: ' + available + '/' + capacity); return; }
+    if (available < MIN_BODY_ENERGY) {
+        debug('low energy: ' + available + '/' + capacity);
+        return;
+    }
 
     if (room.controller.level >= 3) {
         sourceRegistry.ensureRegistry(room);
@@ -101,7 +104,10 @@ function tick() {
             var hpick = bestBodyFor(HAULER_BODIES, available);
             if (available >= hpick.cost) {
                 if (spawnBody(spawn, hpick.body, 'Hauler' + Game.time, 'hauler')) return;
-            } else { debug('hauler cost ' + hpick.cost + ' > available ' + available); return; }
+            } else {
+                debug('hauler cost ' + hpick.cost + ' > available ' + available);
+                return;
+            }
         }
         if (upgraders.length < UPGRADER_TARGET) {
             var wbody = WORKER_BODY;
@@ -109,14 +115,16 @@ function tick() {
             var cost = (wbody === EARLY_WORKER_BODY) ? EARLY_WORKER_BODY_ENERGY : WORKER_BODY_ENERGY;
             if (available >= cost) {
                 if (spawnBody(spawn, wbody, 'Upgrader' + Game.time, 'upgrader')) return;
-            } else { debug('upgrader cost ' + cost + ' > available ' + available); return; }
+            } else {
+                debug('upgrader cost ' + cost + ' > available ' + available);
+                return;
+            }
         }
-        debug('RCL>=3: nothing to spawn (miners=' + miners.length + ', haulers=' + haulers.length + ', upgraders=' + upgraders.length + ', freeSlots=' + freeSlots + ')');
         return;
     }
 
     var role = pickGeneralistRole();
-    if (!role) { debug('RCL<3: at target (harv/upg)'); return; }
+    if (!role) return;
     var body = WORKER_BODY;
     var bodyEnergy = WORKER_BODY_ENERGY;
     var harvesters = _.filter(Game.creeps, function (c) { return c.memory.role === 'harvester'; });
@@ -124,15 +132,16 @@ function tick() {
         body = EARLY_WORKER_BODY;
         bodyEnergy = EARLY_WORKER_BODY_ENERGY;
     }
-    if (available < bodyEnergy) { debug('RCL<3: body cost ' + bodyEnergy + ' > available ' + available); return; }
+    if (available < bodyEnergy) {
+        debug('RCL<3: body cost ' + bodyEnergy + ' > available ' + available);
+        return;
+    }
     var name = (role === 'upgrader' ? 'Upgrader' : 'Harvester') + Game.time;
     spawnBody(spawn, body, name, role);
 }
 
-var _debugLast = 0;
 function debug(msg) {
-    if (Game.time - _debugLast < 20) return;
-    _debugLast = Game.time;
+    if (!Memory.flags || !Memory.flags.debugSpawn) return;
     console.log('[spawn] ' + msg);
 }
 
