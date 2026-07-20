@@ -24,6 +24,9 @@ module.exports = new TaskType({
         }
         return out;
     },
+    score: function (creep, target) {
+        return taskBase.pathScore(creep, target);
+    },
     run: function (creep, task) {
         var t = task.target;
         if (!t) return false;

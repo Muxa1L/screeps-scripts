@@ -72,6 +72,17 @@ var HEALER_BODIES = {
     2000: [TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, HEAL, HEAL, HEAL, HEAL, HEAL, HEAL, HEAL, HEAL],
 };
 
+var BUILDER_BODIES = {
+    200:  [WORK, CARRY, MOVE],
+    300:  [WORK, CARRY, CARRY, MOVE, MOVE],
+    400:  [WORK, WORK, CARRY, CARRY, MOVE, MOVE],
+    550:  [WORK, WORK, WORK, CARRY, CARRY, MOVE, MOVE, MOVE],
+    800:  [WORK, WORK, WORK, WORK, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE],
+    1300: [WORK, WORK, WORK, WORK, WORK, WORK, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE],
+    1800: [WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE],
+    2300: [WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE],
+};
+
 var BODIES = {
     miner:    MINER_BODIES,
     hauler:   HAULER_BODIES,
@@ -79,6 +90,7 @@ var BODIES = {
     upgrader: UPGRADER_BODIES,
     fighter:  FIGHTER_BODIES,
     healer:   HEALER_BODIES,
+    builder:  BUILDER_BODIES,
 };
 
 function bestBodyFor(role, capacity) {
@@ -110,6 +122,7 @@ function bodySummary() {
         upgrader: Object.keys(UPGRADER_BODIES).map(Number),
         fighter: Object.keys(FIGHTER_BODIES).map(Number),
         healer: Object.keys(HEALER_BODIES).map(Number),
+        builder: Object.keys(BUILDER_BODIES).map(Number),
     };
 }
 

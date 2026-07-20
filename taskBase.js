@@ -64,6 +64,43 @@ function makeTask(type, priority, target, roomName) {
     };
 }
 
+var _pathScoreCache = {};
+var PATH_SCORE_TTL = 10;
+var PATH_SCORE_CLEANUP_INTERVAL = 50;
+
+function pathScore(creep, target) {
+    if (!target || !target.pos) return 9999;
+    if (creep.pos.roomName !== target.pos.roomName) {
+        return approxDistance(creep, target);
+    }
+    var key = creep.pos.roomName + ':' + creep.pos.x + ',' + creep.pos.y + ':' + target.id;
+    var entry = _pathScoreCache[key];
+    if (entry && Game.time - entry.time < PATH_SCORE_TTL) {
+        return entry.length;
+    }
+    var path = creep.pos.findPathTo(target, {
+        ignoreCreeps: true,
+        swampCost: 5,
+        plainCost: 2,
+    });
+    var len = path ? path.length : 9999;
+    _pathScoreCache[key] = { time: Game.time, length: len };
+
+    if (Game.time % PATH_SCORE_CLEANUP_INTERVAL === 0) {
+        cleanupPathScoreCache();
+    }
+    return len;
+}
+
+function cleanupPathScoreCache() {
+    var now = Game.time;
+    for (var k in _pathScoreCache) {
+        if (now - _pathScoreCache[k].time > PATH_SCORE_TTL * 2) {
+            delete _pathScoreCache[k];
+        }
+    }
+}
+
 module.exports = {
     PRIORITY: PRIORITY,
     TASK_TYPE: TASK_TYPE,
@@ -71,4 +108,6 @@ module.exports = {
     makeTask: makeTask,
     approxDistance: approxDistance,
     describeTask: describeTask,
+    pathScore: pathScore,
+    cleanupPathScoreCache: cleanupPathScoreCache,
 };

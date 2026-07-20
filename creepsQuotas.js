@@ -2,15 +2,15 @@ var QUOTAS = {
     0: {},
     1: { harvester: 3, upgrader: 1 },
     2: { harvester: 5, upgrader: 2 },
-    3: { miner: 4, hauler: 2, upgrader: 2 },
-    4: { miner: 6, hauler: 3, upgrader: 3 },
-    5: { miner: 6, hauler: 4, upgrader: 3 },
-    6: { miner: 8, hauler: 5, upgrader: 3 },
-    7: { miner: 10, hauler: 6, upgrader: 3 },
-    8: { miner: 12, hauler: 8, upgrader: 3 },
+    3: { miner: 4, hauler: 2, upgrader: 2, builder: 1 },
+    4: { miner: 6, hauler: 3, upgrader: 3, builder: 2 },
+    5: { miner: 6, hauler: 4, upgrader: 3, builder: 2 },
+    6: { miner: 8, hauler: 5, upgrader: 3, builder: 2 },
+    7: { miner: 8, hauler: 6, upgrader: 3, builder: 2 },
+    8: { miner: 8, hauler: 8, upgrader: 3, builder: 2 },
 };
 
-var ROLE_PRIORITY = ['fighter', 'healer', 'hauler', 'miner', 'harvester', 'upgrader', 'builder'];
+var ROLE_PRIORITY = ['fighter', 'healer', 'hauler', 'miner', 'harvester', 'builder', 'upgrader'];
 
 var URGENT_TTD = 500;
 var CRITICAL_TTD = 2000;

@@ -12,10 +12,11 @@ var RENEW_THRESHOLD = 400;
 var STUCK_THRESHOLD = 200;
 
 var RESTRICTED_TASKS = {
-    miner:  ['mine'],
-    hauler: ['haul', 'sweep'],
-    fighter:['defend'],
-    healer: ['heal'],
+    miner:    ['mine'],
+    hauler:   ['haul', 'sweep'],
+    fighter:  ['defend'],
+    healer:   ['heal'],
+    builder:  ['build', 'repair', 'upgrade'],
 };
 
 var _claimCounts = {};

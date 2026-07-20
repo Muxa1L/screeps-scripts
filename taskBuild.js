@@ -12,6 +12,9 @@ module.exports = new TaskType({
     tasks: function (room, snap) {
         return snap.constructionSites.map(function (s) { return { target: s }; });
     },
+    score: function (creep, target) {
+        return taskBase.pathScore(creep, target);
+    },
     run: function (creep, task) {
         var site = task.target;
         if (!site) return false;
