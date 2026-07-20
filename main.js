@@ -14,8 +14,8 @@ module.exports.loop = function () {
     var energySites = mainRoom.find(FIND_STRUCTURES, {
                     filter: (structure) => {
                         return ((structure.structureType == STRUCTURE_EXTENSION ||
-                                structure.structureType == STRUCTURE_SPAWN ||
-                                structure.structureType == STRUCTURE_TOWER)  && structure.energy < structure.energyCapacity);
+                                 structure.structureType == STRUCTURE_SPAWN ||
+                                 structure.structureType == STRUCTURE_TOWER)  && structure.energy < structure.energyCapacity);
                     }
             });
     var drops = mainRoom.find(FIND_DROPPED_RESOURCES, {
@@ -33,6 +33,9 @@ module.exports.loop = function () {
             return _.sum(object.store) > 10;
         }
     });
+    // Cleanup path cache every 10 ticks
+    var pathCache = require('pathCache');
+    pathCache.cleanup();
     for(var name in Game.creeps) {
         var creep = Game.creeps[name];
         if ((drops.length > 0) && creep.carry.energy == 0){
