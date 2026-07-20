@@ -53,6 +53,12 @@ function runCreep(creep) {
     var room = creep.room;
     if (!room) return;
 
+    var moveParts = creep.getActiveBodyparts(MOVE);
+    if (moveParts === 0) {
+        debug(creep.name + ' has no MOVE parts — cannot move');
+        return;
+    }
+
     var tasks = taskRegistry.list(room);
     var allowed = RESTRICTED_TASKS[creep.memory.role];
 
@@ -72,16 +78,16 @@ function runCreep(creep) {
         if (allowed && allowed.length === 1 && allowed[0] === 'mine' && creep.memory.sourceId) {
             return;
         }
-        if (!creep.pos.isNearTo(Game.spawns['Spawn1'])) {
-            taskBase.moveCreep(creep, Game.spawns['Spawn1'], { visualizePathStyle: { stroke: '#888888' } });
+        if (Game.spawns['Spawn1'] && !creep.pos.isNearTo(Game.spawns['Spawn1'])) {
+            var r = creep.moveTo(Game.spawns['Spawn1'], { visualizePathStyle: { stroke: '#888888' } });
+            if (r !== OK && r !== ERR_TIRED) {
+                debug(creep.name + ' no task, moveTo spawn -> ' + r);
+            }
         }
         creep.memory.taskId = null;
         return;
     }
 
-    if (!assigned.reservedBy) {
-        assigned.reservedBy = creep.name;
-    }
     creep.memory.taskId = assigned.id;
 
     var handler = taskHandlers[assigned.type];
@@ -91,7 +97,17 @@ function runCreep(creep) {
             assigned.reservedBy = null;
             creep.memory.taskId = null;
         }
+    } else {
+        debug(creep.name + ' no handler for ' + assigned.type);
     }
+}
+
+var _debugLast = {};
+function debug(msg) {
+    var key = String(msg);
+    if (_debugLast[key] && Game.time - _debugLast[key] < 50) return;
+    _debugLast[key] = Game.time;
+    console.log('[creep] ' + msg);
 }
 
 module.exports = {

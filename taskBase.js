@@ -66,25 +66,47 @@ function creepCanDo(creep, type) {
 
 function moveCreep(creep, target, opts) {
     if (!target) return;
+    if (!target.pos) return;
     if (creep.pos.isNearTo(target)) return;
+    if (creep.fatigue > 0) return;
+
     var key = creep.pos.roomName + ':' + target.id + ':' + creep.name;
-    var path = pathCache.get(key);
-    if (path && path.length > 0) {
-        var next = path[0];
-        var dir = creep.pos.getDirectionTo(next);
-        if (dir) {
-            creep.move(dir);
-            return;
+    var entry = pathCache.get(key);
+    if (entry && entry.path && entry.idx < entry.path.length) {
+        var next = entry.path[entry.idx];
+        if (next && next.x !== undefined) {
+            if (creep.pos.isEqualTo(next)) {
+                pathCache.advance(key);
+                next = entry.path[entry.idx];
+            }
+            if (next && next.x !== undefined) {
+                var dir = creep.pos.getDirectionTo(next);
+                if (dir && dir > 0) {
+                    var mv = creep.move(dir);
+                    if (mv === OK) {
+                        pathCache.advance(key);
+                        return;
+                    }
+                }
+            }
         }
+        pathCache.advance(key);
     }
-    var ret = PathFinder.search(creep.pos, { pos: target.pos, range: 1 }, { maxOps: 800 });
+
+    var ret = PathFinder.search(
+        creep.pos,
+        { pos: target.pos, range: 1 },
+        { maxOps: 1500, plainCost: 2, swampCost: 10 }
+    );
     if (!ret.incomplete && ret.path && ret.path.length > 0) {
         pathCache.set(key, ret.path);
         var d = creep.pos.getDirectionTo(ret.path[0]);
-        if (d) creep.move(d);
-    } else {
-        creep.moveTo(target, opts || { visualizePathStyle: { stroke: '#ffffff' } });
+        if (d && d > 0) {
+            creep.move(d);
+            return;
+        }
     }
+    creep.moveTo(target, opts || { visualizePathStyle: { stroke: '#ffffff' } });
 }
 
 module.exports = {

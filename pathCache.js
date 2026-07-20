@@ -7,12 +7,21 @@ function get(key) {
     var entry = cache._cache[key];
     if (!entry) return null;
     if (Game.time - entry.time > 50) return null;
-    return entry.path;
+    return entry;
 }
 
 function set(key, path) {
     if (!path || path.length === 0) return;
-    cache._cache[key] = { time: Game.time, path: path };
+    cache._cache[key] = {
+        time: Game.time,
+        path: path,
+        idx: 0,
+    };
+}
+
+function advance(key) {
+    var entry = cache._cache[key];
+    if (entry && entry.idx < entry.path.length - 1) entry.idx++;
 }
 
 function cleanup() {
@@ -27,5 +36,6 @@ function cleanup() {
 module.exports = {
     get: get,
     set: set,
+    advance: advance,
     cleanup: cleanup,
 };
