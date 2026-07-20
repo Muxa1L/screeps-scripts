@@ -128,7 +128,7 @@ function tick() {
     var body = WORKER_BODY;
     var bodyEnergy = WORKER_BODY_ENERGY;
     var harvesters = _.filter(Game.creeps, function (c) { return c.memory.role === 'harvester'; });
-    if (harvesters.length <= 2) {
+    if (harvesters.length <= 3) {
         body = EARLY_WORKER_BODY;
         bodyEnergy = EARLY_WORKER_BODY_ENERGY;
     }
