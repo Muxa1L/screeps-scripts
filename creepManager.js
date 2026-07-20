@@ -10,6 +10,7 @@ var nearestSpawn = spawnUtil.nearestSpawn;
 
 var RENEW_THRESHOLD = 400;
 var STUCK_THRESHOLD = 200;
+var REEVAL_INTERVAL = 20;
 
 var RESTRICTED_TASKS = {
     miner:    ['mine'],
@@ -124,6 +125,18 @@ function runCreep(creep) {
         }
         if (!assigned) {
             creep.memory.taskId = null;
+        } else {
+            var lastChange = creep.memory._lastTaskChange || 0;
+            if (Game.time - lastChange >= REEVAL_INTERVAL) {
+                var candidate = bestTaskFor(creep, taskList, allowed);
+                if (candidate && candidate.id !== assigned.id) {
+                    var curScore = assigned.priority * 1000 + tasks.score(assigned.type, creep, assigned.target);
+                    var newScore = candidate.priority * 1000 + tasks.score(candidate.type, creep, candidate.target);
+                    if (newScore + 500 < curScore) {
+                        assigned = candidate;
+                    }
+                }
+            }
         }
     }
     if (!assigned) {
