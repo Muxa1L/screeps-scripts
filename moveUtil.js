@@ -88,23 +88,17 @@ function moveCreep(creep, target, opts) {
     if (creep.fatigue > 0) return;
 
     var key = creep.pos.roomName + ':' + target.id + ':' + creep.name;
+
     var entry = pathCache.get(key);
+    var usedCache = false;
     if (entry && entry.path && entry.idx < entry.path.length) {
-        if (entry.origin &&
-            (entry.origin.x !== creep.pos.x ||
-             entry.origin.y !== creep.pos.y ||
-             entry.origin.roomName !== creep.pos.roomName)) {
-            pathCache.del(key);
-            entry = null;
-        }
-    }
-    if (entry && entry.path && entry.idx < entry.path.length) {
-        var next = entry.path[entry.idx];
-        if (next && next.x !== undefined) {
-            if (creep.pos.isEqualTo(next)) {
-                pathCache.advance(key);
-                next = entry.path[entry.idx];
-            }
+        var origin = entry.origin;
+        var sameOrigin = origin &&
+            origin.x === creep.pos.x &&
+            origin.y === creep.pos.y &&
+            origin.roomName === creep.pos.roomName;
+        if (sameOrigin) {
+            var next = entry.path[entry.idx];
             if (next && next.x !== undefined) {
                 var dir = creep.pos.getDirectionTo(next);
                 if (dir && dir > 0) {
@@ -112,14 +106,22 @@ function moveCreep(creep, target, opts) {
                     if (mv === OK) {
                         pathCache.advance(key);
                         creep.memory._nextDir = dir;
-                        return;
+                        usedCache = true;
+                    } else {
+                        pathCache.del(key);
                     }
-                    if (mv === ERR_TIRED || mv === ERR_BUSY) return;
+                } else {
                     pathCache.del(key);
                 }
+            } else {
+                pathCache.del(key);
             }
+        } else {
+            pathCache.del(key);
         }
     }
+
+    if (usedCache) return;
 
     var matrix = makeCreepCostMatrix(creep.pos.roomName, creep);
     var ret = PathFinder.search(
@@ -135,7 +137,7 @@ function moveCreep(creep, target, opts) {
             },
         }
     );
-    if (!ret.incomplete && ret.path && ret.path.length > 0) {
+    if (ret && !ret.incomplete && ret.path && ret.path.length > 0) {
         pathCache.set(key, ret.path, { x: creep.pos.x, y: creep.pos.y, roomName: creep.pos.roomName });
         var d = creep.pos.getDirectionTo(ret.path[0]);
         if (d && d > 0) {
@@ -143,6 +145,8 @@ function moveCreep(creep, target, opts) {
             creep.memory._nextDir = d;
             return;
         }
+    } else {
+        pathCache.del(key);
     }
     var mvr = creep.moveTo(target, Object.assign({ reusePath: 10, maxOps: 1500 }, opts || {}));
     if (mvr !== OK && mvr !== ERR_TIRED && mvr !== ERR_BUSY) {
