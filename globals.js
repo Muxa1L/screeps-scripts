@@ -1,6 +1,8 @@
 var ROOM_TICK_SAMPLE_INTERVAL = 20;
+var assert = require('utils.assert');
 
 function init() {
+    assert.init();
     if (Memory.migrated === 2) return;
     delete Memory.knownSources;
     delete Memory.sourceToSource;

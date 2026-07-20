@@ -1,47 +1,20 @@
 var sourceRegistry = require('sourceRegistry');
 var logger = require('logger');
+var bodies = require('creeps.bodies');
+var quotas = require('creeps.quotas');
 
-var RENEW_COST = 50;
 var BUCKET_SPAWN_THRESHOLD = 2000;
-var HARVESTER_TARGET = 5;
-var UPGRADER_TARGET = 3;
-var HAULER_TARGET = 2;
 var MIN_BODY_ENERGY = 200;
 
-var WORKER_BODY = [WORK, WORK, WORK, CARRY, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE];
-var WORKER_BODY_ENERGY = 800;
-var EARLY_WORKER_BODY = [WORK, CARRY, CARRY, MOVE, MOVE];
-var EARLY_WORKER_BODY_ENERGY = 300;
-var FIGHTER_BODY = [TOUGH, TOUGH, TOUGH, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, ATTACK, ATTACK, ATTACK];
-var HEALER_BODY = [TOUGH, TOUGH, TOUGH, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, HEAL, HEAL, HEAL];
-
-var MINER_BODIES = {
-    200:  [WORK, MOVE],
-    300:  [WORK, WORK, MOVE],
-    550:  [WORK, WORK, WORK, WORK, WORK, MOVE, MOVE],
-    800:  [WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, MOVE, MOVE],
-    1300: [WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, MOVE, MOVE, MOVE],
-    1800: [WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, MOVE, MOVE, MOVE],
-    2300: [WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, MOVE, MOVE, MOVE],
-    5600: [WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, MOVE, MOVE, MOVE, MOVE, MOVE],
-};
-var HAULER_BODIES = {
-    200:  [CARRY, MOVE],
-    300:  [CARRY, CARRY, MOVE, MOVE],
-    550:  [CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE],
-    800:  [CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE],
-    1300: [CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE],
-    1800: [CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE],
-};
-
-function bestBodyFor(templates, capacity) {
-    var keys = Object.keys(templates).map(Number).sort(function (a, b) { return a - b; });
-    var chosen = keys[0];
-    for (var i = 0; i < keys.length; i++) {
-        if (keys[i] <= capacity) chosen = keys[i];
-        else break;
+function creepCountByRole() {
+    var counts = {};
+    for (var name in Game.creeps) {
+        var c = Game.creeps[name];
+        var r = c.memory.role;
+        if (!r) continue;
+        counts[r] = (counts[r] || 0) + 1;
     }
-    return { body: templates[chosen], cost: chosen };
+    return counts;
 }
 
 function spawnBody(spawn, body, name, role, extraMem) {
@@ -55,8 +28,43 @@ function spawnBody(spawn, body, name, role, extraMem) {
         if (Game.time % 200 === 0) console.log('[' + Game.time + '] [spawn-fail] ' + name + ' (' + role + ') -> ' + res);
         return false;
     }
-    logger.event('spawn', '[' + Game.time + '] [spawn] ' + name + ' (' + role + ') cost=' + body.length * 50);
+    logger.event('spawn', '[' + Game.time + '] [spawn] ' + name + ' (' + role + ') cost=' + bodies.bodyCost(body));
     return true;
+}
+
+function hostilesInRoom(room) {
+    return room.find(FIND_HOSTILE_CREEPS);
+}
+
+function tryDefenders(spawn, hostiles) {
+    if (hostiles.length === 0) return false;
+    var fighters = _.filter(Game.creeps, function (c) { return c.memory.role === 'fighter'; });
+    var healers = _.filter(Game.creeps, function (c) { return c.memory.role === 'healer'; });
+    var cap = spawn.room.energyCapacityAvailable;
+    if (fighters.length === 0) {
+        var pick = bodies.bestBodyFor('fighter', cap);
+        if (pick && cap >= pick.cost) {
+            return spawnBody(spawn, pick.body, 'Fighter' + Game.time, 'fighter');
+        }
+    }
+    if (fighters.length > 0 && healers.length === 0) {
+        var hpick = bodies.bestBodyFor('healer', cap);
+        if (hpick && cap >= hpick.cost) {
+            return spawnBody(spawn, hpick.body, 'Healer' + Game.time, 'healer');
+        }
+    }
+    return false;
+}
+
+function tryRoleSpawn(spawn, role) {
+    var cap = spawn.room.energyCapacityAvailable;
+    var available = spawn.room.energyAvailable;
+    var pick = bodies.bestBodyFor(role, cap);
+    if (!pick) return false;
+    if (available < pick.cost) return false;
+    var prefix = role.charAt(0).toUpperCase() + role.slice(1);
+    var name = prefix + Game.time;
+    return spawnBody(spawn, pick.body, name, role);
 }
 
 function tick() {
@@ -67,81 +75,35 @@ function tick() {
     var room = spawn.room;
     if (!room.controller || !room.controller.my) return;
 
-    var hostiles = room.find(FIND_HOSTILE_CREEPS);
-    if (hostiles.length > 0) {
-        var fighters = _.filter(Game.creeps, function (c) { return c.memory.role === 'fighter'; });
-        var healers = _.filter(Game.creeps, function (c) { return c.memory.role === 'healer'; });
-        if (fighters.length === 0 && room.energyCapacityAvailable >= 720) {
-            spawnBody(spawn, FIGHTER_BODY, 'Fighter' + Game.time, 'fighter');
-            return;
-        }
-        if (fighters.length > 0 && healers.length === 0 && room.energyCapacityAvailable >= 720) {
-            spawnBody(spawn, HEALER_BODY, 'Healer' + Game.time, 'healer');
-            return;
-        }
-    }
+    var hostiles = hostilesInRoom(room);
+    if (tryDefenders(spawn, hostiles)) return;
 
-    var capacity = room.energyCapacityAvailable;
-    var available = room.energyAvailable;
-    if (available < MIN_BODY_ENERGY) {
-        debug('low energy: ' + available + '/' + capacity);
-        return;
-    }
+    var rcl = room.controller.level;
+    var counts = creepCountByRole();
 
-    if (room.controller.level >= 3) {
+    if (rcl >= 3) {
         sourceRegistry.ensureRegistry(room);
+    }
 
-        var miners = _.filter(Game.creeps, function (c) { return c.memory.role === 'miner'; });
-        var haulers = _.filter(Game.creeps, function (c) { return c.memory.role === 'hauler'; });
-        var upgraders = _.filter(Game.creeps, function (c) { return c.memory.role === 'upgrader'; });
-
-        var freeSlots = sourceRegistry.totalFreeSlots(room);
-        if (freeSlots > 0 && miners.length < 4) {
-            var pick = bestBodyFor(MINER_BODIES, available);
-            if (available >= pick.cost) {
-                if (spawnBody(spawn, pick.body, 'Miner' + Game.time, 'miner')) return;
-            }
-        }
-        if (haulers.length < HAULER_TARGET) {
-            var hpick = bestBodyFor(HAULER_BODIES, available);
-            if (available >= hpick.cost) {
-                if (spawnBody(spawn, hpick.body, 'Hauler' + Game.time, 'hauler')) return;
-            } else {
-                debug('hauler cost ' + hpick.cost + ' > available ' + available);
-                return;
-            }
-        }
-        if (upgraders.length < UPGRADER_TARGET) {
-            var wbody = WORKER_BODY;
-            if (available < WORKER_BODY_ENERGY) wbody = EARLY_WORKER_BODY;
-            var cost = (wbody === EARLY_WORKER_BODY) ? EARLY_WORKER_BODY_ENERGY : WORKER_BODY_ENERGY;
-            if (available >= cost) {
-                if (spawnBody(spawn, wbody, 'Upgrader' + Game.time, 'upgrader')) return;
-            } else {
-                debug('upgrader cost ' + cost + ' > available ' + available);
-                return;
-            }
-        }
-        summaryLog(spawn);
+    var role = quotas.nextRoleToSpawn(counts, rcl);
+    if (!role) {
+        summaryLog(spawn, counts, rcl);
         return;
     }
-
-    var role = pickGeneralistRole();
-    if (!role) return;
-    var body = WORKER_BODY;
-    var bodyEnergy = WORKER_BODY_ENERGY;
-    var harvesters = _.filter(Game.creeps, function (c) { return c.memory.role === 'harvester'; });
-    if (harvesters.length <= 3) {
-        body = EARLY_WORKER_BODY;
-        bodyEnergy = EARLY_WORKER_BODY_ENERGY;
-    }
-    if (available < bodyEnergy) {
-        debug('RCL<3: body cost ' + bodyEnergy + ' > available ' + available);
+    if (tryRoleSpawn(spawn, role)) {
+        summaryLog(spawn, counts, rcl);
         return;
     }
-    var name = (role === 'upgrader' ? 'Upgrader' : 'Harvester') + Game.time;
-    spawnBody(spawn, body, name, role);
-    summaryLog(spawn);
+    summaryLog(spawn, counts, rcl);
+}
+
+function summaryLog(spawn, counts, rcl) {
+    logger.periodic('spawn', 50, 'tick',
+        '[' + Game.time + '] [spawn-state] RCL=' + rcl +
+        ' energy=' + spawn.room.energyAvailable + '/' + spawn.room.energyCapacityAvailable +
+        ' spawn=' + (spawn.spawning ? spawn.spawning.name : 'idle') +
+        ' creeps=' + JSON.stringify(counts)
+    );
 }
 
 function debug(msg) {
@@ -149,25 +111,10 @@ function debug(msg) {
     console.log('[' + Game.time + '] [spawn] ' + msg);
 }
 
-function summaryLog(spawn) {
-    if (!spawn) return;
-    if (!spawn.room) return;
-    var room = spawn.room;
-    var rcl = room.controller ? room.controller.level : 0;
-    var avail = room.energyAvailable;
-    var cap = room.energyCapacityAvailable;
-    var spawning = spawn.spawning ? spawn.spawning.name : 'idle';
-    logger.periodic('spawn', 50, 'tick', '[' + Game.time + '] [spawn-state] RCL=' + rcl + ' energy=' + avail + '/' + cap + ' spawn=' + spawning);
-}
-
-function pickGeneralistRole() {
-    var harvesters = _.filter(Game.creeps, function (c) { return c.memory.role === 'harvester'; });
-    var upgraders = _.filter(Game.creeps, function (c) { return c.memory.role === 'upgrader'; });
-    if (harvesters.length < HARVESTER_TARGET) return 'harvester';
-    if (upgraders.length < UPGRADER_TARGET) return 'upgrader';
-    return null;
-}
-
 module.exports = {
     tick: tick,
+    bestBodyFor: bodies.bestBodyFor,
+    bodyCost: bodies.bodyCost,
+    bodySummary: bodies.bodySummary,
+    nextRoleToSpawn: quotas.nextRoleToSpawn,
 };

@@ -1,10 +1,12 @@
 var taskBase = require('taskBase');
 var taskRegistry = require('taskRegistry');
 var taskHandlers = require('taskHandlers');
+var tasks = require('tasks.index');
 var renew = require('taskRenew');
 var logger = require('logger');
 
 var RENEW_THRESHOLD = 400;
+var STUCK_THRESHOLD = 200;
 
 function approxDistance(creep, target) {
     if (!target || !target.pos) return 9999;
@@ -16,62 +18,11 @@ function approxDistance(creep, target) {
     return Math.max(dx, dy);
 }
 
-function bestTaskFor(creep, tasks, allowed) {
-    var best = null;
-    var bestScore = Infinity;
-    var needsHarvest = creep.carry.energy === 0;
-    for (var i = 0; i < tasks.length; i++) {
-        var t = tasks[i];
-        if (allowed && allowed.indexOf(t.type) === -1) continue;
-        if (!taskBase.creepCanDo(creep, t.type)) continue;
-        var target = t.target;
-        if (!target || !target.pos) continue;
-        var cap = TARGET_CAPS[t.type];
-        if (cap !== undefined && getClaimCount(t.id) >= cap) {
-            var claimType = t.id.split(':')[0];
-            var typeCap = TARGET_CAPS[claimType];
-            if (typeCap === undefined || getClaimCountByType(claimType) >= typeCap) {
-                continue;
-            }
-        }
-        var dist = approxDistance(creep, target);
-        var priority = t.priority;
-        if (needsHarvest && t.type === 'harvest') priority = 5;
-        if (needsHarvest && (t.type === 'build' || t.type === 'repair' || t.type === 'upgrade')) continue;
-        if (!needsHarvest && (creep.carry.energy === creep.carryCapacity) && (t.type === 'harvest' || t.type === 'mine')) continue;
-        var score = priority * 1000 + dist;
-        if (score < bestScore) {
-            bestScore = score;
-            best = t;
-        }
-    }
-    return best;
-}
-
-function getClaimCountByType(type) {
-    var n = 0;
-    for (var k in _claimCounts) {
-        if (k.indexOf(type + ':') === 0) n++;
-    }
-    return n;
-}
-
 var RESTRICTED_TASKS = {
     miner:  ['mine'],
     hauler: ['haul', 'sweep'],
     fighter:['defend'],
     healer: ['heal'],
-};
-
-var TARGET_CAPS = {
-    build:    2,
-    repair:   2,
-    sweep:    2,
-    upgrade:  2,
-    haul:     2,
-    defend:   4,
-    harvest:  2,
-    mine:     4,
 };
 
 var _claimCounts = {};
@@ -88,6 +39,47 @@ function refreshClaimCounts() {
 
 function getClaimCount(taskId) {
     return _claimCounts[taskId] || 0;
+}
+
+function getClaimCountByType(type) {
+    var n = 0;
+    for (var k in _claimCounts) {
+        if (k.indexOf(type + ':') === 0) n++;
+    }
+    return n;
+}
+
+function bestTaskFor(creep, taskList, allowed) {
+    var best = null;
+    var bestScore = Infinity;
+    var needsHarvest = creep.carry.energy === 0;
+    var isFull = creep.carry.energy === creep.carryCapacity;
+    for (var i = 0; i < taskList.length; i++) {
+        var t = taskList[i];
+        if (allowed && allowed.indexOf(t.type) === -1) continue;
+        if (!tasks.canDo(t.type, creep)) continue;
+        var target = t.target;
+        if (!target || !target.pos) continue;
+        var cap = tasks.cap(t.type);
+        if (cap < 99 && getClaimCount(t.id) >= cap) {
+            var claimType = t.id.split(':')[0];
+            var typeCap = tasks.cap(claimType);
+            if (typeCap < 99 && getClaimCountByType(claimType) >= typeCap) {
+                continue;
+            }
+        }
+        if (needsHarvest && (t.type === 'build' || t.type === 'repair' || t.type === 'upgrade')) continue;
+        if (isFull && (t.type === 'harvest' || t.type === 'mine')) continue;
+        var dist = approxDistance(creep, target);
+        var priority = t.priority;
+        if (needsHarvest && t.type === 'harvest') priority = 5;
+        var score = priority * 1000 + dist;
+        if (score < bestScore) {
+            bestScore = score;
+            best = t;
+        }
+    }
+    return best;
 }
 
 function runCreep(creep) {
@@ -119,14 +111,16 @@ function runCreep(creep) {
         console.log('[stuck] ' + creep.name + ' fatigue=' + creep.fatigue + ' pos=' + creep.pos.x + ',' + creep.pos.y + ' taskId=' + creep.memory.taskId);
     }
 
-    var tasks = taskRegistry.list(room);
+    checkStuck(creep);
+
+    var taskList = taskRegistry.list(room);
     var allowed = RESTRICTED_TASKS[creep.memory.role];
 
     var assigned = null;
     if (creep.memory.taskId) {
-        for (var i = 0; i < tasks.length; i++) {
-            if (tasks[i].id === creep.memory.taskId) {
-                assigned = tasks[i];
+        for (var i = 0; i < taskList.length; i++) {
+            if (taskList[i].id === creep.memory.taskId) {
+                assigned = taskList[i];
                 break;
             }
         }
@@ -135,7 +129,7 @@ function runCreep(creep) {
         }
     }
     if (!assigned) {
-        assigned = bestTaskFor(creep, tasks, allowed);
+        assigned = bestTaskFor(creep, taskList, allowed);
         if (assigned) {
             var prev = creep.memory.taskId;
             if (prev !== assigned.id) {
@@ -145,6 +139,7 @@ function runCreep(creep) {
     }
     if (!assigned) {
         creep.memory.taskId = null;
+        creep.memory._lastTaskChange = Game.time;
         var forceTarget = forceTargetFor(creep, room);
         if (forceTarget) {
             if (!creep.pos.isNearTo(forceTarget)) {
@@ -174,23 +169,32 @@ function runCreep(creep) {
     var prevTask = creep.memory.taskId;
     creep.memory.taskId = assigned.id;
     if (prevTask !== assigned.id) {
+        creep.memory._lastTaskChange = Game.time;
         logger.setAction(creep, assigned.type);
     }
 
-    var handler = taskHandlers[assigned.type];
-    if (handler) {
-        var keep = handler(creep, assigned);
-        if (keep === false) {
-            logger.event('creep', '[' + Game.time + '] [release] ' + creep.name + ' finished ' + logger.describeTask(assigned));
-            creep.memory.taskId = null;
-            logger.setAction(creep, 'released');
-        }
-    } else {
-        logger.event('error', '[' + Game.time + '] [creep] ' + creep.name + ' no handler for ' + assigned.type);
+    var keep = taskHandlers.run(assigned.type, creep, assigned);
+    if (keep === false) {
+        logger.event('creep', '[' + Game.time + '] [release] ' + creep.name + ' finished ' + logger.describeTask(assigned));
+        creep.memory.taskId = null;
+        creep.memory._lastTaskChange = Game.time;
+        logger.setAction(creep, 'released');
     }
 
-    var statusInterval = 25;
-    logger.periodic('status', statusInterval, creep.name, '[' + Game.time + '] [status] ' + logger.statusLine(creep));
+    logger.periodic('status', 25, creep.name, '[' + Game.time + '] [status] ' + logger.statusLine(creep));
+}
+
+function checkStuck(creep) {
+    if (!Memory.flags || !Memory.flags.stuckRecycle) return;
+    var lastChange = creep.memory._lastTaskChange || 0;
+    if (Game.time - lastChange < STUCK_THRESHOLD) return;
+    var spawn = Game.spawns['Spawn1'];
+    if (!spawn) return;
+    logger.event('stuck', '[' + Game.time + '] [stuck-recycle] ' + creep.name + ' idle for ' + (Game.time - lastChange) + ' ticks');
+    if (spawn.recycleCreep(creep) === ERR_NOT_IN_RANGE) {
+        creep.moveTo(spawn, { visualizePathStyle: { stroke: '#ff8800' }, reusePath: 10 });
+    }
+    creep.memory._lastTaskChange = Game.time;
 }
 
 function forceTargetFor(creep, room) {

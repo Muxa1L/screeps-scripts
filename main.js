@@ -1,17 +1,25 @@
+var assert = require('utils.assert');
+
 module.exports.loop = function () {
-    require('pathCache').cleanup();
-    require('globals').tick();
-    require('roomManager').tick();
+    assert.safeTick('pathCache', function () { require('pathCache').cleanup(); });
+    assert.safeTick('globals',    function () { require('globals').tick(); });
+    assert.safeTick('roomManager', function () { require('roomManager').tick(); });
+
     if (Game.cpu.bucket > 1000) {
-        require('creepManager').tick();
+        assert.safeTick('creepManager', function () { require('creepManager').tick(); });
     }
     if (Game.cpu.bucket > 2000) {
-        require('spawnManager').tick();
+        assert.safeTick('spawnManager', function () { require('spawnManager').tick(); });
     }
     if (Game.cpu.bucket > 500) {
-        require('misc.upkeep').run();
+        assert.safeTick('misc.upkeep',  function () { require('misc.upkeep').run(); });
     }
+
     if (Game.time % 100 === 0) {
-        console.log('[' + Game.time + '] [meta] bucket=' + Game.cpu.bucket + ' gcl=' + (Game.gcl ? Game.gcl.level : '?') + ' cpu=' + Game.cpu.getUsed().toFixed(2));
+        var meta = '[' + Game.time + '] [meta] bucket=' + Game.cpu.bucket +
+            ' gcl=' + (Game.gcl ? Game.gcl.level : '?') +
+            ' cpu=' + Game.cpu.getUsed().toFixed(2) +
+            ' errors=' + (Memory.stats && Memory.stats.errors ? Object.keys(Memory.stats.errors).length : 0);
+        console.log(meta);
     }
 };
