@@ -10,7 +10,6 @@ var nearestSpawn = spawnUtil.nearestSpawn;
 
 var RENEW_THRESHOLD = 400;
 var STUCK_THRESHOLD = 200;
-var REEVAL_INTERVAL = 20;
 
 var RESTRICTED_TASKS = {
     miner:    ['mine'],
@@ -116,36 +115,29 @@ function runCreep(creep) {
     var allowed = RESTRICTED_TASKS[creep.memory.role];
 
     var assigned = null;
-    if (creep.memory.taskId) {
+    var prevAssignedId = creep.memory.taskId;
+    if (prevAssignedId) {
         for (var i = 0; i < taskList.length; i++) {
-            if (taskList[i].id === creep.memory.taskId) {
+            if (taskList[i].id === prevAssignedId) {
                 assigned = taskList[i];
                 break;
             }
         }
         if (!assigned) {
             creep.memory.taskId = null;
-        } else {
-            var lastChange = creep.memory._lastTaskChange || 0;
-            if (Game.time - lastChange >= REEVAL_INTERVAL) {
-                var candidate = bestTaskFor(creep, taskList, allowed);
-                if (candidate && candidate.id !== assigned.id) {
-                    var curScore = assigned.priority * 1000 + tasks.score(assigned.type, creep, assigned.target);
-                    var newScore = candidate.priority * 1000 + tasks.score(candidate.type, creep, candidate.target);
-                    if (newScore + 500 < curScore) {
-                        assigned = candidate;
-                    }
-                }
-            }
         }
     }
-    if (!assigned) {
-        assigned = bestTaskFor(creep, taskList, allowed);
-        if (assigned) {
-            var prev = creep.memory.taskId;
-            if (prev !== assigned.id) {
-                logger.event('creep', '[' + Game.time + '] [task] ' + creep.name + ' (' + creep.memory.role + ') -> ' + taskBase.describeTask(assigned));
-            }
+    var best = bestTaskFor(creep, taskList, allowed);
+    if (best && (!assigned || best.id !== assigned.id)) {
+        var curScore = assigned ? assigned.priority * 1000 + tasks.score(assigned.type, creep, assigned.target) : Infinity;
+        var newScore = best.priority * 1000 + tasks.score(best.type, creep, best.target);
+        if (newScore < curScore) {
+            assigned = best;
+        }
+    }
+    if (assigned) {
+        if (prevAssignedId !== assigned.id) {
+            logger.event('creep', '[' + Game.time + '] [task] ' + creep.name + ' (' + creep.memory.role + ') -> ' + taskBase.describeTask(assigned));
         }
     }
     if (!assigned) {
@@ -291,6 +283,20 @@ module.exports = {
         var summary = '[' + Game.time + '] [summary] ' + total + ' creeps | roles=' + JSON.stringify(byRole) + ' | tasks=' + JSON.stringify(byTask);
         if (ctrlParts.length > 0) summary += ' | ' + ctrlParts.join(' ');
         logger.periodic('summary', 50, 'tick', summary);
+
+        if (Game.time % 50 === 0) {
+            for (var rname in Game.rooms) {
+                var rroom = Game.rooms[rname];
+                if (!rroom.controller || !rroom.controller.my) continue;
+                var tlist = taskRegistry.list(rroom);
+                var tsum = {};
+                for (var ti = 0; ti < tlist.length; ti++) {
+                    var tt = tlist[ti].type;
+                    tsum[tt] = (tsum[tt] || 0) + 1;
+                }
+                console.log('[' + Game.time + '] [tasklist] ' + rname + ' count=' + tlist.length + ' ' + JSON.stringify(tsum));
+            }
+        }
 
         for (var name in Game.creeps) {
             try {
