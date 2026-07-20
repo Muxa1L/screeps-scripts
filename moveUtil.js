@@ -2,16 +2,55 @@ var pathCache = require('pathCache');
 var logger = require('logger');
 var taskBase = require('taskBase');
 
-function makeCreepCostMatrix(roomName, self) {
-    var matrix = new PathFinder.CostMatrix();
+var SWAMP_COST = 10;
+var WALL_COST = 0xff;
+var CREEP_COST = 0xff;
+var CREEP_NEXT_COST = 0x80;
+
+var _terrainCache = {};
+var _terrainCacheTick = 0;
+
+function buildTerrainMatrix(roomName) {
     var room = Game.rooms[roomName];
-    if (!room) return matrix;
+    if (!room) return null;
+    var matrix = new PathFinder.CostMatrix();
+    var terrain = room.getTerrain();
+    for (var y = 0; y < 50; y++) {
+        for (var x = 0; x < 50; x++) {
+            var t = terrain.get(x, y);
+            if (t === TERRAIN_MASK_WALL) {
+                matrix.set(x, y, WALL_COST);
+            } else if (t === TERRAIN_MASK_SWAMP) {
+                matrix.set(x, y, SWAMP_COST);
+            }
+        }
+    }
+    return matrix;
+}
+
+function getTerrainMatrix(roomName) {
+    if (_terrainCacheTick !== Game.time) {
+        _terrainCache = {};
+        _terrainCacheTick = Game.time;
+    }
+    if (!_terrainCache[roomName]) {
+        _terrainCache[roomName] = buildTerrainMatrix(roomName);
+    }
+    return _terrainCache[roomName];
+}
+
+function markCreeps(matrix, roomName, self) {
+    var room = Game.rooms[roomName];
+    if (!room) return;
     var creeps = room.find(FIND_CREEPS);
     for (var i = 0; i < creeps.length; i++) {
         var c = creeps[i];
         if (c === self) continue;
         if (!c.my) continue;
-        matrix.set(c.pos.x, c.pos.y, 0xff);
+        var existing = matrix.get(c.pos.x, c.pos.y);
+        if (existing === 0 || existing === undefined) {
+            matrix.set(c.pos.x, c.pos.y, CREEP_COST);
+        }
         var nextDir = c.memory._nextDir;
         if (nextDir !== undefined) {
             var dx = [0, 0, 1, 1, 1, 0, -1, -1, -1][nextDir];
@@ -20,11 +59,25 @@ function makeCreepCostMatrix(roomName, self) {
                 var nx = c.pos.x + dx;
                 var ny = c.pos.y + dy;
                 if (nx >= 0 && nx <= 49 && ny >= 0 && ny <= 49) {
-                    matrix.set(nx, ny, 0x80);
+                    var nextExisting = matrix.get(nx, ny);
+                    if (nextExisting === 0 || nextExisting === undefined) {
+                        matrix.set(nx, ny, CREEP_NEXT_COST);
+                    }
                 }
             }
         }
     }
+}
+
+function makeCreepCostMatrix(roomName, self) {
+    var base = getTerrainMatrix(roomName);
+    if (!base) {
+        var m = new PathFinder.CostMatrix();
+        markCreeps(m, roomName, self);
+        return m;
+    }
+    var matrix = base.clone();
+    markCreeps(matrix, roomName, self);
     return matrix;
 }
 
@@ -66,7 +119,7 @@ function moveCreep(creep, target, opts) {
         {
             maxOps: 1500,
             plainCost: 2,
-            swampCost: 10,
+            swampCost: SWAMP_COST,
             roomCallback: function (rn) {
                 if (rn === creep.pos.roomName) return matrix;
                 return new PathFinder.CostMatrix();
@@ -98,3 +151,4 @@ module.exports = {
     makeCreepCostMatrix: makeCreepCostMatrix,
     taskBase: taskBase,
 };
+
