@@ -4,13 +4,13 @@ module.exports.loop = function () {
     assert.safeTick('globals',    function () { require('globals').tick(); });
     assert.safeTick('roomManager', function () { require('roomManager').tick(); });
 
-    if (Game.cpu.bucket > 1000) {
+    if (Game.cpu.bucket > 1000 || Game.shard.name === 'sim') {
         assert.safeTick('creepManager', function () { require('creepManager').tick(); });
     }
-    if (Game.cpu.bucket > 2000) {
+    if (Game.cpu.bucket > 2000 || Game.shard.name === 'sim') {
         assert.safeTick('spawnManager', function () { require('spawnManager').tick(); });
     }
-    if (Game.cpu.bucket > 500) {
+    if (Game.cpu.bucket > 500 || Game.shard.name === 'sim') {
         assert.safeTick('misc.upkeep',  function () { require('misc.upkeep').run(); });
     }
 
