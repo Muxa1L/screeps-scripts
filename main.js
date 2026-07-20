@@ -11,4 +11,7 @@ module.exports.loop = function () {
     if (Game.cpu.bucket > 500) {
         require('misc.upkeep').run();
     }
+    if (Game.time % 100 === 0) {
+        console.log('[' + Game.time + '] [meta] bucket=' + Game.cpu.bucket + ' gcl=' + (Game.gcl ? Game.gcl.level : '?') + ' cpu=' + Game.cpu.getUsed().toFixed(2));
+    }
 };

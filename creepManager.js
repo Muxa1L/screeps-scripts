@@ -2,6 +2,7 @@ var taskBase = require('taskBase');
 var taskRegistry = require('taskRegistry');
 var taskHandlers = require('taskHandlers');
 var renew = require('taskRenew');
+var logger = require('logger');
 
 var RENEW_THRESHOLD = 400;
 
@@ -135,8 +136,11 @@ function runCreep(creep) {
     }
     if (!assigned) {
         assigned = bestTaskFor(creep, tasks, allowed);
-        if (assigned && Memory.flags && Memory.flags.debugTasks) {
-            console.log('[task] ' + creep.name + ' (' + creep.memory.role + ') -> ' + assigned.type + ' target=' + (assigned.target && assigned.target.id));
+        if (assigned) {
+            var prev = creep.memory.taskId;
+            if (prev !== assigned.id) {
+                logger.event('creep', '[' + Game.time + '] [task] ' + creep.name + ' (' + creep.memory.role + ') -> ' + logger.describeTask(assigned));
+            }
         }
     }
     if (!assigned) {
@@ -144,11 +148,13 @@ function runCreep(creep) {
         var forceTarget = forceTargetFor(creep, room);
         if (forceTarget) {
             if (!creep.pos.isNearTo(forceTarget)) {
+                logger.setAction(creep, 'force->' + (forceTarget.id || '?'));
                 var r2 = creep.moveTo(forceTarget, { visualizePathStyle: { stroke: '#ff00ff' }, reusePath: 10 });
-                if (r2 !== OK && r2 !== ERR_TIRED && Memory.flags && Memory.flags.debugStuck) {
-                    console.log('[stuck] ' + creep.name + ' force moveTo ' + forceTarget.id + ' -> ' + r2);
+                if (r2 !== OK && r2 !== ERR_TIRED) {
+                    logger.event('stuck', '[' + Game.time + '] [stuck] ' + creep.name + ' force moveTo ' + forceTarget.id + ' -> ' + r2);
                 }
             } else {
+                logger.setAction(creep, 'force-harvest@' + (forceTarget.id || '?'));
                 var ha = creep.harvest(forceTarget);
                 if (ha === ERR_NOT_IN_RANGE) {
                     creep.moveTo(forceTarget, { visualizePathStyle: { stroke: '#ff00ff' }, reusePath: 10 });
@@ -157,25 +163,34 @@ function runCreep(creep) {
             return;
         }
         if (Game.spawns['Spawn1'] && !creep.pos.isNearTo(Game.spawns['Spawn1'])) {
+            logger.setAction(creep, 'idle->spawn');
             creep.moveTo(Game.spawns['Spawn1'], { visualizePathStyle: { stroke: '#888888' }, reusePath: 10 });
+        } else {
+            logger.setAction(creep, 'idle');
         }
         return;
     }
 
+    var prevTask = creep.memory.taskId;
     creep.memory.taskId = assigned.id;
+    if (prevTask !== assigned.id) {
+        logger.setAction(creep, assigned.type);
+    }
 
     var handler = taskHandlers[assigned.type];
     if (handler) {
         var keep = handler(creep, assigned);
         if (keep === false) {
+            logger.event('creep', '[' + Game.time + '] [release] ' + creep.name + ' finished ' + logger.describeTask(assigned));
             creep.memory.taskId = null;
-            if (Memory.flags && Memory.flags.debugStuck) {
-                console.log('[stuck] ' + creep.name + ' task ' + assigned.type + ' released');
-            }
+            logger.setAction(creep, 'released');
         }
     } else {
-        debug(creep.name + ' no handler for ' + assigned.type);
+        logger.event('error', '[' + Game.time + '] [creep] ' + creep.name + ' no handler for ' + assigned.type);
     }
+
+    var statusInterval = 25;
+    logger.periodic('status', statusInterval, creep.name, '[' + Game.time + '] [status] ' + logger.statusLine(creep));
 }
 
 function forceTargetFor(creep, room) {
@@ -237,11 +252,30 @@ function debug(msg) {
 module.exports = {
     tick: function () {
         refreshClaimCounts();
+
+        var byRole = {};
+        var byTask = {};
+        var total = 0;
+        for (var cn in Game.creeps) {
+            total++;
+            var cr = Game.creeps[cn];
+            var r = cr.memory.role || 'unknown';
+            byRole[r] = (byRole[r] || 0) + 1;
+            var t = cr.memory.taskId;
+            if (t) {
+                var type = t.split(':')[0];
+                byTask[type] = (byTask[type] || 0) + 1;
+            } else {
+                byTask['idle'] = (byTask['idle'] || 0) + 1;
+            }
+        }
+        logger.periodic('summary', 50, 'tick', '[' + Game.time + '] [summary] ' + total + ' creeps | roles=' + JSON.stringify(byRole) + ' | tasks=' + JSON.stringify(byTask));
+
         for (var name in Game.creeps) {
             try {
                 runCreep(Game.creeps[name]);
             } catch (e) {
-                console.log('creepManager error for ' + name + ': ' + e);
+                logger.event('error', '[' + Game.time + '] [creepManager] ' + name + ': ' + e);
             }
         }
     },

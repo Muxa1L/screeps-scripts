@@ -1,5 +1,6 @@
 var taskBase = require('taskBase');
 var sourceRegistry = require('sourceRegistry');
+var logger = require('logger');
 
 var handlers = {};
 
@@ -82,12 +83,15 @@ handlers.sweep = function (creep, task) {
         var res;
         if (t.store) {
             res = creep.withdraw(t, pick);
+            logger.setAction(creep, 'withdraw@' + t.id);
         } else {
             res = creep.pickup(t);
+            logger.setAction(creep, 'pickup@' + t.id);
         }
         return res !== ERR_NOT_IN_RANGE;
     }
 
+    logger.setAction(creep, 'moving->sweep@' + t.id);
     taskBase.moveCreep(creep, t, { visualizePathStyle: { stroke: '#ffff00' } });
     if (Game.time % 50 === 0 && Memory.flags && Memory.flags.debugSweep) {
         console.log('[sweep] ' + creep.name + ' -> ' + t.id + ' carry=' + creep.carry.energy + '/' + creep.carryCapacity);
@@ -112,12 +116,14 @@ handlers.haul = function (creep, task) {
         }
         var nearest = creep.pos.findClosestByPath(targets);
         if (!nearest) return false;
+        logger.setAction(creep, 'transfer@' + nearest.id);
         if (creep.transfer(nearest, RESOURCE_ENERGY) === ERR_NOT_IN_RANGE) {
             taskBase.moveCreep(creep, nearest, { visualizePathStyle: { stroke: '#ffffff' } });
         }
         return true;
     }
     if (creep.carry.energy > 0) return true;
+    logger.setAction(creep, 'withdraw@' + container.id);
     if (creep.withdraw(container, RESOURCE_ENERGY) === ERR_NOT_IN_RANGE) {
         taskBase.moveCreep(creep, container, { visualizePathStyle: { stroke: '#ffffaa' } });
     }
@@ -137,10 +143,12 @@ handlers.mine = function (creep, task) {
     }
     var slot = sourceRegistry.slotPos(source.id, creep.name);
     if (slot && !creep.pos.isEqualTo(slot)) {
+        logger.setAction(creep, 'moving->mine@' + source.id);
         taskBase.moveCreep(creep, slot, { visualizePathStyle: { stroke: '#ffaa00' } });
         return true;
     }
     var ret = creep.harvest(source);
+    if (ret === OK) logger.setAction(creep, 'harvesting@' + source.id);
     if (ret === ERR_NOT_IN_RANGE) {
         taskBase.moveCreep(creep, source, { visualizePathStyle: { stroke: '#ffaa00' } });
     }
@@ -153,7 +161,13 @@ handlers.harvest = function (creep, task) {
     if (creep.carry.energy === creep.carryCapacity) {
         return false;
     }
-    if (creep.harvest(source) === ERR_NOT_IN_RANGE) {
+    var ret = creep.harvest(source);
+    if (ret === OK) {
+        logger.setAction(creep, 'harvesting@' + source.id);
+        return true;
+    }
+    logger.setAction(creep, 'moving->harvest@' + source.id);
+    if (ret === ERR_NOT_IN_RANGE) {
         taskBase.moveCreep(creep, source, { visualizePathStyle: { stroke: '#ffaa00' } });
     }
     return true;
@@ -166,9 +180,11 @@ handlers.build = function (creep, task) {
     var before = site.progress;
     var res = creep.build(site);
     if (res === ERR_NOT_IN_RANGE) {
+        logger.setAction(creep, 'moving->build@' + site.id);
         taskBase.moveCreep(creep, site, { visualizePathStyle: { stroke: '#ffffff' } });
         return true;
     }
+    logger.setAction(creep, 'building@' + site.id);
     if (res === OK && site.progressTotal - site.progress <= creep.getActiveBodyparts(WORK) * BUILD_POWER) {
         return false;
     }
@@ -182,9 +198,11 @@ handlers.repair = function (creep, task) {
     if (target.hits >= target.hitsMax) return false;
     var res = creep.repair(target);
     if (res === ERR_NOT_IN_RANGE) {
+        logger.setAction(creep, 'moving->repair@' + target.id);
         taskBase.moveCreep(creep, target, { visualizePathStyle: { stroke: '#aaaaff' } });
         return true;
     }
+    logger.setAction(creep, 'repairing@' + target.id);
     if (res === OK && target.hitsMax - target.hits <= creep.getActiveBodyparts(WORK) * REPAIR_POWER) {
         return false;
     }
@@ -197,9 +215,11 @@ handlers.upgrade = function (creep, task) {
     if (creep.carry.energy === 0) return false;
     var res = creep.upgradeController(controller);
     if (res === ERR_NOT_IN_RANGE) {
+        logger.setAction(creep, 'moving->upgrade');
         taskBase.moveCreep(creep, controller, { visualizePathStyle: { stroke: '#ffffff' } });
         return true;
     }
+    logger.setAction(creep, 'upgrading');
     return true;
 };
 

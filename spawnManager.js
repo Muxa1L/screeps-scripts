@@ -1,4 +1,5 @@
 var sourceRegistry = require('sourceRegistry');
+var logger = require('logger');
 
 var RENEW_COST = 50;
 var BUCKET_SPAWN_THRESHOLD = 2000;
@@ -51,9 +52,10 @@ function spawnBody(spawn, body, name, role, extraMem) {
     }
     var res = spawn.spawnCreep(body, name, { memory: mem });
     if (res !== OK) {
-        if (Game.time % 200 === 0) console.log('spawn failed for ' + name + ': ' + res);
+        if (Game.time % 200 === 0) console.log('[' + Game.time + '] [spawn-fail] ' + name + ' (' + role + ') -> ' + res);
         return false;
     }
+    logger.event('spawn', '[' + Game.time + '] [spawn] ' + name + ' (' + role + ') cost=' + body.length * 50);
     return true;
 }
 
@@ -120,6 +122,7 @@ function tick() {
                 return;
             }
         }
+        summaryLog(spawn);
         return;
     }
 
@@ -138,11 +141,23 @@ function tick() {
     }
     var name = (role === 'upgrader' ? 'Upgrader' : 'Harvester') + Game.time;
     spawnBody(spawn, body, name, role);
+    summaryLog(spawn);
 }
 
 function debug(msg) {
     if (!Memory.flags || !Memory.flags.debugSpawn) return;
-    console.log('[spawn] ' + msg);
+    console.log('[' + Game.time + '] [spawn] ' + msg);
+}
+
+function summaryLog(spawn) {
+    if (!spawn) return;
+    if (!spawn.room) return;
+    var room = spawn.room;
+    var rcl = room.controller ? room.controller.level : 0;
+    var avail = room.energyAvailable;
+    var cap = room.energyCapacityAvailable;
+    var spawning = spawn.spawning ? spawn.spawning.name : 'idle';
+    logger.periodic('spawn', 50, 'tick', '[' + Game.time + '] [spawn-state] RCL=' + rcl + ' energy=' + avail + '/' + cap + ' spawn=' + spawning);
 }
 
 function pickGeneralistRole() {
