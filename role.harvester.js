@@ -58,10 +58,9 @@ var roleHarvester = {
                         } else {
                             creep.moveTo(target, {visualizePathStyle: {stroke: '#ffffff'}});
                         }
-                    }
-                }
             }
-	}
+        }
+    }
 };
 
 module.exports = roleHarvester;
