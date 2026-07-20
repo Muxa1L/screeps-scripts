@@ -1,4 +1,4 @@
-var assert = require('utils.assert');
+var assert = require('assert');
 
 module.exports.loop = function () {
     assert.safeTick('pathCache', function () { require('pathCache').cleanup(); });
