@@ -2,6 +2,7 @@ var PRIORITY = {
     DEFEND: 10,
     RENEW: 20,
     HEAL: 30,
+    UPGRADE_EMERGENCY: 35,
     SWEEP: 40,
     HAUL: 50,
     REPAIR_CRITICAL: 55,

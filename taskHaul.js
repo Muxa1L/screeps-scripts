@@ -1,6 +1,29 @@
 var TaskType = require('taskBaseClass');
 var taskBase = require('taskBase');
 var move = require('moveUtil');
+var roomManager = require('roomManager');
+
+function findDeposit(creep, sourceContainerId) {
+    var snap = roomManager.get(creep.room.name);
+    if (snap && snap.energyStructures && snap.energyStructures.length > 0) {
+        var nearest = creep.pos.findClosestByPath(snap.energyStructures);
+        if (nearest) return nearest;
+    }
+    if (creep.room.storage && _.sum(creep.room.storage.store) < creep.room.storage.storeCapacity) {
+        return creep.room.storage;
+    }
+    var containers = creep.room.find(FIND_STRUCTURES, {
+        filter: function (s) {
+            return s.structureType === STRUCTURE_CONTAINER &&
+                   s.id !== sourceContainerId &&
+                   _.sum(s.store) < s.storeCapacity;
+        },
+    });
+    if (containers.length > 0) {
+        return creep.pos.findClosestByPath(containers);
+    }
+    return null;
+}
 
 module.exports = new TaskType({
     type: 'haul',
@@ -21,20 +44,11 @@ module.exports = new TaskType({
         var container = task.target;
         if (!container) return false;
         if (creep.carry.energy === creep.carryCapacity) {
-            var targets = creep.room.find(FIND_STRUCTURES, {
-                filter: function (s) {
-                    return (s.structureType === STRUCTURE_EXTENSION ||
-                            s.structureType === STRUCTURE_SPAWN ||
-                            s.structureType === STRUCTURE_TOWER) &&
-                           s.energy < s.energyCapacity;
-                },
-            });
-            if (targets.length === 0) return false;
-            var nearest = creep.pos.findClosestByPath(targets);
-            if (!nearest) return false;
-            move.action(creep, 'transfer@' + nearest.id);
-            if (creep.transfer(nearest, RESOURCE_ENERGY) === ERR_NOT_IN_RANGE) {
-                move.moveCreep(creep, nearest, { visualizePathStyle: { stroke: '#ffffff' } });
+            var deposit = findDeposit(creep, container.id);
+            if (!deposit) return false;
+            move.action(creep, 'transfer@' + deposit.id);
+            if (creep.transfer(deposit, RESOURCE_ENERGY) === ERR_NOT_IN_RANGE) {
+                move.moveCreep(creep, deposit, { visualizePathStyle: { stroke: '#ffffff' } });
             }
             return true;
         }

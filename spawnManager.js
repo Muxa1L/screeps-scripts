@@ -6,10 +6,11 @@ var quotas = require('creepsQuotas');
 var BUCKET_SPAWN_THRESHOLD = 2000;
 var MIN_BODY_ENERGY = 200;
 
-function creepCountByRole() {
+function creepCountByRole(roomName) {
     var counts = {};
     for (var name in Game.creeps) {
         var c = Game.creeps[name];
+        if (roomName && c.pos.roomName !== roomName) continue;
         var r = c.memory.role;
         if (!r) continue;
         counts[r] = (counts[r] || 0) + 1;
@@ -38,20 +39,26 @@ function hostilesInRoom(room) {
 
 function tryDefenders(spawn, hostiles) {
     if (hostiles.length === 0) return false;
-    var fighters = _.filter(Game.creeps, function (c) { return c.memory.role === 'fighter'; });
-    var healers = _.filter(Game.creeps, function (c) { return c.memory.role === 'healer'; });
+    var roomName = spawn.room.name;
+    var fighters = 0, healers = 0;
+    for (var cn in Game.creeps) {
+        var c = Game.creeps[cn];
+        if (c.pos.roomName !== roomName) continue;
+        if (c.memory.role === 'fighter') fighters++;
+        else if (c.memory.role === 'healer') healers++;
+    }
     var cap = spawn.room.energyCapacityAvailable;
     var available = spawn.room.energyAvailable;
-    if (fighters.length === 0) {
+    if (fighters === 0) {
         var pick = bodies.bestBodyForAvailable('fighter', cap, available);
         if (pick) {
-            return spawnBody(spawn, pick.body, 'Fighter' + Game.time, 'fighter');
+            return spawnBody(spawn, pick.body, 'Fighter' + Game.time + '-' + spawn.name, 'fighter');
         }
     }
-    if (fighters.length > 0 && healers.length === 0) {
+    if (fighters > 0 && healers === 0) {
         var hpick = bodies.bestBodyForAvailable('healer', cap, available);
         if (hpick) {
-            return spawnBody(spawn, hpick.body, 'Healer' + Game.time, 'healer');
+            return spawnBody(spawn, hpick.body, 'Healer' + Game.time + '-' + spawn.name, 'healer');
         }
     }
     return false;
@@ -63,42 +70,44 @@ function tryRoleSpawn(spawn, role) {
     var pick = bodies.bestBodyForAvailable(role, cap, available);
     if (!pick) return false;
     var prefix = role.charAt(0).toUpperCase() + role.slice(1);
-    var name = prefix + Game.time;
+    var name = prefix + Game.time + '-' + spawn.name;
     return spawnBody(spawn, pick.body, name, role);
 }
 
 function tick() {
-    var spawn = Game.spawns['Spawn1'];
-    if (!spawn) return;
     if (Game.cpu.bucket < BUCKET_SPAWN_THRESHOLD) return;
-    if (spawn.spawning) return;
-    var room = spawn.room;
-    if (!room.controller || !room.controller.my) return;
+    for (var sn in Game.spawns) {
+        var spawn = Game.spawns[sn];
+        if (spawn.spawning) continue;
+        var room = spawn.room;
+        if (!room.controller || !room.controller.my) continue;
+        tryRunForSpawn(spawn);
+    }
+}
 
+function tryRunForSpawn(spawn) {
+    var room = spawn.room;
     var hostiles = hostilesInRoom(room);
-    if (tryDefenders(spawn, hostiles)) return;
+    if (tryDefenders(spawn, hostiles)) {
+        summaryLog(spawn, creepCountByRole(room.name), room.controller.level);
+        return;
+    }
 
     var rcl = room.controller.level;
-    var counts = creepCountByRole();
 
     if (rcl >= 3) {
         sourceRegistry.ensureRegistry(room);
     }
 
-    var controllerState = room.controller ? {
+    var counts = creepCountByRole(room.name);
+    var controllerState = {
         ticksToDowngrade: room.controller.ticksToDowngrade,
         level: room.controller.level,
-    } : null;
+    };
     var role = quotas.nextRoleToSpawn(counts, rcl, controllerState);
-    if (!role) {
-        summaryLog(spawn, counts, rcl);
-        return;
-    }
-    if (tryRoleSpawn(spawn, role)) {
-        summaryLog(spawn, counts, rcl);
-        return;
-    }
     summaryLog(spawn, counts, rcl);
+    if (!role) return;
+    tryRoleSpawn(spawn, role);
 }
 
 function summaryLog(spawn, counts, rcl) {

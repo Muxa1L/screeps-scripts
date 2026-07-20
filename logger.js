@@ -1,5 +1,4 @@
 var _lastPeriodic = {};
-var _lastStateSeen = {};
 
 function getMode() {
     if (!Memory.flags) return 'normal';
@@ -41,19 +40,6 @@ function statusLine(creep) {
     return creep.name + ' [' + role + '] task=' + task + ' carry=' + carry + ' pos=' + pos + (action ? ' (' + action + ')' : '');
 }
 
-function describeTask(task) {
-    if (!task) return 'none';
-    var tgt = task.target;
-    var tgtId = (tgt && tgt.id) || '?';
-    var tgtName = '';
-    if (tgt) {
-        if (tgt.structureType) tgtName = tgt.structureType;
-        else if (tgt.name) tgtName = tgt.name;
-        else if (tgt.amount !== undefined) tgtName = 'drop=' + tgt.amount;
-    }
-    return task.type + '@' + tgtId + (tgtName ? '(' + tgtName + ')' : '');
-}
-
 function setAction(creep, action) {
     creep.memory._action = action;
 }
@@ -68,7 +54,6 @@ module.exports = {
     periodic: periodic,
     event: event,
     statusLine: statusLine,
-    describeTask: describeTask,
     setAction: setAction,
     clearAction: clearAction,
 };

@@ -2,7 +2,6 @@ var logger = require('logger');
 var taskBase = require('taskBase');
 
 var CREEP_COST = 0xff;
-var CREEP_NEXT_COST = 0x80;
 
 function markCreeps(matrix, roomName, self) {
     var room = Game.rooms[roomName];
@@ -15,21 +14,6 @@ function markCreeps(matrix, roomName, self) {
         var existing = matrix.get(c.pos.x, c.pos.y);
         if (existing === 0 || existing === undefined) {
             matrix.set(c.pos.x, c.pos.y, CREEP_COST);
-        }
-        var nextDir = c.memory._nextDir;
-        if (nextDir !== undefined) {
-            var dx = [0, 0, 1, 1, 1, 0, -1, -1, -1][nextDir];
-            var dy = [-1, 1, -1, 0, 1, 0, 1, -1, 0][nextDir];
-            if (dx !== undefined) {
-                var nx = c.pos.x + dx;
-                var ny = c.pos.y + dy;
-                if (nx >= 0 && nx <= 49 && ny >= 0 && ny <= 49) {
-                    var nextExisting = matrix.get(nx, ny);
-                    if (nextExisting === 0 || nextExisting === undefined) {
-                        matrix.set(nx, ny, CREEP_NEXT_COST);
-                    }
-                }
-            }
         }
     }
 }

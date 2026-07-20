@@ -1,7 +1,6 @@
 var assert = require('assert');
 
 module.exports.loop = function () {
-    assert.safeTick('pathCache', function () { require('pathCache').cleanup(); });
     assert.safeTick('globals',    function () { require('globals').tick(); });
     assert.safeTick('roomManager', function () { require('roomManager').tick(); });
 

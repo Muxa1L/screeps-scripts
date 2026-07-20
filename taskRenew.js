@@ -1,7 +1,8 @@
 var move = require('moveUtil');
+var spawnUtil = require('spawnUtil');
 
 function run(creep) {
-    var spawn = Game.spawns['Spawn1'];
+    var spawn = spawnUtil.nearestSpawn(creep);
     if (!spawn) return;
     if (creep.body.length < 6) {
         if (spawn.recycleCreep(creep) === ERR_NOT_IN_RANGE) {

@@ -10,7 +10,7 @@ function upgradePriority(snapshot) {
     if (!snapshot || !snapshot.controller) return taskBase.PRIORITY.UPGRADE;
     var c = snapshot.controller;
     if (c.safeModeActive && c.safeModeActive > 0) {
-        return 25;
+        return taskBase.PRIORITY.UPGRADE_EMERGENCY;
     }
     var ttd = c.ticksToDowngrade;
     if (ttd === undefined || ttd === null) return taskBase.PRIORITY.UPGRADE;
