@@ -44,10 +44,6 @@ function setAction(creep, action) {
     creep.memory._action = action;
 }
 
-function clearAction(creep) {
-    delete creep.memory._action;
-}
-
 module.exports = {
     getMode: getMode,
     shouldLog: shouldLog,
@@ -55,5 +51,4 @@ module.exports = {
     event: event,
     statusLine: statusLine,
     setAction: setAction,
-    clearAction: clearAction,
 };

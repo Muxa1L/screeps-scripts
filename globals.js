@@ -1,4 +1,3 @@
-var ROOM_TICK_SAMPLE_INTERVAL = 20;
 var assert = require('assert');
 
 function init() {
@@ -16,8 +15,6 @@ function ensureRoomMemory(room) {
     if (!Memory.rooms[room.name]) {
         Memory.rooms[room.name] = {
             lastSeen: Game.time,
-            rcl: room.controller ? room.controller.level : 0,
-            lastSampled: 0,
         };
     }
     return Memory.rooms[room.name];
@@ -30,7 +27,6 @@ function tick() {
         if (!room.controller || !room.controller.my) continue;
         var mem = ensureRoomMemory(room);
         mem.lastSeen = Game.time;
-        mem.rcl = room.controller.level;
     }
 }
 

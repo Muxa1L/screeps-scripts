@@ -4,7 +4,6 @@ var bodies = require('creepsBodies');
 var quotas = require('creepsQuotas');
 
 var BUCKET_SPAWN_THRESHOLD = 2000;
-var MIN_BODY_ENERGY = 200;
 
 function creepCountByRole(roomName) {
     var counts = {};
@@ -123,16 +122,6 @@ function summaryLog(spawn, counts, rcl) {
     );
 }
 
-function debug(msg) {
-    if (!Memory.flags || !Memory.flags.debugSpawn) return;
-    console.log('[' + Game.time + '] [spawn] ' + msg);
-}
-
 module.exports = {
     tick: tick,
-    bestBodyFor: bodies.bestBodyFor,
-    bestBodyForAvailable: bodies.bestBodyForAvailable,
-    bodyCost: bodies.bodyCost,
-    bodySummary: bodies.bodySummary,
-    nextRoleToSpawn: quotas.nextRoleToSpawn,
 };

@@ -93,10 +93,6 @@ var BODIES = {
     builder:  BUILDER_BODIES,
 };
 
-function bestBodyFor(role, capacity) {
-    return bestBodyForCapacity(role, capacity);
-}
-
 function bestBodyForAvailable(role, capacity, available) {
     return bestBodyForCapacity(role, Math.min(capacity, available));
 }
@@ -127,7 +123,6 @@ function bodySummary() {
 }
 
 module.exports = {
-    bestBodyFor: bestBodyFor,
     bestBodyForAvailable: bestBodyForAvailable,
     bodyCost: bodyCost,
     bodySummary: bodySummary,

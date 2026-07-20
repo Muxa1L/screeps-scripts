@@ -5,6 +5,7 @@ var tasks = require('tasksIndex');
 var renew = require('taskRenew');
 var logger = require('logger');
 var spawnUtil = require('spawnUtil');
+var move = require('moveUtil');
 
 var nearestSpawn = spawnUtil.nearestSpawn;
 
@@ -72,8 +73,8 @@ function inferRoleFromName(name) {
     if (name.indexOf('Builder') === 0) return 'builder';
     if (name.indexOf('Fighter') === 0) return 'fighter';
     if (name.indexOf('Healer') === 0) return 'healer';
-    if (name.indexOf('Harvester') === 0) return 'generalist';
-    return 'generalist';
+    if (name.indexOf('Harvester') === 0) return 'harvester';
+    return 'harvester';
 }
 
 function runCreep(creep) {
@@ -148,15 +149,12 @@ function runCreep(creep) {
         if (forceTarget) {
             if (!creep.pos.isNearTo(forceTarget)) {
                 logger.setAction(creep, 'force->' + (forceTarget.id || '?'));
-                var r2 = creep.moveTo(forceTarget, { visualizePathStyle: { stroke: '#ff00ff' }, reusePath: 10 });
-                if (r2 !== OK && r2 !== ERR_TIRED) {
-                    logger.event('stuck', '[' + Game.time + '] [stuck] ' + creep.name + ' force moveTo ' + forceTarget.id + ' -> ' + r2);
-                }
+                move.moveCreep(creep, forceTarget, { visualizePathStyle: { stroke: '#ff00ff' }, reusePath: 10 });
             } else {
                 logger.setAction(creep, 'force-harvest@' + (forceTarget.id || '?'));
                 var ha = creep.harvest(forceTarget);
                 if (ha === ERR_NOT_IN_RANGE) {
-                    creep.moveTo(forceTarget, { visualizePathStyle: { stroke: '#ff00ff' }, reusePath: 10 });
+                    move.moveCreep(creep, forceTarget, { visualizePathStyle: { stroke: '#ff00ff' }, reusePath: 10 });
                 }
             }
             return;
@@ -164,7 +162,7 @@ function runCreep(creep) {
         var idleSpawn = nearestSpawn(creep);
         if (idleSpawn && !creep.pos.isNearTo(idleSpawn)) {
             logger.setAction(creep, 'idle->spawn');
-            creep.moveTo(idleSpawn, { visualizePathStyle: { stroke: '#888888' }, reusePath: 10 });
+            move.moveCreep(creep, idleSpawn, { visualizePathStyle: { stroke: '#888888' }, reusePath: 10 });
         } else {
             logger.setAction(creep, 'idle');
         }
@@ -197,55 +195,15 @@ function checkStuck(creep) {
     if (!spawn) return;
     logger.event('stuck', '[' + Game.time + '] [stuck-recycle] ' + creep.name + ' idle for ' + (Game.time - lastChange) + ' ticks');
     if (spawn.recycleCreep(creep) === ERR_NOT_IN_RANGE) {
-        creep.moveTo(spawn, { visualizePathStyle: { stroke: '#ff8800' }, reusePath: 10 });
+        move.moveCreep(creep, spawn, { visualizePathStyle: { stroke: '#ff8800' }, reusePath: 10 });
     }
     creep.memory._lastTaskChange = Game.time;
 }
 
 function forceTargetFor(creep, room) {
-    var role = creep.memory.role;
-    if (role === 'hauler') {
-        var containers = room.find(FIND_STRUCTURES, {
-            filter: function (s) { return s.structureType === STRUCTURE_CONTAINER; },
-        });
-        if (containers.length > 0) {
-            return creep.pos.findClosestByPath(containers);
-        }
-        var drops = room.find(FIND_DROPPED_RESOURCES);
-        if (drops.length > 0) {
-            return creep.pos.findClosestByPath(drops);
-        }
-        var tombstones = room.find(FIND_TOMBSTONES, {
-            filter: function (t) { return _.sum(t.store) > 0; },
-        });
-        if (tombstones.length > 0) {
-            return creep.pos.findClosestByPath(tombstones);
-        }
-        return null;
-    }
-    if (role === 'miner') {
-        var slot = null;
-        if (Memory.sources) {
-            for (var id in Memory.sources) {
-                if (Memory.sources[id].roomName !== room.name) continue;
-                for (var i = 0; i < Memory.sources[id].slots.length; i++) {
-                    var s = Memory.sources[id].slots[i];
-                    if (!s.claimedBy || !Game.creeps[s.claimedBy]) {
-                        slot = new RoomPosition(s.x, s.y, room.name);
-                        break;
-                    }
-                }
-                if (slot) break;
-            }
-        }
-        if (slot) return slot;
-        var sources = room.find(FIND_SOURCES);
-        if (sources.length > 0) return creep.pos.findClosestByPath(sources);
-        return null;
-    }
-    var sources2 = room.find(FIND_SOURCES);
-    if (sources2.length > 0) {
-        return creep.pos.findClosestByPath(sources2);
+    var sources = room.find(FIND_SOURCES_ACTIVE);
+    if (sources.length > 0) {
+        return creep.pos.findClosestByPath(sources);
     }
     return null;
 }

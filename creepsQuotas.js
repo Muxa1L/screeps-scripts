@@ -23,8 +23,9 @@ function quotasFor(rcl) {
 function dynamicQuota(rcl, controller) {
     var q = {};
     var base = quotasFor(rcl);
-    for (var k in base) {
-        if (base.hasOwnProperty(k)) q[k] = base[k];
+    var keys = Object.keys(base);
+    for (var i = 0; i < keys.length; i++) {
+        q[keys[i]] = base[keys[i]];
     }
     if (controller && controller.ticksToDowngrade !== undefined && controller.ticksToDowngrade !== null) {
         var ttd = controller.ticksToDowngrade;

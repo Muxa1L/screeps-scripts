@@ -49,7 +49,6 @@ function action(creep, verb) {
 module.exports = {
     moveCreep: moveCreep,
     action: action,
-    taskBase: taskBase,
 };
 
 

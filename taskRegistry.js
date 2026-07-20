@@ -8,5 +8,4 @@ module.exports = {
         if (!snap) return [];
         return tasks.list(room, snap);
     },
-    tasks: tasks,
 };

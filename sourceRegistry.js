@@ -4,8 +4,6 @@ var SLOT_TILES = [
     [-1, 1],  [0, 1],  [1, 1],
 ];
 
-function tileKey(x, y) { return x + ',' + y; }
-
 function ensureRegistry(room) {
     if (!Memory.sources) Memory.sources = {};
     var sources = room.find(FIND_SOURCES);
@@ -51,19 +49,6 @@ function freeSlot(sourceId) {
     return null;
 }
 
-function totalFreeSlots(room) {
-    if (!Memory.sources) return 0;
-    var count = 0;
-    for (var id in Memory.sources) {
-        if (Memory.sources[id].roomName !== room.name) continue;
-        for (var i = 0; i < Memory.sources[id].slots.length; i++) {
-            var slot = Memory.sources[id].slots[i];
-            if (!slot.claimedBy || !Game.creeps[slot.claimedBy]) count++;
-        }
-    }
-    return count;
-}
-
 function claimSlot(sourceId, creepName) {
     if (!Memory.sources || !Memory.sources[sourceId]) return false;
     var src = Memory.sources[sourceId];
@@ -104,7 +89,6 @@ function slotPos(sourceId, creepName) {
 module.exports = {
     ensureRegistry: ensureRegistry,
     freeSlot: freeSlot,
-    totalFreeSlots: totalFreeSlots,
     claimSlot: claimSlot,
     releaseClaim: releaseClaim,
     slotPos: slotPos,

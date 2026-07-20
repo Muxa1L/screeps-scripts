@@ -1,8 +1,6 @@
 var snapshots = {};
 var lastTick = -1;
 
-var DEFEND_RANGE_FOR = 5;
-
 function snapshotFor(room) {
     var hostiles = room.find(FIND_HOSTILE_CREEPS);
     var damagedFriendlies = room.find(FIND_MY_CREEPS, {

@@ -29,9 +29,9 @@ function get(type) {
 function list(room, snapshot) {
     if (!room || !snapshot) return [];
     var out = [];
-    for (var type in registry) {
-        if (!registry.hasOwnProperty(type)) continue;
-        var tt = registry[type];
+    var types = Object.keys(registry);
+    for (var t = 0; t < types.length; t++) {
+        var tt = registry[types[t]];
         var items = tt.listFor(room, snapshot);
         for (var i = 0; i < items.length; i++) out.push(items[i]);
     }
