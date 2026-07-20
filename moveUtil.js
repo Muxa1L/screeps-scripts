@@ -1,43 +1,8 @@
-var pathCache = require('pathCache');
 var logger = require('logger');
 var taskBase = require('taskBase');
 
-var SWAMP_COST = 10;
-var WALL_COST = 0xff;
 var CREEP_COST = 0xff;
 var CREEP_NEXT_COST = 0x80;
-
-var _terrainCache = {};
-var _terrainCacheTick = 0;
-
-function buildTerrainMatrix(roomName) {
-    var room = Game.rooms[roomName];
-    if (!room) return null;
-    var matrix = new PathFinder.CostMatrix();
-    var terrain = room.getTerrain();
-    for (var y = 0; y < 50; y++) {
-        for (var x = 0; x < 50; x++) {
-            var t = terrain.get(x, y);
-            if (t === TERRAIN_MASK_WALL) {
-                matrix.set(x, y, WALL_COST);
-            } else if (t === TERRAIN_MASK_SWAMP) {
-                matrix.set(x, y, SWAMP_COST);
-            }
-        }
-    }
-    return matrix;
-}
-
-function getTerrainMatrix(roomName) {
-    if (_terrainCacheTick !== Game.time) {
-        _terrainCache = {};
-        _terrainCacheTick = Game.time;
-    }
-    if (!_terrainCache[roomName]) {
-        _terrainCache[roomName] = buildTerrainMatrix(roomName);
-    }
-    return _terrainCache[roomName];
-}
 
 function markCreeps(matrix, roomName, self) {
     var room = Game.rooms[roomName];
@@ -69,88 +34,27 @@ function markCreeps(matrix, roomName, self) {
     }
 }
 
-function makeCreepCostMatrix(roomName, self) {
-    var base = getTerrainMatrix(roomName);
-    if (!base) {
-        var m = new PathFinder.CostMatrix();
-        markCreeps(m, roomName, self);
-        return m;
-    }
-    var matrix = base.clone();
-    markCreeps(matrix, roomName, self);
-    return matrix;
-}
-
 function moveCreep(creep, target, opts) {
     if (!target) return;
     if (!target.pos) return;
     if (creep.pos.isNearTo(target)) return;
     if (creep.fatigue > 0) return;
 
-    var key = creep.pos.roomName + ':' + target.id + ':' + creep.name;
+    var mvr = creep.moveTo(target, Object.assign({
+        reusePath: 5,
+        maxOps: 2000,
+        ignoreCreeps: false,
+        costCallback: function (roomName, matrix) {
+            if (roomName !== creep.pos.roomName) return matrix;
+            markCreeps(matrix, roomName, creep);
+            return matrix;
+        },
+    }, opts || {}));
 
-    var entry = pathCache.get(key);
-    var usedCache = false;
-    if (entry && entry.path && entry.idx < entry.path.length) {
-        var origin = entry.origin;
-        var sameOrigin = origin &&
-            origin.x === creep.pos.x &&
-            origin.y === creep.pos.y &&
-            origin.roomName === creep.pos.roomName;
-        if (sameOrigin) {
-            var next = entry.path[entry.idx];
-            if (next && next.x !== undefined) {
-                var dir = creep.pos.getDirectionTo(next);
-                if (dir && dir > 0) {
-                    var mv = creep.move(dir);
-                    if (mv === OK) {
-                        pathCache.advance(key);
-                        creep.memory._nextDir = dir;
-                        usedCache = true;
-                    } else {
-                        pathCache.del(key);
-                    }
-                } else {
-                    pathCache.del(key);
-                }
-            } else {
-                pathCache.del(key);
-            }
-        } else {
-            pathCache.del(key);
-        }
-    }
-
-    if (usedCache) return;
-
-    var matrix = makeCreepCostMatrix(creep.pos.roomName, creep);
-    var ret = PathFinder.search(
-        creep.pos,
-        { pos: target.pos, range: 1 },
-        {
-            maxOps: 1500,
-            plainCost: 2,
-            swampCost: SWAMP_COST,
-            roomCallback: function (rn) {
-                if (rn === creep.pos.roomName) return matrix;
-                return new PathFinder.CostMatrix();
-            },
-        }
-    );
-    if (ret && !ret.incomplete && ret.path && ret.path.length > 0) {
-        pathCache.set(key, ret.path, { x: creep.pos.x, y: creep.pos.y, roomName: creep.pos.roomName });
-        var d = creep.pos.getDirectionTo(ret.path[0]);
-        if (d && d > 0) {
-            creep.move(d);
-            creep.memory._nextDir = d;
-            return;
-        }
-    } else {
-        pathCache.del(key);
-    }
-    var mvr = creep.moveTo(target, Object.assign({ reusePath: 10, maxOps: 1500 }, opts || {}));
-    if (mvr !== OK && mvr !== ERR_TIRED && mvr !== ERR_BUSY) {
-        pathCache.del(key);
+    creep.memory._lastMoveResult = mvr;
+    if (mvr === OK || mvr === ERR_TIRED || mvr === ERR_BUSY) return;
+    if (Memory.flags && Memory.flags.debugStuck) {
+        console.log('[stuck] ' + creep.name + ' moveTo ' + target.id + ' -> ' + mvr);
     }
 }
 
@@ -161,7 +65,7 @@ function action(creep, verb) {
 module.exports = {
     moveCreep: moveCreep,
     action: action,
-    makeCreepCostMatrix: makeCreepCostMatrix,
     taskBase: taskBase,
 };
+
 
