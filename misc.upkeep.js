@@ -19,20 +19,6 @@ function run() {
             if (Game.time % 100 === 0) console.log('safe mode activate: ' + res);
         }
     }
-
-    for (var cname in Memory.creeps) {
-        if (!Game.creeps[cname]) {
-            delete Memory.creeps[cname];
-            if (Memory.sources) {
-                for (var sid in Memory.sources) {
-                    var slots = Memory.sources[sid].slots;
-                    for (var si = 0; si < slots.length; si++) {
-                        if (slots[si].claimedBy === cname) slots[si].claimedBy = null;
-                    }
-                }
-            }
-        }
-    }
 }
 
 function runTower(tower) {

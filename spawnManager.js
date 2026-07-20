@@ -1,7 +1,7 @@
 var sourceRegistry = require('sourceRegistry');
 
 var RENEW_COST = 50;
-var BUCKET_SPAWN_THRESHOLD = 5000;
+var BUCKET_SPAWN_THRESHOLD = 2000;
 var HARVESTER_TARGET = 5;
 var UPGRADER_TARGET = 3;
 var HAULER_TARGET = 2;
@@ -15,6 +15,7 @@ var FIGHTER_BODY = [TOUGH, TOUGH, TOUGH, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, ATT
 var HEALER_BODY = [TOUGH, TOUGH, TOUGH, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, HEAL, HEAL, HEAL];
 
 var MINER_BODIES = {
+    200:  [WORK, MOVE],
     300:  [WORK, WORK, MOVE],
     550:  [WORK, WORK, WORK, WORK, WORK, MOVE, MOVE],
     800:  [WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, MOVE, MOVE],
@@ -24,6 +25,7 @@ var MINER_BODIES = {
     5600: [WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, MOVE, MOVE, MOVE, MOVE, MOVE],
 };
 var HAULER_BODIES = {
+    200:  [CARRY, MOVE],
     300:  [CARRY, CARRY, MOVE, MOVE],
     550:  [CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE],
     800:  [CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE],
@@ -57,11 +59,11 @@ function spawnBody(spawn, body, name, role, extraMem) {
 
 function tick() {
     var spawn = Game.spawns['Spawn1'];
-    if (!spawn) return;
-    if (Game.cpu.bucket < BUCKET_SPAWN_THRESHOLD) return;
-    if (spawn.spawning) return;
+    if (!spawn) { debug('no spawn'); return; }
+    if (Game.cpu.bucket < BUCKET_SPAWN_THRESHOLD) { debug('bucket low: ' + Game.cpu.bucket); return; }
+    if (spawn.spawning) { debug('already spawning ' + spawn.spawning.name); return; }
     var room = spawn.room;
-    if (!room.controller || !room.controller.my) return;
+    if (!room.controller || !room.controller.my) { debug('no controller'); return; }
 
     var hostiles = room.find(FIND_HOSTILE_CREEPS);
     if (hostiles.length > 0) {
@@ -79,7 +81,7 @@ function tick() {
 
     var capacity = room.energyCapacityAvailable;
     var available = room.energyAvailable;
-    if (available < MIN_BODY_ENERGY) return;
+    if (available < MIN_BODY_ENERGY) { debug('low energy: ' + available + '/' + capacity); return; }
 
     if (room.controller.level >= 3) {
         sourceRegistry.ensureRegistry(room);
@@ -92,31 +94,29 @@ function tick() {
         if (freeSlots > 0 && miners.length < 4) {
             var pick = bestBodyFor(MINER_BODIES, available);
             if (available >= pick.cost) {
-                spawnBody(spawn, pick.body, 'Miner' + Game.time, 'miner');
-                return;
+                if (spawnBody(spawn, pick.body, 'Miner' + Game.time, 'miner')) return;
             }
         }
         if (haulers.length < HAULER_TARGET) {
             var hpick = bestBodyFor(HAULER_BODIES, available);
             if (available >= hpick.cost) {
-                spawnBody(spawn, hpick.body, 'Hauler' + Game.time, 'hauler');
-                return;
-            }
+                if (spawnBody(spawn, hpick.body, 'Hauler' + Game.time, 'hauler')) return;
+            } else { debug('hauler cost ' + hpick.cost + ' > available ' + available); return; }
         }
         if (upgraders.length < UPGRADER_TARGET) {
             var wbody = WORKER_BODY;
             if (available < WORKER_BODY_ENERGY) wbody = EARLY_WORKER_BODY;
             var cost = (wbody === EARLY_WORKER_BODY) ? EARLY_WORKER_BODY_ENERGY : WORKER_BODY_ENERGY;
             if (available >= cost) {
-                spawnBody(spawn, wbody, 'Upgrader' + Game.time, 'upgrader');
-                return;
-            }
+                if (spawnBody(spawn, wbody, 'Upgrader' + Game.time, 'upgrader')) return;
+            } else { debug('upgrader cost ' + cost + ' > available ' + available); return; }
         }
+        debug('RCL>=3: nothing to spawn (miners=' + miners.length + ', haulers=' + haulers.length + ', upgraders=' + upgraders.length + ', freeSlots=' + freeSlots + ')');
         return;
     }
 
     var role = pickGeneralistRole();
-    if (!role) return;
+    if (!role) { debug('RCL<3: at target (harv/upg)'); return; }
     var body = WORKER_BODY;
     var bodyEnergy = WORKER_BODY_ENERGY;
     var harvesters = _.filter(Game.creeps, function (c) { return c.memory.role === 'harvester'; });
@@ -124,9 +124,16 @@ function tick() {
         body = EARLY_WORKER_BODY;
         bodyEnergy = EARLY_WORKER_BODY_ENERGY;
     }
-    if (available < bodyEnergy) return;
+    if (available < bodyEnergy) { debug('RCL<3: body cost ' + bodyEnergy + ' > available ' + available); return; }
     var name = (role === 'upgrader' ? 'Upgrader' : 'Harvester') + Game.time;
     spawnBody(spawn, body, name, role);
+}
+
+var _debugLast = 0;
+function debug(msg) {
+    if (Game.time - _debugLast < 20) return;
+    _debugLast = Game.time;
+    console.log('[spawn] ' + msg);
 }
 
 function pickGeneralistRole() {
