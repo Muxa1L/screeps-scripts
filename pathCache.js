@@ -1,47 +1,31 @@
-var pathCache = Memory.pathCache || { _cache: {}, _lastCleanup: 0 };
-Memory.pathCache = pathCache;
+var cache = {
+    _cache: {},
+    _lastCleanup: 0,
+};
 
-function getPath(creepId, targetId) {
-    var key = creepId + '_' + targetId;
-    var entry = pathCache._cache[key];
-    if (entry && Game.time - entry.time < 5) {
-        var creep = Game.creeps[creepId];
-        if (creep && 
-            creep.pos.x === entry.originPos.x && 
-            creep.pos.y === entry.originPos.y && 
-            creep.pos.roomName === entry.originPos.roomName) {
-            return entry.path;
-        }
-    }
-    return null;
+function get(key) {
+    var entry = cache._cache[key];
+    if (!entry) return null;
+    if (Game.time - entry.time > 50) return null;
+    return entry.path;
 }
 
-function storePath(creepId, targetId, path) {
-    var key = creepId + '_' + targetId;
-    var creep = Game.creeps[creepId];
-    if (creep) {
-        pathCache._cache[key] = {
-            path: path,
-            time: Game.time,
-            originPos: {x: creep.pos.x, y: creep.pos.y, roomName: creep.pos.roomName}
-        };
-    }
+function set(key, path) {
+    if (!path || path.length === 0) return;
+    cache._cache[key] = { time: Game.time, path: path };
 }
 
 function cleanup() {
-    if (Game.time - pathCache._lastCleanup > 10) {
-        var currentTime = Game.time;
-        for (var key in pathCache._cache) {
-            if (pathCache._cache[key].time < currentTime - 5) {
-                delete pathCache._cache[key];
-            }
-        }
-        pathCache._lastCleanup = Game.time;
+    if (Game.time - cache._lastCleanup < 100) return;
+    var now = Game.time;
+    for (var k in cache._cache) {
+        if (now - cache._cache[k].time > 50) delete cache._cache[k];
     }
+    cache._lastCleanup = now;
 }
 
 module.exports = {
-    getPath: getPath,
-    storePath: storePath,
-    cleanup: cleanup
+    get: get,
+    set: set,
+    cleanup: cleanup,
 };
