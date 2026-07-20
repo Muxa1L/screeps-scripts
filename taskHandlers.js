@@ -151,27 +151,7 @@ handlers.harvest = function (creep, task) {
     var source = task.target;
     if (!source) return false;
     if (creep.carry.energy === creep.carryCapacity) {
-        var targets = creep.room.find(FIND_STRUCTURES, {
-            filter: function (s) {
-                return (s.structureType === STRUCTURE_EXTENSION ||
-                        s.structureType === STRUCTURE_SPAWN) &&
-                       s.energy < s.energyCapacity;
-            },
-        });
-        if (targets.length === 0) {
-            targets = creep.room.find(FIND_STRUCTURES, {
-                filter: function (s) {
-                    return s.structureType === STRUCTURE_TOWER && s.energy < s.energyCapacity;
-                },
-            });
-        }
-        if (targets.length === 0) return false;
-        var nearest = creep.pos.findClosestByPath(targets);
-        if (!nearest) return false;
-        if (creep.transfer(nearest, RESOURCE_ENERGY) === ERR_NOT_IN_RANGE) {
-            taskBase.moveCreep(creep, nearest, { visualizePathStyle: { stroke: '#ffffff' } });
-        }
-        return true;
+        return false;
     }
     if (creep.harvest(source) === ERR_NOT_IN_RANGE) {
         taskBase.moveCreep(creep, source, { visualizePathStyle: { stroke: '#ffaa00' } });
@@ -183,8 +163,14 @@ handlers.build = function (creep, task) {
     var site = task.target;
     if (!site) return false;
     if (creep.carry.energy === 0) return false;
-    if (creep.build(site) === ERR_NOT_IN_RANGE) {
+    var before = site.progress;
+    var res = creep.build(site);
+    if (res === ERR_NOT_IN_RANGE) {
         taskBase.moveCreep(creep, site, { visualizePathStyle: { stroke: '#ffffff' } });
+        return true;
+    }
+    if (res === OK && site.progressTotal - site.progress <= creep.getActiveBodyparts(WORK) * BUILD_POWER) {
+        return false;
     }
     return true;
 };
@@ -193,8 +179,14 @@ handlers.repair = function (creep, task) {
     var target = task.target;
     if (!target) return false;
     if (creep.carry.energy === 0) return false;
-    if (creep.repair(target) === ERR_NOT_IN_RANGE) {
+    if (target.hits >= target.hitsMax) return false;
+    var res = creep.repair(target);
+    if (res === ERR_NOT_IN_RANGE) {
         taskBase.moveCreep(creep, target, { visualizePathStyle: { stroke: '#aaaaff' } });
+        return true;
+    }
+    if (res === OK && target.hitsMax - target.hits <= creep.getActiveBodyparts(WORK) * REPAIR_POWER) {
+        return false;
     }
     return true;
 };
@@ -203,8 +195,10 @@ handlers.upgrade = function (creep, task) {
     var controller = task.target;
     if (!controller) return false;
     if (creep.carry.energy === 0) return false;
-    if (creep.upgradeController(controller) === ERR_NOT_IN_RANGE) {
+    var res = creep.upgradeController(controller);
+    if (res === ERR_NOT_IN_RANGE) {
         taskBase.moveCreep(creep, controller, { visualizePathStyle: { stroke: '#ffffff' } });
+        return true;
     }
     return true;
 };

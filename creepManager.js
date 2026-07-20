@@ -24,6 +24,14 @@ function bestTaskFor(creep, tasks, allowed) {
         if (!taskBase.creepCanDo(creep, t.type)) continue;
         var target = t.target;
         if (!target || !target.pos) continue;
+        var cap = TARGET_CAPS[t.type];
+        if (cap !== undefined && getClaimCount(t.id) >= cap) {
+            var claimType = t.id.split(':')[0];
+            var typeCap = TARGET_CAPS[claimType];
+            if (typeCap === undefined || getClaimCountByType(claimType) >= typeCap) {
+                continue;
+            }
+        }
         var dist = approxDistance(creep, target);
         var score = t.priority * 1000 + dist;
         if (score < bestScore) {
@@ -34,12 +42,47 @@ function bestTaskFor(creep, tasks, allowed) {
     return best;
 }
 
+function getClaimCountByType(type) {
+    var n = 0;
+    for (var k in _claimCounts) {
+        if (k.indexOf(type + ':') === 0) n++;
+    }
+    return n;
+}
+
 var RESTRICTED_TASKS = {
     miner:  ['mine'],
     hauler: ['haul', 'sweep'],
     fighter:['defend'],
     healer: ['heal'],
 };
+
+var TARGET_CAPS = {
+    build:    2,
+    repair:   2,
+    sweep:    2,
+    upgrade:  1,
+    haul:     2,
+    defend:   4,
+    harvest:  1,
+    mine:     1,
+};
+
+var _claimCounts = {};
+
+function refreshClaimCounts() {
+    _claimCounts = {};
+    for (var name in Game.creeps) {
+        var c = Game.creeps[name];
+        var tid = c.memory.taskId;
+        if (!tid) continue;
+        _claimCounts[tid] = (_claimCounts[tid] || 0) + 1;
+    }
+}
+
+function getClaimCount(taskId) {
+    return _claimCounts[taskId] || 0;
+}
 
 function runCreep(creep) {
     if (!creep.memory.role) {
@@ -178,6 +221,7 @@ function debug(msg) {
 
 module.exports = {
     tick: function () {
+        refreshClaimCounts();
         for (var name in Game.creeps) {
             try {
                 runCreep(Game.creeps[name]);
