@@ -109,6 +109,10 @@ function runCreep(creep) {
         return;
     }
 
+    if (creep.fatigue > 0 && Memory.flags && Memory.flags.debugStuck) {
+        console.log('[stuck] ' + creep.name + ' fatigue=' + creep.fatigue + ' pos=' + creep.pos.x + ',' + creep.pos.y + ' taskId=' + creep.memory.taskId);
+    }
+
     var tasks = taskRegistry.list(room);
     var allowed = RESTRICTED_TASKS[creep.memory.role];
 
@@ -135,7 +139,10 @@ function runCreep(creep) {
         var forceTarget = forceTargetFor(creep, room);
         if (forceTarget) {
             if (!creep.pos.isNearTo(forceTarget)) {
-                creep.moveTo(forceTarget, { visualizePathStyle: { stroke: '#ff00ff' } });
+                var r2 = creep.moveTo(forceTarget, { visualizePathStyle: { stroke: '#ff00ff' } });
+                if (r2 !== OK && r2 !== ERR_TIRED && Memory.flags && Memory.flags.debugStuck) {
+                    console.log('[stuck] ' + creep.name + ' force moveTo ' + forceTarget.id + ' -> ' + r2);
+                }
             } else {
                 var ha = creep.harvest(forceTarget);
                 if (ha === ERR_NOT_IN_RANGE) {
@@ -157,6 +164,9 @@ function runCreep(creep) {
         var keep = handler(creep, assigned);
         if (keep === false) {
             creep.memory.taskId = null;
+            if (Memory.flags && Memory.flags.debugStuck) {
+                console.log('[stuck] ' + creep.name + ' task ' + assigned.type + ' released');
+            }
         }
     } else {
         debug(creep.name + ' no handler for ' + assigned.type);
