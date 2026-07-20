@@ -16,6 +16,10 @@ const URGENT_TTD = 500;
 const CRITICAL_TTD = 2000;
 const WARN_TTD = 5000;
 
+const STORAGE_FULL_THRESHOLD = 0.8;
+const STORAGE_LOW_THRESHOLD = 0.2;
+const CONSTRUCTION_BACKLOG_THRESHOLD = 5000;
+
 function quotasFor(rcl) {
     return QUOTAS[rcl] || QUOTAS[0];
 }
@@ -45,8 +49,49 @@ function dynamicQuota(rcl, controller) {
     return q;
 }
 
-function nextRoleToSpawn(creepCounts, rcl, controller) {
-    const q = controller ? dynamicQuota(rcl, controller) : quotasFor(rcl);
+function storageRatio(storage) {
+    if (!storage) return 0;
+    const capacity = storage.store.getCapacity(RESOURCE_ENERGY);
+    if (!capacity) return 0;
+    return (storage.store[RESOURCE_ENERGY] || 0) / capacity;
+}
+
+function constructionBacklog(sites) {
+    if (!sites || sites.length === 0) return 0;
+    let remaining = 0;
+    for (let i = 0; i < sites.length; i++) {
+        remaining += sites[i].progressTotal - sites[i].progress;
+    }
+    return remaining;
+}
+
+function contextualQuota(rcl, controller, storage, constructionSites) {
+    const q = dynamicQuota(rcl, controller);
+    const ratio = storageRatio(storage);
+    const backlog = constructionBacklog(constructionSites);
+    const baseUpgraders = q.upgrader || 0;
+    const baseBuilders = q.builder || 0;
+
+    if (ratio >= STORAGE_FULL_THRESHOLD) {
+        q.upgrader = Math.max(baseUpgraders, Math.min(6, q.hauler || 0));
+    } else if (ratio <= STORAGE_LOW_THRESHOLD) {
+        q.upgrader = Math.max(1, Math.floor(baseUpgraders / 2));
+        if (backlog > CONSTRUCTION_BACKLOG_THRESHOLD) {
+            q.builder = Math.max(baseBuilders, Math.min(4, baseBuilders + 1));
+        }
+    }
+
+    if (backlog > CONSTRUCTION_BACKLOG_THRESHOLD) {
+        q.builder = Math.max(baseBuilders, Math.min(5, baseBuilders + 2));
+    }
+
+    return q;
+}
+
+function nextRoleToSpawn(creepCounts, rcl, controller, storage, constructionSites) {
+    const q = controller
+        ? contextualQuota(rcl, controller, storage, constructionSites)
+        : quotasFor(rcl);
     for (let i = 0; i < ROLE_PRIORITY.length; i++) {
         const role = ROLE_PRIORITY[i];
         const target = q[role];
@@ -65,6 +110,7 @@ function spawnPriority(role) {
 module.exports = {
     quotasFor: quotasFor,
     dynamicQuota: dynamicQuota,
+    contextualQuota: contextualQuota,
     nextRoleToSpawn: nextRoleToSpawn,
     spawnPriority: spawnPriority,
     ROLE_PRIORITY: ROLE_PRIORITY,

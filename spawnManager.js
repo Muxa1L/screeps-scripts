@@ -2,6 +2,7 @@ const sourceRegistry = require('sourceRegistry');
 const logger = require('logger');
 const bodies = require('creepsBodies');
 const quotas = require('creepsQuotas');
+const roomManager = require('roomManager');
 
 const BUCKET_SPAWN_THRESHOLD = 2000;
 
@@ -103,7 +104,8 @@ function tryRunForSpawn(spawn) {
         ticksToDowngrade: room.controller.ticksToDowngrade,
         level: room.controller.level,
     };
-    const role = quotas.nextRoleToSpawn(counts, rcl, controllerState);
+    const snap = roomManager.get(room.name);
+    const role = quotas.nextRoleToSpawn(counts, rcl, controllerState, snap && snap.storage, snap && snap.constructionSites);
     summaryLog(spawn, counts, rcl);
     if (!role) return;
     tryRoleSpawn(spawn, role);
