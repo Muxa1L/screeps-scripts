@@ -1,6 +1,32 @@
 const TaskType = require('taskBaseClass');
 const taskBase = require('taskBase');
 const move = require('moveUtil');
+const roomManager = require('roomManager');
+
+function findDeposit(creep) {
+    const snap = roomManager.get(creep.room.name);
+    if (!snap) return null;
+    if (snap.energyStructures && snap.energyStructures.length > 0) {
+        const nearest = creep.pos.findClosestByPath(snap.energyStructures);
+        if (nearest) return nearest;
+    }
+    if (snap.storage && snap.storage.store.getCapacity(RESOURCE_ENERGY) - (snap.storage.store[RESOURCE_ENERGY] || 0) > 0) {
+        return snap.storage;
+    }
+    if (snap.containers) {
+        const usable = [];
+        for (let i = 0; i < snap.containers.length; i++) {
+            const c = snap.containers[i];
+            if (c.store.getCapacity(RESOURCE_ENERGY) - (c.store[RESOURCE_ENERGY] || 0) > 0) {
+                usable.push(c);
+            }
+        }
+        if (usable.length > 0) {
+            return creep.pos.findClosestByPath(usable);
+        }
+    }
+    return null;
+}
 
 module.exports = new TaskType({
     type: 'sweep',
@@ -32,6 +58,15 @@ module.exports = new TaskType({
         if (!t) return false;
         if (!t.pos) return false;
         if (creep.store.getCapacity() === 0) return false;
+        if (creep.store.getFreeCapacity() === 0) {
+            const deposit = findDeposit(creep);
+            if (!deposit) return false;
+            move.action(creep, 'deposit@' + deposit.id);
+            if (creep.transfer(deposit, RESOURCE_ENERGY) === ERR_NOT_IN_RANGE) {
+                move.moveCreep(creep, deposit, { visualizePathStyle: { stroke: '#ffffff' } });
+            }
+            return true;
+        }
 
         let amount;
         let pick;
@@ -47,7 +82,6 @@ module.exports = new TaskType({
             amount = t.amount;
         }
         if (!amount || amount <= 0) return false;
-        if (creep.store[RESOURCE_ENERGY] >= creep.store.getCapacity()) return false;
 
         if (creep.pos.isNearTo(t)) {
             let res;

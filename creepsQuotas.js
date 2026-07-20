@@ -73,7 +73,7 @@ function contextualQuota(rcl, controller, storage, constructionSites) {
     const baseBuilders = q.builder || 0;
 
     if (ratio >= STORAGE_FULL_THRESHOLD) {
-        q.upgrader = Math.max(baseUpgraders, Math.min(6, q.hauler || 0));
+        q.upgrader = Math.min(6, Math.max(baseUpgraders, baseUpgraders + 2));
     } else if (ratio <= STORAGE_LOW_THRESHOLD) {
         q.upgrader = Math.max(1, Math.floor(baseUpgraders / 2));
         if (backlog > CONSTRUCTION_BACKLOG_THRESHOLD) {

@@ -17,6 +17,14 @@ function renewThresholdFor(creep) {
     return creep.body.length >= 6 ? RENEW_THRESHOLD_LARGE : RENEW_THRESHOLD_SMALL;
 }
 
+function shouldRenew(creep) {
+    if (creep.ticksToLive >= renewThresholdFor(creep)) return false;
+    const used = creep.store.getUsedCapacity(RESOURCE_ENERGY);
+    if (used === 0) return true;
+    if (creep.memory.role === 'miner') return true;
+    return false;
+}
+
 const RESTRICTED_TASKS = {
     miner:    ['mine'],
     hauler:   ['haul', 'sweep'],
@@ -42,9 +50,13 @@ function getClaimCount(taskId) {
     return _claimCounts[taskId] || 0;
 }
 
+const HARVEST_NEED_THRESHOLD = 0.25;
+
 function bestTaskFor(creep, taskList, allowed) {
-    const needsHarvest = creep.store[RESOURCE_ENERGY] < creep.store.getCapacity();
-    const isFull = creep.store[RESOURCE_ENERGY] >= creep.store.getCapacity();
+    const capacity = creep.store.getCapacity(RESOURCE_ENERGY);
+    const energy = creep.store[RESOURCE_ENERGY] || 0;
+    const needsHarvest = energy < capacity * HARVEST_NEED_THRESHOLD;
+    const isFull = energy >= capacity;
     const candidates = [];
     for (let i = 0; i < taskList.length; i++) {
         const t = taskList[i];
@@ -98,7 +110,7 @@ function runCreep(creep) {
         creep.memory.role = inferRoleFromName(creep.name);
     }
 
-    if (creep.ticksToLive < renewThresholdFor(creep)) {
+    if (shouldRenew(creep)) {
         const renewSpawn = nearestSpawn(creep);
         if (renewSpawn && renewSpawn.energy > 50) {
             renew.run(creep);

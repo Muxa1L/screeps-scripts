@@ -3,37 +3,54 @@ const taskBase = require('taskBase');
 const move = require('moveUtil');
 const roomManager = require('roomManager');
 
+
 const STORAGE_WITHDRAW_MIN = 200;
 const CONTAINER_WITHDRAW_MIN = 50;
-const DROPPED_ENERGY_MIN = 50;
+const DROPPED_ENERGY_MIN = 100;
+
+function scoreSource(creep, source) {
+    const energy = source.store ? (source.store[RESOURCE_ENERGY] || 0) : (source.amount || 0);
+    const free = creep.store.getFreeCapacity(RESOURCE_ENERGY);
+    const useful = Math.min(energy, free);
+    const dist = taskBase.approxDistance(creep, source);
+    return useful / Math.max(1, dist);
+}
 
 function findEnergySource(creep) {
     const snap = roomManager.get(creep.room.name);
     if (!snap) return null;
 
+    let best = null;
+    let bestScore = 0;
+
     if (snap.storage && snap.storage.store[RESOURCE_ENERGY] >= STORAGE_WITHDRAW_MIN) {
-        return snap.storage;
+        best = snap.storage;
+        bestScore = scoreSource(creep, snap.storage);
     }
     if (snap.containers) {
-        let best = null;
-        let bestEnergy = 0;
         for (let i = 0; i < snap.containers.length; i++) {
             const c = snap.containers[i];
             const energy = c.store[RESOURCE_ENERGY] || 0;
-            if (energy >= CONTAINER_WITHDRAW_MIN && energy > bestEnergy) {
-                bestEnergy = energy;
+            if (energy < CONTAINER_WITHDRAW_MIN) continue;
+            const s = scoreSource(creep, c);
+            if (s > bestScore) {
+                bestScore = s;
                 best = c;
             }
         }
-        if (best) return best;
     }
     if (snap.droppedEnergy && snap.droppedEnergy.length > 0) {
-        const bestDrop = creep.pos.findClosestByPath(snap.droppedEnergy);
-        if (bestDrop && bestDrop.amount >= DROPPED_ENERGY_MIN) {
-            return bestDrop;
+        for (let i = 0; i < snap.droppedEnergy.length; i++) {
+            const drop = snap.droppedEnergy[i];
+            if (drop.amount < DROPPED_ENERGY_MIN) continue;
+            const s = scoreSource(creep, drop);
+            if (s > bestScore) {
+                bestScore = s;
+                best = drop;
+            }
         }
     }
-    return null;
+    return best;
 }
 
 module.exports = new TaskType({
