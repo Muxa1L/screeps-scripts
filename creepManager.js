@@ -62,6 +62,13 @@ function runCreep(creep) {
     var tasks = taskRegistry.list(room);
     var allowed = RESTRICTED_TASKS[creep.memory.role];
 
+    if (Game.time % 20 === 0) {
+        var types = {};
+        for (var ti = 0; ti < tasks.length; ti++) types[tasks[ti].type] = (types[tasks[ti].type] || 0) + 1;
+        debug(creep.name + ' role=' + creep.memory.role + ' allowed=' + JSON.stringify(allowed) +
+              ' tasks=' + JSON.stringify(types) + ' pos=' + creep.pos.x + ',' + creep.pos.y);
+    }
+
     var assigned = null;
     if (creep.memory.taskId) {
         for (var i = 0; i < tasks.length; i++) {
@@ -75,7 +82,20 @@ function runCreep(creep) {
         assigned = bestTaskFor(creep, tasks, allowed);
     }
     if (!assigned) {
-        if (allowed && allowed.length === 1 && allowed[0] === 'mine' && creep.memory.sourceId) {
+        creep.memory.taskId = null;
+        var forceTarget = forceTargetFor(creep, room);
+        if (forceTarget) {
+            if (!creep.pos.isNearTo(forceTarget)) {
+                var r2 = creep.moveTo(forceTarget, { visualizePathStyle: { stroke: '#ff00ff' } });
+                if (r2 !== OK && r2 !== ERR_TIRED) {
+                    debug(creep.name + ' force moveTo ' + forceTarget.id + ' -> ' + r2);
+                }
+            } else {
+                var ha = creep.harvest(forceTarget);
+                if (ha === ERR_NOT_IN_RANGE) {
+                    creep.moveTo(forceTarget, { visualizePathStyle: { stroke: '#ff00ff' } });
+                }
+            }
             return;
         }
         if (Game.spawns['Spawn1'] && !creep.pos.isNearTo(Game.spawns['Spawn1'])) {
@@ -84,7 +104,6 @@ function runCreep(creep) {
                 debug(creep.name + ' no task, moveTo spawn -> ' + r);
             }
         }
-        creep.memory.taskId = null;
         return;
     }
 
@@ -100,6 +119,25 @@ function runCreep(creep) {
     } else {
         debug(creep.name + ' no handler for ' + assigned.type);
     }
+}
+
+function forceTargetFor(creep, room) {
+    var role = creep.memory.role;
+    if (role === 'miner' || role === 'generalist' || role === 'harvester' || role === 'upgrader' || role === 'builder') {
+        var sources = room.find(FIND_SOURCES);
+        if (sources.length > 0) {
+            return creep.pos.findClosestByPath(sources);
+        }
+    }
+    if (role === 'hauler') {
+        var containers = room.find(FIND_STRUCTURES, {
+            filter: function (s) { return s.structureType === STRUCTURE_CONTAINER; },
+        });
+        if (containers.length > 0) {
+            return creep.pos.findClosestByPath(containers);
+        }
+    }
+    return null;
 }
 
 var _debugLast = {};
