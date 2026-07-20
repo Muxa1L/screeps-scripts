@@ -50,9 +50,12 @@ function canDo(type, creep) {
     return tt.canDo(creep);
 }
 
-function cap(type) {
+function cap(type, room, snapshot) {
     const tt = get(type);
     if (!tt) return 99;
+    if (typeof tt.capFor === 'function' && room && snapshot) {
+        return tt.capFor(room, snapshot);
+    }
     return tt.cap;
 }
 

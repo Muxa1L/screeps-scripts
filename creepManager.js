@@ -6,6 +6,7 @@ const renew = require('taskRenew');
 const logger = require('logger');
 const spawnUtil = require('spawnUtil');
 const move = require('moveUtil');
+const roomManager = require('roomManager');
 
 const nearestSpawn = spawnUtil.nearestSpawn;
 
@@ -52,7 +53,7 @@ function getClaimCount(taskId) {
 
 const HARVEST_NEED_THRESHOLD = 0.25;
 
-function bestTaskFor(creep, taskList, allowed) {
+function bestTaskFor(creep, taskList, allowed, snap) {
     const capacity = creep.store.getCapacity(RESOURCE_ENERGY);
     const energy = creep.store[RESOURCE_ENERGY] || 0;
     const needsHarvest = energy < capacity * HARVEST_NEED_THRESHOLD;
@@ -64,7 +65,7 @@ function bestTaskFor(creep, taskList, allowed) {
         if (!tasks.canDo(t.type, creep)) continue;
         const target = t.target;
         if (!target || !target.pos) continue;
-        const cap = tasks.cap(t.type);
+        const cap = tasks.cap(t.type, creep.room, snap);
         if (cap < 99 && getClaimCount(t.id) >= cap) {
             continue;
         }
@@ -157,6 +158,7 @@ function runCreep(creep) {
         taskList = taskRegistry.list(room);
         _taskListCache[room.name] = taskList;
     }
+    const snap = roomManager.get(room.name);
     const allowed = RESTRICTED_TASKS[creep.memory.role];
 
     let current = null;
@@ -173,7 +175,7 @@ function runCreep(creep) {
             creep.memory.taskId = null;
         }
     }
-    const best = bestTaskFor(creep, taskList, allowed);
+    const best = bestTaskFor(creep, taskList, allowed, snap);
     let assigned = current;
     if (best) {
         if (!current) {
