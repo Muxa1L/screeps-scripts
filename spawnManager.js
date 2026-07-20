@@ -41,15 +41,16 @@ function tryDefenders(spawn, hostiles) {
     var fighters = _.filter(Game.creeps, function (c) { return c.memory.role === 'fighter'; });
     var healers = _.filter(Game.creeps, function (c) { return c.memory.role === 'healer'; });
     var cap = spawn.room.energyCapacityAvailable;
+    var available = spawn.room.energyAvailable;
     if (fighters.length === 0) {
-        var pick = bodies.bestBodyFor('fighter', cap);
-        if (pick && cap >= pick.cost) {
+        var pick = bodies.bestBodyForAvailable('fighter', cap, available);
+        if (pick) {
             return spawnBody(spawn, pick.body, 'Fighter' + Game.time, 'fighter');
         }
     }
     if (fighters.length > 0 && healers.length === 0) {
-        var hpick = bodies.bestBodyFor('healer', cap);
-        if (hpick && cap >= hpick.cost) {
+        var hpick = bodies.bestBodyForAvailable('healer', cap, available);
+        if (hpick) {
             return spawnBody(spawn, hpick.body, 'Healer' + Game.time, 'healer');
         }
     }
@@ -59,9 +60,8 @@ function tryDefenders(spawn, hostiles) {
 function tryRoleSpawn(spawn, role) {
     var cap = spawn.room.energyCapacityAvailable;
     var available = spawn.room.energyAvailable;
-    var pick = bodies.bestBodyFor(role, cap);
+    var pick = bodies.bestBodyForAvailable(role, cap, available);
     if (!pick) return false;
-    if (available < pick.cost) return false;
     var prefix = role.charAt(0).toUpperCase() + role.slice(1);
     var name = prefix + Game.time;
     return spawnBody(spawn, pick.body, name, role);
@@ -114,6 +114,7 @@ function debug(msg) {
 module.exports = {
     tick: tick,
     bestBodyFor: bodies.bestBodyFor,
+    bestBodyForAvailable: bodies.bestBodyForAvailable,
     bodyCost: bodies.bodyCost,
     bodySummary: bodies.bodySummary,
     nextRoleToSpawn: quotas.nextRoleToSpawn,

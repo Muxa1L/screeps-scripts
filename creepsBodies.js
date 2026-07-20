@@ -82,6 +82,14 @@ var BODIES = {
 };
 
 function bestBodyFor(role, capacity) {
+    return bestBodyForCapacity(role, capacity);
+}
+
+function bestBodyForAvailable(role, capacity, available) {
+    return bestBodyForCapacity(role, Math.min(capacity, available));
+}
+
+function bestBodyForCapacity(role, capacity) {
     var table = BODIES[role];
     if (!table) return null;
     var keys = Object.keys(table).map(Number).sort(function (a, b) { return a - b; });
@@ -107,6 +115,7 @@ function bodySummary() {
 
 module.exports = {
     bestBodyFor: bestBodyFor,
+    bestBodyForAvailable: bestBodyForAvailable,
     bodyCost: bodyCost,
     bodySummary: bodySummary,
     BODIES: BODIES,
