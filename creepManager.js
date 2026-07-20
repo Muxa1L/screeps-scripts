@@ -132,7 +132,30 @@ function runCreep(creep) {
     }
     var allowed = RESTRICTED_TASKS[creep.memory.role];
 
-    var assigned = bestTaskFor(creep, taskList, allowed);
+    var assigned = null;
+    if (creep.memory.taskId) {
+        for (var i = 0; i < taskList.length; i++) {
+            if (taskList[i].id === creep.memory.taskId) {
+                assigned = taskList[i];
+                break;
+            }
+        }
+        if (!assigned) {
+            creep.memory.taskId = null;
+        }
+    }
+    if (!assigned) {
+        assigned = bestTaskFor(creep, taskList, allowed);
+    } else {
+        var candidate = bestTaskFor(creep, taskList, allowed);
+        if (candidate && candidate.type !== assigned.type) {
+            var curPrio = assigned.priority;
+            var newPrio = candidate.priority;
+            if (newPrio < curPrio) {
+                assigned = candidate;
+            }
+        }
+    }
     if (Game.time % 50 === 0) {
         var dbgCarry = creep.carry.energy + '/' + creep.carryCapacity;
         var dbgRole = creep.memory.role;
