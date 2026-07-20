@@ -42,6 +42,15 @@ function run() {
         }
     });
 
+    assert.safeRun('links', function () {
+        for (var lname in Game.structures) {
+            var link = Game.structures[lname];
+            if (!link.structureType || link.structureType !== STRUCTURE_LINK) continue;
+            if (link.cooldown > 0) continue;
+            runLink(link);
+        }
+    });
+
     assert.safeRun('safeMode', function () {
         for (var rn in Game.rooms) {
             var room = Game.rooms[rn];
@@ -159,6 +168,57 @@ function runTower(tower) {
             tower.repair(damaged);
         }
     }
+}
+
+function runLink(link) {
+    var room = link.room;
+    if (!room) return;
+
+    var isSourceLink = false;
+    var sources = room.find(FIND_SOURCES);
+    for (var i = 0; i < sources.length; i++) {
+        if (link.pos.inRangeTo(sources[i].pos, 3)) {
+            isSourceLink = true;
+            break;
+        }
+    }
+    if (!isSourceLink) return;
+
+    if (link.store[RESOURCE_ENERGY] < 50) return;
+
+    var storageLink = null;
+    if (room.storage) {
+        var allLinks = room.find(FIND_STRUCTURES, {
+            filter: function (s) { return s.structureType === STRUCTURE_LINK; },
+        });
+        for (var j = 0; j < allLinks.length; j++) {
+            if (allLinks[j].id === link.id) continue;
+            if (allLinks[j].pos.inRangeTo(room.storage.pos, 3)) {
+                storageLink = allLinks[j];
+                break;
+            }
+        }
+    }
+
+    var controllerLink = null;
+    if (room.controller && room.controller.my) {
+        var allLinks2 = room.find(FIND_STRUCTURES, {
+            filter: function (s) { return s.structureType === STRUCTURE_LINK; },
+        });
+        for (var k = 0; k < allLinks2.length; k++) {
+            if (allLinks2[k].id === link.id) continue;
+            if (allLinks2[k].pos.inRangeTo(room.controller.pos, 3)) {
+                controllerLink = allLinks2[k];
+                break;
+            }
+        }
+    }
+
+    var target = controllerLink || storageLink;
+    if (!target) return;
+    if (target.store[RESOURCE_ENERGY] >= target.store.getCapacity(RESOURCE_ENERGY) - 10) return;
+
+    link.transferEnergy(target);
 }
 
 module.exports = {

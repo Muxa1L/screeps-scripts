@@ -34,7 +34,7 @@ function event(category, message) {
 function statusLine(creep) {
     var role = creep.memory.role || 'unknown';
     var task = creep.memory.taskId || 'none';
-    var carry = (creep.carry.energy || 0) + '/' + (creep.carryCapacity || 0);
+    var carry = (creep.store[RESOURCE_ENERGY] || 0) + '/' + (creep.store.getCapacity() || 0);
     var pos = creep.pos.x + ',' + creep.pos.y;
     var action = creep.memory._action || '';
     return creep.name + ' [' + role + '] task=' + task + ' carry=' + carry + ' pos=' + pos + (action ? ' (' + action + ')' : '');

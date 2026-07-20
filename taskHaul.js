@@ -45,7 +45,7 @@ module.exports = new TaskType({
     run: function (creep, task) {
         var container = task.target;
         if (!container) return false;
-        if (creep.carry.energy >= creep.carryCapacity) {
+        if (creep.store[RESOURCE_ENERGY] >= creep.store.getCapacity()) {
             var deposit = findDeposit(creep, container.id);
             if (!deposit) return false;
             move.action(creep, 'transfer@' + deposit.id);
@@ -55,14 +55,14 @@ module.exports = new TaskType({
             return true;
         }
         var containerEnergy = container.store[RESOURCE_ENERGY] || 0;
-        if (containerEnergy > 0 && creep.carry.energy < creep.carryCapacity) {
+        if (containerEnergy > 0 && creep.store[RESOURCE_ENERGY] < creep.store.getCapacity()) {
             move.action(creep, 'withdraw@' + container.id);
             if (creep.withdraw(container, RESOURCE_ENERGY) === ERR_NOT_IN_RANGE) {
                 move.moveCreep(creep, container, { visualizePathStyle: { stroke: '#ffffaa' } });
             }
             return true;
         }
-        if (creep.carry.energy > 0) {
+        if (creep.store[RESOURCE_ENERGY] > 0) {
             var deposit2 = findDeposit(creep, container.id);
             if (deposit2) {
                 move.action(creep, 'transfer@' + deposit2.id);

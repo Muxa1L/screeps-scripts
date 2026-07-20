@@ -43,6 +43,9 @@ function snapshotFor(room) {
     var containers = room.find(FIND_STRUCTURES, {
         filter: function (s) { return s.structureType === STRUCTURE_CONTAINER; },
     });
+    var links = room.find(FIND_STRUCTURES, {
+        filter: function (s) { return s.structureType === STRUCTURE_LINK; },
+    });
 
     var controller = room.controller;
     var controllerState = null;
@@ -71,6 +74,7 @@ function snapshotFor(room) {
         sources: sources,
         energyStructures: energyStructures,
         containers: containers,
+        links: links,
         storage: room.storage || null,
         controller: controllerState,
     };

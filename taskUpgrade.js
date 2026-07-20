@@ -36,7 +36,7 @@ module.exports = new TaskType({
     run: function (creep, task) {
         var controller = task.target;
         if (!controller) return false;
-        if (creep.carry.energy === 0) {
+        if (creep.store[RESOURCE_ENERGY] === 0) {
             var snap = roomManager.get(creep.room.name);
             if (snap && snap.storage && snap.storage.store[RESOURCE_ENERGY] >= STORAGE_WITHDRAW_MIN) {
                 move.action(creep, 'withdraw-storage@' + snap.storage.id);

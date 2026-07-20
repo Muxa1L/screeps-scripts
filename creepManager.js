@@ -43,8 +43,8 @@ function getClaimCount(taskId) {
 }
 
 function bestTaskFor(creep, taskList, allowed) {
-    var needsHarvest = creep.carry.energy < creep.carryCapacity;
-    var isFull = creep.carry.energy >= creep.carryCapacity;
+    var needsHarvest = creep.store[RESOURCE_ENERGY] < creep.store.getCapacity();
+    var isFull = creep.store[RESOURCE_ENERGY] >= creep.store.getCapacity();
     var candidates = [];
     for (var i = 0; i < taskList.length; i++) {
         var t = taskList[i];

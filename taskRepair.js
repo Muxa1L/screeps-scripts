@@ -22,7 +22,7 @@ module.exports = new TaskType({
     run: function (creep, task) {
         var target = task.target;
         if (!target) return false;
-        if (creep.carry.energy === 0) return false;
+        if (creep.store[RESOURCE_ENERGY] === 0) return false;
         if (target.hits >= target.hitsMax) return false;
         var res = creep.repair(target);
         if (res === ERR_NOT_IN_RANGE) {

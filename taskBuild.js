@@ -18,7 +18,7 @@ module.exports = new TaskType({
     run: function (creep, task) {
         var site = task.target;
         if (!site) return false;
-        if (creep.carry.energy === 0) return false;
+        if (creep.store[RESOURCE_ENERGY] === 0) return false;
         var res = creep.build(site);
         if (res === ERR_NOT_IN_RANGE) {
             move.action(creep, 'moving->build@' + site.id);

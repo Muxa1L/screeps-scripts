@@ -31,7 +31,7 @@ module.exports = new TaskType({
         var t = task.target;
         if (!t) return false;
         if (!t.pos) return false;
-        if (creep.carryCapacity === 0) return false;
+        if (creep.store.getCapacity() === 0) return false;
 
         var amount;
         var pick;
@@ -47,7 +47,7 @@ module.exports = new TaskType({
             amount = t.amount;
         }
         if (!amount || amount <= 0) return false;
-        if (creep.carry.energy >= creep.carryCapacity) return false;
+        if (creep.store[RESOURCE_ENERGY] >= creep.store.getCapacity()) return false;
 
         if (creep.pos.isNearTo(t)) {
             var res;

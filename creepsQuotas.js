@@ -30,11 +30,14 @@ function dynamicQuota(rcl, controller) {
     if (controller && controller.ticksToDowngrade !== undefined && controller.ticksToDowngrade !== null) {
         var ttd = controller.ticksToDowngrade;
         var baseUpgraders = q.upgrader || 0;
+        var totalQuota = 0;
+        for (var k in q) totalQuota += q[k];
+        var maxUpgraders = Math.max(1, Math.floor(totalQuota / 2));
         if (ttd < URGENT_TTD) {
-            q.upgrader = Math.max(baseUpgraders, 4);
+            q.upgrader = Math.max(baseUpgraders, Math.min(4, maxUpgraders));
             q.hauler = Math.max(q.hauler || 0, 1);
         } else if (ttd < CRITICAL_TTD) {
-            q.upgrader = Math.max(baseUpgraders, 3);
+            q.upgrader = Math.max(baseUpgraders, Math.min(3, maxUpgraders));
         } else if (ttd < WARN_TTD) {
             q.upgrader = Math.max(baseUpgraders, baseUpgraders + 1);
         }
