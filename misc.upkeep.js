@@ -8,8 +8,20 @@ var SAFE_MODE_TTD_THRESHOLD = 3000;
 var CRITICAL_CREEP_AGE = 5;
 var STUCK_THRESHOLD = 200;
 var MAX_RECYCLES_PER_TICK = 3;
-var _lastSafeModeActivate = 0;
 var SAFE_MODE_COOLDOWN_TICKS = 5000;
+var SAFE_MODE_MEMORY_KEY = 'lastSafeModeActivate';
+
+function getLastSafeModeActivate(roomName) {
+    if (!Memory.rooms) return 0;
+    if (!Memory.rooms[roomName]) return 0;
+    return Memory.rooms[roomName][SAFE_MODE_MEMORY_KEY] || 0;
+}
+
+function setLastSafeModeActivate(roomName, tick) {
+    if (!Memory.rooms) Memory.rooms = {};
+    if (!Memory.rooms[roomName]) Memory.rooms[roomName] = {};
+    Memory.rooms[roomName][SAFE_MODE_MEMORY_KEY] = tick;
+}
 
 var TOWER_MIN_ATTACK_ENERGY = 10;
 var TOWER_MIN_HEAL_ENERGY = 250;
@@ -66,13 +78,14 @@ function run() {
             var ttd = controller.ticksToDowngrade;
             var lowTtd = typeof ttd === 'number' && ttd < SAFE_MODE_TTD_THRESHOLD && hostiles.length > 0;
 
+            var lastSafeMode = getLastSafeModeActivate(rn);
             if ((lowHealth || lowTtd) &&
                 controller.safeModeAvailable > 0 &&
                 !controller.safeMode &&
-                Game.time - _lastSafeModeActivate > SAFE_MODE_COOLDOWN_TICKS) {
+                Game.time - lastSafeMode > SAFE_MODE_COOLDOWN_TICKS) {
                 var res = controller.activateSafeMode();
                 if (res === OK) {
-                    _lastSafeModeActivate = Game.time;
+                    setLastSafeModeActivate(rn, Game.time);
                     console.log('[' + Game.time + '] [safe-mode] [' + rn + '] activate -> ' + res + (lowTtd ? ' (ttd=' + ttd + ')' : ' (spawn-low)'));
                 } else if (Game.time % 100 === 0) {
                     console.log('[' + Game.time + '] [safe-mode] [' + rn + '] activate -> ' + res);

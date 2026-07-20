@@ -68,25 +68,18 @@ function bestTaskFor(creep, taskList, allowed) {
     candidates.sort(function (a, b) {
         return (a.priority * 1000 + a.approx) - (b.priority * 1000 + b.approx);
     });
-    var minPriority = candidates[0].priority;
-    var tier = [];
-    for (var j = 0; j < candidates.length; j++) {
-        if (candidates[j].priority === minPriority) tier.push(candidates[j]);
-        else break;
-    }
-    var limit = Math.min(tier.length, 5);
-    var best = null;
-    var bestScore = Infinity;
-    for (var k = 0; k < limit; k++) {
-        var c = tier[k];
-        var dist = tasks.score(c.task.type, creep, c.task.target);
-        var score = c.priority * 1000 + dist;
-        if (score < bestScore) {
-            bestScore = score;
-            best = c.task;
-        }
-    }
-    return best;
+    return candidates[0].task;
+}
+
+var TASK_SWITCH_COOLDOWN = 5;
+
+function shouldSwitch(creep, current, currentApprox, best) {
+    if (best.type === current.type) return false;
+    if (best.priority < current.priority) return true;
+    if (best.priority > current.priority) return false;
+    var lastChange = creep.memory._lastTaskChange || 0;
+    if (Game.time - lastChange < TASK_SWITCH_COOLDOWN) return false;
+    return best.approx < currentApprox;
 }
 
 function inferRoleFromName(name) {
@@ -155,10 +148,12 @@ function runCreep(creep) {
     var allowed = RESTRICTED_TASKS[creep.memory.role];
 
     var current = null;
+    var currentApprox = null;
     if (creep.memory.taskId) {
         for (var i = 0; i < taskList.length; i++) {
             if (taskList[i].id === creep.memory.taskId) {
                 current = taskList[i];
+                currentApprox = taskBase.approxDistance(creep, current.target);
                 break;
             }
         }
@@ -171,7 +166,7 @@ function runCreep(creep) {
     if (best) {
         if (!current) {
             assigned = best;
-        } else if (best.type !== current.type && best.priority < current.priority) {
+        } else if (shouldSwitch(creep, current, currentApprox, best)) {
             assigned = best;
         }
     }

@@ -7,6 +7,30 @@ var UPGRADE_CRITICAL_THRESHOLD = 3000;
 var UPGRADE_URGENT_THRESHOLD = 1500;
 var UPGRADE_EMERGENCY_THRESHOLD = 500;
 var STORAGE_WITHDRAW_MIN = 200;
+var CONTAINER_WITHDRAW_MIN = 50;
+
+function findEnergySource(creep) {
+    var snap = roomManager.get(creep.room.name);
+    if (!snap) return null;
+
+    if (snap.storage && snap.storage.store[RESOURCE_ENERGY] >= STORAGE_WITHDRAW_MIN) {
+        return snap.storage;
+    }
+    if (snap.containers) {
+        var best = null;
+        var bestEnergy = 0;
+        for (var i = 0; i < snap.containers.length; i++) {
+            var c = snap.containers[i];
+            var energy = c.store[RESOURCE_ENERGY] || 0;
+            if (energy >= CONTAINER_WITHDRAW_MIN && energy > bestEnergy) {
+                bestEnergy = energy;
+                best = c;
+            }
+        }
+        if (best) return best;
+    }
+    return null;
+}
 
 function upgradePriority(snapshot) {
     if (!snapshot || !snapshot.controller) return taskBase.PRIORITY.UPGRADE;
@@ -37,16 +61,14 @@ module.exports = new TaskType({
         var controller = task.target;
         if (!controller) return false;
         if (creep.store[RESOURCE_ENERGY] === 0) {
-            var snap = roomManager.get(creep.room.name);
-            if (snap && snap.storage && snap.storage.store[RESOURCE_ENERGY] >= STORAGE_WITHDRAW_MIN) {
-                move.action(creep, 'withdraw-storage@' + snap.storage.id);
-                var wres = creep.withdraw(snap.storage, RESOURCE_ENERGY);
-                if (wres === ERR_NOT_IN_RANGE) {
-                    move.moveCreep(creep, snap.storage, { visualizePathStyle: { stroke: '#ffffaa' } });
-                }
-                return true;
+            var source = findEnergySource(creep);
+            if (!source) return false;
+            move.action(creep, 'withdraw@' + source.id);
+            var wres = creep.withdraw(source, RESOURCE_ENERGY);
+            if (wres === ERR_NOT_IN_RANGE) {
+                move.moveCreep(creep, source, { visualizePathStyle: { stroke: '#ffffaa' } });
             }
-            return false;
+            return true;
         }
         var res = creep.upgradeController(controller);
         if (res === ERR_NOT_IN_RANGE) {
