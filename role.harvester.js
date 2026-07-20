@@ -49,18 +49,20 @@ var roleHarvester = {
                     var nextPos = creep.pos.getDirectionTo(path[0]);
                     creep.move(nextPos);
                 } else {
-                    if (creep.transfer(target, RESOURCE_ENERGY) == ERR_NOT_IN_RANGE) {
-                        var ret = PathFinder.search(creep.pos, {pos: target.pos, range: 1});
-                        if (!ret.incomplete) {
-                            pathCache.storePath(creep.id, target.id, ret.path);
-                            var nextPos = creep.pos.getDirectionTo(ret.path[0]);
-                            creep.move(nextPos);
-                        } else {
-                            creep.moveTo(target, {visualizePathStyle: {stroke: '#ffffff'}});
-                        }
-            }
-        }
-    }
-};
-
+                 if (creep.transfer(target, RESOURCE_ENERGY) == ERR_NOT_IN_RANGE) {
+                         var ret = PathFinder.search(creep.pos, {pos: target.pos, range: 1});
+                         if (!ret.incomplete) {
+                             pathCache.storePath(creep.id, target.id, ret.path);
+                             var nextPos = creep.pos.getDirectionTo(ret.path[0]);
+                             creep.move(nextPos);
+                         } else {
+                             creep.moveTo(target, {visualizePathStyle: {stroke: '#ffffff'}});
+                         }
+                     }
+                 }
+             }
+         }
+     }
+ };
+ 
 module.exports = roleHarvester;
