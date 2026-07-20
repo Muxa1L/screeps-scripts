@@ -9,18 +9,20 @@ function findDeposit(creep, sourceContainerId) {
         var nearest = creep.pos.findClosestByPath(snap.energyStructures);
         if (nearest) return nearest;
     }
-    if (creep.room.storage && _.sum(creep.room.storage.store) < creep.room.storage.storeCapacity) {
-        return creep.room.storage;
+    if (snap && snap.storage && _.sum(snap.storage.store) < snap.storage.storeCapacity) {
+        return snap.storage;
     }
-    var containers = creep.room.find(FIND_STRUCTURES, {
-        filter: function (s) {
-            return s.structureType === STRUCTURE_CONTAINER &&
-                   s.id !== sourceContainerId &&
-                   _.sum(s.store) < s.storeCapacity;
-        },
-    });
-    if (containers.length > 0) {
-        return creep.pos.findClosestByPath(containers);
+    if (snap && snap.containers) {
+        var usable = [];
+        for (var i = 0; i < snap.containers.length; i++) {
+            var c = snap.containers[i];
+            if (c.id !== sourceContainerId && _.sum(c.store) < c.storeCapacity) {
+                usable.push(c);
+            }
+        }
+        if (usable.length > 0) {
+            return creep.pos.findClosestByPath(usable);
+        }
     }
     return null;
 }

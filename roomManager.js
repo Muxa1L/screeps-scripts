@@ -71,6 +71,7 @@ function snapshotFor(room) {
         sources: sources,
         energyStructures: energyStructures,
         containers: containers,
+        storage: room.storage || null,
         controller: controllerState,
     };
 }

@@ -23,11 +23,17 @@ module.exports = new TaskType({
         var sourceId = task.target.id;
         if (!creep.memory.sourceId) {
             creep.memory.sourceId = sourceId;
-            sourceRegistry.claimSlot(sourceId, creep.name);
+            if (!sourceRegistry.claimSlot(sourceId, creep.name)) {
+                creep.memory.sourceId = null;
+                return false;
+            }
         } else if (creep.memory.sourceId !== sourceId) {
             sourceRegistry.releaseClaim(creep.name);
             creep.memory.sourceId = sourceId;
-            sourceRegistry.claimSlot(sourceId, creep.name);
+            if (!sourceRegistry.claimSlot(sourceId, creep.name)) {
+                creep.memory.sourceId = null;
+                return false;
+            }
         }
         var slot = sourceRegistry.slotPos(sourceId, creep.name);
         if (slot && !creep.pos.isEqualTo(slot)) {
@@ -36,7 +42,11 @@ module.exports = new TaskType({
             return true;
         }
         var source = Game.getObjectById(sourceId);
-        if (!source) return false;
+        if (!source) {
+            sourceRegistry.releaseClaim(creep.name);
+            creep.memory.sourceId = null;
+            return false;
+        }
         var ret = creep.harvest(source);
         if (ret === OK) {
             move.action(creep, 'harvesting@' + sourceId);

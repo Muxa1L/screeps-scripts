@@ -10,6 +10,10 @@ var MAX_RECYCLES_PER_TICK = 3;
 var _lastSafeModeActivate = 0;
 var SAFE_MODE_COOLDOWN_TICKS = 5000;
 
+var TOWER_MIN_ATTACK_ENERGY = 10;
+var TOWER_MIN_HEAL_ENERGY = 250;
+var TOWER_MIN_REPAIR_ENERGY = 500;
+
 var _recyclesThisTick = 0;
 var _lastTick = -1;
 
@@ -114,32 +118,37 @@ function run() {
 }
 
 function runTower(tower) {
+    var energy = tower.energy;
     var closestHostile = tower.pos.findClosestByRange(FIND_HOSTILE_CREEPS);
-    if (closestHostile) {
+    if (closestHostile && energy >= TOWER_MIN_ATTACK_ENERGY) {
         tower.attack(closestHostile);
         return;
     }
-    var closestDamagedCreep = tower.pos.findClosestByRange(FIND_MY_CREEPS, {
-        filter: function (c) { return c.hits < c.hitsMax; },
-    });
-    if (closestDamagedCreep) {
-        tower.heal(closestDamagedCreep);
-        return;
+    if (energy >= TOWER_MIN_HEAL_ENERGY) {
+        var closestDamagedCreep = tower.pos.findClosestByRange(FIND_MY_CREEPS, {
+            filter: function (c) { return c.hits < c.hitsMax; },
+        });
+        if (closestDamagedCreep) {
+            tower.heal(closestDamagedCreep);
+            return;
+        }
     }
-    var damaged = tower.pos.findClosestByRange(FIND_STRUCTURES, {
-        filter: function (s) {
-            if (s.structureType === STRUCTURE_WALL || s.structureType === STRUCTURE_RAMPART) {
-                return s.hits < RAMPART_TARGET_HITS;
-            }
-            if (s.hits >= s.hitsMax) return false;
-            return s.structureType === STRUCTURE_CONTAINER ||
-                   s.structureType === STRUCTURE_ROAD ||
-                   s.structureType === STRUCTURE_SPAWN ||
-                   s.structureType === STRUCTURE_EXTENSION;
-        },
-    });
-    if (damaged) {
-        tower.repair(damaged);
+    if (energy >= TOWER_MIN_REPAIR_ENERGY) {
+        var damaged = tower.pos.findClosestByRange(FIND_STRUCTURES, {
+            filter: function (s) {
+                if (s.structureType === STRUCTURE_WALL || s.structureType === STRUCTURE_RAMPART) {
+                    return s.hits < RAMPART_TARGET_HITS;
+                }
+                if (s.hits >= s.hitsMax) return false;
+                return s.structureType === STRUCTURE_CONTAINER ||
+                       s.structureType === STRUCTURE_ROAD ||
+                       s.structureType === STRUCTURE_SPAWN ||
+                       s.structureType === STRUCTURE_EXTENSION;
+            },
+        });
+        if (damaged) {
+            tower.repair(damaged);
+        }
     }
 }
 

@@ -9,8 +9,13 @@ var move = require('moveUtil');
 
 var nearestSpawn = spawnUtil.nearestSpawn;
 
-var RENEW_THRESHOLD = 400;
+var RENEW_THRESHOLD_SMALL = 150;
+var RENEW_THRESHOLD_LARGE = 400;
 var STUCK_THRESHOLD = 200;
+
+function renewThresholdFor(creep) {
+    return creep.body.length >= 6 ? RENEW_THRESHOLD_LARGE : RENEW_THRESHOLD_SMALL;
+}
 
 var RESTRICTED_TASKS = {
     miner:    ['mine'],
@@ -38,10 +43,9 @@ function getClaimCount(taskId) {
 }
 
 function bestTaskFor(creep, taskList, allowed) {
-    var best = null;
-    var bestScore = Infinity;
     var needsHarvest = creep.carry.energy < creep.carryCapacity;
     var isFull = creep.carry.energy >= creep.carryCapacity;
+    var candidates = [];
     for (var i = 0; i < taskList.length; i++) {
         var t = taskList[i];
         if (allowed && allowed.indexOf(t.type) === -1) continue;
@@ -54,13 +58,24 @@ function bestTaskFor(creep, taskList, allowed) {
         }
         if (needsHarvest && (t.type === 'build' || t.type === 'repair' || t.type === 'upgrade')) continue;
         if (isFull && (t.type === 'harvest' || t.type === 'mine')) continue;
-        var dist = tasks.score(t.type, creep, target);
         var priority = t.priority;
         if (needsHarvest && t.type === 'harvest') priority = 5;
-        var score = priority * 1000 + dist;
+        var approx = taskBase.approxDistance(creep, target);
+        candidates.push({ task: t, priority: priority, approx: approx });
+    }
+    candidates.sort(function (a, b) {
+        return (a.priority * 1000 + a.approx) - (b.priority * 1000 + b.approx);
+    });
+    var best = null;
+    var bestScore = Infinity;
+    var limit = Math.min(candidates.length, 3);
+    for (var j = 0; j < limit; j++) {
+        var c = candidates[j];
+        var dist = tasks.score(c.task.type, creep, c.task.target);
+        var score = c.priority * 1000 + dist;
         if (score < bestScore) {
             bestScore = score;
-            best = t;
+            best = c.task;
         }
     }
     return best;
@@ -82,7 +97,7 @@ function runCreep(creep) {
         creep.memory.role = inferRoleFromName(creep.name);
     }
 
-    if (creep.ticksToLive < RENEW_THRESHOLD) {
+    if (creep.ticksToLive < renewThresholdFor(creep)) {
         var renewSpawn = nearestSpawn(creep);
         if (renewSpawn && renewSpawn.energy > 50) {
             renew.run(creep);
