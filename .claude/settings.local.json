@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run:*)",
+      "Bash(git:*)",
+      "WebFetch(domain:docs.screeps.com)",
+      "Bash(wc:*)",
+      "Bash(mkdir:*)",
+      "Bash(mv:*)",
+      "Bash(node:*)",
+      "Bash(rm:*)",
+      "WebSearch",
+      "Bash(npm test:*)"
+    ]
+  }
+}
