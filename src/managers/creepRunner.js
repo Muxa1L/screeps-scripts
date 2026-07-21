@@ -10,6 +10,7 @@ const spawnUtil = require('../utils/spawnUtil');
 const move = require('../utils/moveUtil');
 const roomManager = require('./roomManager');
 
+const RENEW_MIN_BODY_LENGTH = constants.RENEW_MIN_BODY_LENGTH;
 const RENEW_THRESHOLD_SMALL = constants.RENEW_THRESHOLD_SMALL;
 const RENEW_THRESHOLD_LARGE = constants.RENEW_THRESHOLD_LARGE;
 const TASK_SWITCH_COOLDOWN = constants.TASK_SWITCH_COOLDOWN;
@@ -18,10 +19,11 @@ const MOVE_FAIL_THRESHOLD = move.MOVE_FAIL_THRESHOLD;
 const SELF_REFUELING_TASKS = { build: true, repair: true, upgrade: true };
 
 function renewThresholdFor(creep) {
-    return creep.body.length >= 6 ? RENEW_THRESHOLD_LARGE : RENEW_THRESHOLD_SMALL;
+    return creep.body.length >= 12 ? RENEW_THRESHOLD_LARGE : RENEW_THRESHOLD_SMALL;
 }
 
 function shouldRenew(creep) {
+    if (creep.body.length < RENEW_MIN_BODY_LENGTH) return false;
     if (creep.ticksToLive >= renewThresholdFor(creep)) return false;
     const used = creep.store.getUsedCapacity(RESOURCE_ENERGY);
     if (used === 0) return true;
