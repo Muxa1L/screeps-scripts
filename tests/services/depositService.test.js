@@ -47,6 +47,17 @@ test('findDeposit includes containers when energy structures are full', function
     assert.equal(chosen, container);
 });
 
+test('findDeposit prefers flagged priority containers over closer ordinary containers', function () {
+    mocks.resetGame();
+    const creep = mocks.mockCreep({ pos: pos(25, 25), capacity: 100, store: { [RESOURCE_ENERGY]: 100 } });
+    const near = mocks.mockStructure(STRUCTURE_CONTAINER, { id: 'near', pos: pos(26, 25), energy: 0, capacity: 1000 });
+    const flagged = mocks.mockStructure(STRUCTURE_CONTAINER, { id: 'flagged', pos: pos(40, 25), energy: 0, capacity: 1000 });
+    Game.flags['haul:controller-cache'] = mocks.mockFlag('haul:controller-cache', flagged.pos, [flagged]);
+    const snapshot = { energyStructures: [], storage: null, containers: [near, flagged] };
+    const chosen = depositService.findDeposit(creep, snapshot, {});
+    assert.equal(chosen, flagged);
+});
+
 test('findDeposit returns storage for non-energy resources', function () {
     mocks.resetGame();
     const creep = mocks.mockCreep({ pos: pos(25, 25), capacity: 100, store: { [RESOURCE_UTRIUM]: 50 } });

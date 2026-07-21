@@ -1,5 +1,6 @@
 const taskBase = require('../tasks/taskBase');
 const move = require('../utils/moveUtil');
+const roomFlags = require('../utils/roomFlags');
 
 const DEPOSIT_PRIORITY = {
     [STRUCTURE_SPAWN]: 1,
@@ -15,7 +16,8 @@ function structureNeedsEnergy(s) {
     return energy < s.store.getCapacity(RESOURCE_ENERGY);
 }
 
-function scoreDeposit(creep, s) {
+function scoreDeposit(creep, s, priorityIds) {
+    if (priorityIds && priorityIds[s.id]) return -100000;
     const dist = taskBase.approxDistance(creep, s);
     const priority = DEPOSIT_PRIORITY[s.structureType] || 10;
     const free = (s.store.getCapacity(RESOURCE_ENERGY) || 0) - (s.store[RESOURCE_ENERGY] || 0);
@@ -30,6 +32,7 @@ function findDeposit(creep, snapshot, options) {
 
     if (resourceType === RESOURCE_ENERGY) {
         const candidates = [];
+        const priorityIds = roomFlags.getPriorityContainerIds(creep.pos.roomName);
         if (snapshot.energyStructures) {
             for (let i = 0; i < snapshot.energyStructures.length; i++) {
                 const s = snapshot.energyStructures[i];
@@ -49,7 +52,7 @@ function findDeposit(creep, snapshot, options) {
             }
         }
         if (candidates.length === 0) return null;
-        candidates.sort(function (a, b) { return scoreDeposit(creep, a) - scoreDeposit(creep, b); });
+        candidates.sort(function (a, b) { return scoreDeposit(creep, a, priorityIds) - scoreDeposit(creep, b, priorityIds); });
         return candidates[0];
     }
 

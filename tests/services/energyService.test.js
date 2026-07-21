@@ -22,7 +22,7 @@ test('scoreSource rewards useful energy and penalizes distance', function () {
     assert.ok(nearScore > farScore);
 });
 
-test('findEnergySource prefers storage over containers over dropped energy', function () {
+test('findEnergySource prefers storage over dropped energy over containers', function () {
     mocks.resetMemory();
     mocks.resetGame();
     const creep = mocks.mockCreep({ pos: pos(25, 25), capacity: 100, store: {} });
@@ -36,6 +36,37 @@ test('findEnergySource prefers storage over containers over dropped energy', fun
     };
     const chosen = energyService.findEnergySource(creep, snapshot, { allowHarvest: false });
     assert.equal(chosen, snapshot.storage);
+});
+
+test('findEnergySource prefers dropped energy over containers when storage absent', function () {
+    mocks.resetMemory();
+    mocks.resetGame();
+    const creep = mocks.mockCreep({ pos: pos(25, 25), capacity: 100, store: {} });
+    const container = mocks.mockStructure(STRUCTURE_CONTAINER, { pos: pos(26, 25), energy: 300, capacity: 1000 });
+    const dropped = mocks.mockDroppedResource(100, pos(27, 25));
+    const snapshot = {
+        containers: [container],
+        droppedEnergy: [dropped],
+        sources: [],
+    };
+    const chosen = energyService.findEnergySource(creep, snapshot, { allowHarvest: false });
+    assert.equal(chosen, dropped);
+});
+
+test('findEnergySource prefers flagged priority containers over regular containers', function () {
+    mocks.resetMemory();
+    mocks.resetGame();
+    const creep = mocks.mockCreep({ pos: pos(25, 25), capacity: 100, store: {} });
+    const regular = mocks.mockStructure(STRUCTURE_CONTAINER, { id: 'regular', pos: pos(40, 25), energy: 300, capacity: 1000 });
+    const priority = mocks.mockStructure(STRUCTURE_CONTAINER, { id: 'priority', pos: pos(27, 25), energy: 50, capacity: 1000 });
+    Game.flags['haul:controller-cache'] = mocks.mockFlag('haul:controller-cache', priority.pos, [priority]);
+    const snapshot = {
+        containers: [regular, priority],
+        droppedEnergy: [],
+        sources: [],
+    };
+    const chosen = energyService.findEnergySource(creep, snapshot, { allowHarvest: false });
+    assert.equal(chosen, priority);
 });
 
 test('findEnergySource excludes a specific container', function () {

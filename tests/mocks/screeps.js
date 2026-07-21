@@ -203,7 +203,7 @@ function resetGame() {
     };
 }
 
-function makePos(p) {
+function makePos(p, lookForResults) {
     p = p || { x: 25, y: 25, roomName: 'W1N1' };
     return {
         x: p.x,
@@ -223,6 +223,17 @@ function makePos(p) {
         },
         findClosestByPath: function (items) { return items && items.length ? items[0] : null; },
         findClosestByRange: function (items) { return items && items.length ? items[0] : null; },
+        lookFor: function (type) { return (lookForResults && lookForResults[type]) || []; },
+    };
+}
+
+function mockFlag(name, p, structures) {
+    return {
+        name: name,
+        pos: makePos(p, { [LOOK_STRUCTURES]: structures || [] }),
+        color: 0,
+        secondaryColor: 0,
+        remove: function () {},
     };
 }
 
@@ -303,4 +314,5 @@ module.exports = {
     mockStructure: mockStructure,
     mockSource: mockSource,
     mockDroppedResource: mockDroppedResource,
+    mockFlag: mockFlag,
 };

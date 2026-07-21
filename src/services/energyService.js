@@ -2,6 +2,7 @@ const constants = require('../config/constants');
 const memory = require('../utils/memorySchema');
 const taskBase = require('../tasks/taskBase');
 const move = require('../utils/moveUtil');
+const roomFlags = require('../utils/roomFlags');
 
 function structureHasEnergy(s) {
     if (!s || !s.store) return false;
@@ -37,34 +38,39 @@ function findEnergySource(creep, snapshot, options) {
     let best = null;
     let bestScore = 0;
 
-    if (snapshot.storage && snapshot.storage.store[RESOURCE_ENERGY] >= constants.STORAGE_WITHDRAW_MIN) {
-        best = snapshot.storage;
-        bestScore = scoreSource(creep, snapshot.storage);
+    function consider(source, weight) {
+        const s = scoreSource(creep, source) * weight;
+        if (s > bestScore) {
+            bestScore = s;
+            best = source;
+        }
     }
 
+    if (snapshot.storage && snapshot.storage.store[RESOURCE_ENERGY] >= constants.STORAGE_WITHDRAW_MIN) {
+        consider(snapshot.storage, 1.0);
+    }
+
+    // Dropped energy decays, so strongly prefer it over container reserves.
+    if (snapshot.droppedEnergy) {
+        for (let i = 0; i < snapshot.droppedEnergy.length; i++) {
+            const drop = snapshot.droppedEnergy[i];
+            if (drop.amount < constants.DROPPED_ENERGY_MIN) continue;
+            consider(drop, 3.0);
+        }
+    }
+
+    // Flagged priority containers act as local caches and are preferred over
+    // ordinary source containers.
+    const priorityIds = roomFlags.getPriorityContainerIds(creep.pos.roomName);
     if (snapshot.containers) {
         for (let i = 0; i < snapshot.containers.length; i++) {
             const c = snapshot.containers[i];
             if (options.excludeContainerId && c.id === options.excludeContainerId) continue;
             const energy = c.store[RESOURCE_ENERGY] || 0;
-            if (energy < constants.CONTAINER_WITHDRAW_MIN) continue;
-            const s = scoreSource(creep, c);
-            if (s > bestScore) {
-                bestScore = s;
-                best = c;
-            }
-        }
-    }
-
-    if (snapshot.droppedEnergy) {
-        for (let i = 0; i < snapshot.droppedEnergy.length; i++) {
-            const drop = snapshot.droppedEnergy[i];
-            if (drop.amount < constants.DROPPED_ENERGY_MIN) continue;
-            const s = scoreSource(creep, drop);
-            if (s > bestScore) {
-                bestScore = s;
-                best = drop;
-            }
+            const isPriority = priorityIds[c.id];
+            if (!isPriority && energy < constants.CONTAINER_WITHDRAW_MIN) continue;
+            if (isPriority && energy === 0) continue;
+            consider(c, isPriority ? 1.5 : 1.0);
         }
     }
 
