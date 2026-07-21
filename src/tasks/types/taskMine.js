@@ -35,41 +35,39 @@ module.exports = {
         const currentSource = memory.getSourceId(creep);
         if (!currentSource) {
             memory.setSourceId(creep, sourceId);
-            if (!sourceRegistry.claimSlot(sourceId, creep.name)) {
-                memory.clearSourceId(creep);
-                return false;
-            }
+            sourceRegistry.claimSlot(sourceId, creep.name);
         } else if (currentSource !== sourceId) {
             sourceRegistry.releaseClaim(creep.name);
             memory.setSourceId(creep, sourceId);
-            if (!sourceRegistry.claimSlot(sourceId, creep.name)) {
-                memory.clearSourceId(creep);
-                return false;
-            }
+            sourceRegistry.claimSlot(sourceId, creep.name);
         }
-        const slot = sourceRegistry.slotPos(sourceId, creep.name);
-        if (slot && !creep.pos.isEqualTo(slot)) {
-            move.action(creep, 'moving->mine@' + sourceId);
-            move.moveCreep(creep, slot, { visualizePathStyle: { stroke: '#ffaa00' } });
-            return true;
-        }
+
         const source = Game.getObjectById(sourceId);
         if (!source) {
             sourceRegistry.releaseClaim(creep.name);
             memory.clearSourceId(creep);
             return false;
         }
+
+        const slot = sourceRegistry.slotPos(sourceId, creep.name);
+        if (slot && !creep.pos.isEqualTo(slot)) {
+            move.action(creep, 'moving->mine@' + sourceId);
+            move.moveCreep(creep, slot, { visualizePathStyle: { stroke: '#ffaa00' } });
+            return true;
+        }
+
         const ret = creep.harvest(source);
         if (ret === OK) {
             move.action(creep, 'harvesting@' + sourceId);
             return true;
         }
         if (ret === ERR_NOT_IN_RANGE) {
+            move.action(creep, 'moving->mine@' + sourceId);
             move.moveCreep(creep, slot || source, { visualizePathStyle: { stroke: '#ffaa00' } });
             return true;
         }
         // Keep the mine task even if the source is temporarily depleted; it will
-        // regenerate and the miner is already positioned on its slot.
+        // regenerate and the miner is already positioned nearby.
         return true;
     },
 };
