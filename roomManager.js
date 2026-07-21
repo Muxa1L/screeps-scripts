@@ -31,7 +31,7 @@ function snapshotFor(room) {
             return s.structureType === STRUCTURE_CONTAINER || s.structureType === STRUCTURE_ROAD;
         },
     });
-    const sources = room.find(FIND_SOURCES_ACTIVE);
+    const sources = room.find(FIND_SOURCES);
     const energyStructures = room.find(FIND_STRUCTURES, {
         filter: function (s) {
             return (s.structureType === STRUCTURE_EXTENSION ||
