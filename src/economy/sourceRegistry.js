@@ -32,13 +32,25 @@ function computeSlots(room, source) {
     return slots;
 }
 
+function cleanupDeadClaims(src) {
+    if (!src || !src.slots) return;
+    for (let i = 0; i < src.slots.length; i++) {
+        const name = src.slots[i].claimedBy;
+        if (name && !Game.creeps[name]) {
+            src.slots[i].claimedBy = null;
+        }
+    }
+}
+
 function recomputeSlots(room, sourceId, src) {
     const source = Game.getObjectById(sourceId);
     if (!source) return;
     const fresh = computeSlots(room, source);
     for (let i = 0; i < fresh.length; i++) {
         const match = src.slots.find(function (s) { return s.x === fresh[i].x && s.y === fresh[i].y; });
-        if (match) fresh[i].claimedBy = match.claimedBy;
+        if (match && match.claimedBy && Game.creeps[match.claimedBy]) {
+            fresh[i].claimedBy = match.claimedBy;
+        }
     }
     src.slots = fresh;
 }
@@ -55,8 +67,11 @@ function ensureRegistry(room) {
                 y: src.pos.y,
                 slots: computeSlots(room, src),
             };
-        } else if (Game.time % 500 === 0) {
-            recomputeSlots(room, src.id, Memory.sources[src.id]);
+        } else {
+            cleanupDeadClaims(Memory.sources[src.id]);
+            if (Game.time % 500 === 0) {
+                recomputeSlots(room, src.id, Memory.sources[src.id]);
+            }
         }
     }
     return Memory.sources;
