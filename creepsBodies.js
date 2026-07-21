@@ -1,4 +1,4 @@
-const BODYPART_COST = {
+const PART_COST = {
     [MOVE]:   50,
     [WORK]:   100,
     [CARRY]:  50,
@@ -12,7 +12,7 @@ const BODYPART_COST = {
 function bodyCost(body) {
     let total = 0;
     for (let i = 0; i < body.length; i++) {
-        total += BODYPART_COST[body[i]] || 0;
+        total += PART_COST[body[i]] || 0;
     }
     return total;
 }
