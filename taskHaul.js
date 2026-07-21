@@ -83,16 +83,23 @@ module.exports = new TaskType({
         const container = task.target;
         if (!container) return false;
 
+        if (creep.store[RESOURCE_ENERGY] === 0) {
+            creep.memory._hauledFrom = null;
+        }
+
         if (creep.store.getFreeCapacity(RESOURCE_ENERGY) === 0 ||
             (creep.store[RESOURCE_ENERGY] > 0 && (!container || !structureNeedsEnergy(container)))) {
             if (!canStillDeposit(creep)) return false;
-            const deposit = findDeposit(creep, container ? container.id : null);
+            const excludeId = (creep.memory._hauledFrom === container.id) ? container.id : null;
+            const deposit = findDeposit(creep, excludeId);
             if (!deposit) return false;
             move.action(creep, 'transfer@' + deposit.id);
             const tRes = creep.transfer(deposit, RESOURCE_ENERGY);
             if (tRes === ERR_NOT_IN_RANGE) {
                 move.moveCreep(creep, deposit, { visualizePathStyle: { stroke: '#ffffff' } });
-            } else if (tRes !== OK) {
+            } else if (tRes === OK) {
+                if (creep.store[RESOURCE_ENERGY] === 0) creep.memory._hauledFrom = null;
+            } else {
                 return false;
             }
             return canStillDeposit(creep);
@@ -105,6 +112,7 @@ module.exports = new TaskType({
                 move.moveCreep(creep, container, { visualizePathStyle: { stroke: '#ffffaa' } });
                 return true;
             }
+            if (wRes === OK) creep.memory._hauledFrom = container.id;
             return wRes === OK;
         }
 
