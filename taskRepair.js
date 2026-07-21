@@ -50,6 +50,9 @@ function findEnergySource(creep) {
             }
         }
     }
+    if (!best && snap.sources && snap.sources.length > 0) {
+        return creep.pos.findClosestByPath(snap.sources);
+    }
     return best;
 }
 
@@ -76,20 +79,28 @@ module.exports = new TaskType({
         const live = Game.getObjectById(target.id);
         if (!live || live.hits === undefined) return false;
         if (live.hits >= live.hitsMax) return false;
-        if (creep.store[RESOURCE_ENERGY] === 0) {
+        const capacity = creep.store.getCapacity(RESOURCE_ENERGY) || 0;
+        const energy = creep.store[RESOURCE_ENERGY] || 0;
+        if (energy < capacity) {
             const source = findEnergySource(creep);
-            if (!source) return false;
-            move.action(creep, 'refuel@' + source.id);
-            if (source.store) {
-                if (creep.withdraw(source, RESOURCE_ENERGY) === ERR_NOT_IN_RANGE) {
-                    move.moveCreep(creep, source, { visualizePathStyle: { stroke: '#ffffaa' } });
+            if (source) {
+                move.action(creep, 'refuel@' + source.id);
+                if (source.store) {
+                    if (creep.withdraw(source, RESOURCE_ENERGY) === ERR_NOT_IN_RANGE) {
+                        move.moveCreep(creep, source, { visualizePathStyle: { stroke: '#ffffaa' } });
+                    }
+                } else if (source.amount !== undefined) {
+                    if (creep.pickup(source) === ERR_NOT_IN_RANGE) {
+                        move.moveCreep(creep, source, { visualizePathStyle: { stroke: '#ffff00' } });
+                    }
+                } else {
+                    if (creep.harvest(source) === ERR_NOT_IN_RANGE) {
+                        move.moveCreep(creep, source, { visualizePathStyle: { stroke: '#ffaa00' } });
+                    }
                 }
-            } else {
-                if (creep.pickup(source) === ERR_NOT_IN_RANGE) {
-                    move.moveCreep(creep, source, { visualizePathStyle: { stroke: '#ffff00' } });
-                }
+                return true;
             }
-            return true;
+            if (energy === 0) return false;
         }
         const res = creep.repair(live);
         if (res === ERR_NOT_IN_RANGE) {

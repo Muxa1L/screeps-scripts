@@ -71,23 +71,27 @@ module.exports = new TaskType({
     run: function (creep, task) {
         const controller = task.target;
         if (!controller) return false;
-        if (creep.store[RESOURCE_ENERGY] === 0) {
+        const capacity = creep.store.getCapacity(RESOURCE_ENERGY) || 0;
+        const energy = creep.store[RESOURCE_ENERGY] || 0;
+        if (energy < capacity) {
             const source = findEnergySource(creep);
-            if (!source) return false;
-            if (source.structureType) {
-                move.action(creep, 'withdraw@' + source.id);
-                const wres = creep.withdraw(source, RESOURCE_ENERGY);
-                if (wres === ERR_NOT_IN_RANGE) {
-                    move.moveCreep(creep, source, { visualizePathStyle: { stroke: '#ffffaa' } });
+            if (source) {
+                if (source.structureType) {
+                    move.action(creep, 'withdraw@' + source.id);
+                    const wres = creep.withdraw(source, RESOURCE_ENERGY);
+                    if (wres === ERR_NOT_IN_RANGE) {
+                        move.moveCreep(creep, source, { visualizePathStyle: { stroke: '#ffffaa' } });
+                    }
+                } else {
+                    move.action(creep, 'harvest@' + source.id);
+                    const hres = creep.harvest(source);
+                    if (hres === ERR_NOT_IN_RANGE) {
+                        move.moveCreep(creep, source, { visualizePathStyle: { stroke: '#ffaa00' } });
+                    }
                 }
-            } else {
-                move.action(creep, 'harvest@' + source.id);
-                const hres = creep.harvest(source);
-                if (hres === ERR_NOT_IN_RANGE) {
-                    move.moveCreep(creep, source, { visualizePathStyle: { stroke: '#ffaa00' } });
-                }
+                return true;
             }
-            return true;
+            if (energy === 0) return false;
         }
         const res = creep.upgradeController(controller);
         if (res === ERR_NOT_IN_RANGE) {
