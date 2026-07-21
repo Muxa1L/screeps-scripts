@@ -156,7 +156,7 @@ function runCreep(creep) {
         console.log('[stuck] ' + creep.name + ' fatigue=' + creep.fatigue + ' pos=' + creep.pos.x + ',' + creep.pos.y + ' taskId=' + creep.memory.taskId);
     }
 
-    checkStuck(creep);
+    if (checkStuck(creep)) return;
 
     if (creep.memory._moveFailures && creep.memory._moveFailures >= move.MOVE_FAIL_THRESHOLD) {
         if (creep.memory.taskId) {
@@ -274,16 +274,17 @@ function runCreep(creep) {
 }
 
 function checkStuck(creep) {
-    if (!Memory.flags || !Memory.flags.stuckRecycle) return;
+    if (!Memory.flags || !Memory.flags.stuckRecycle) return false;
     const lastChange = creep.memory._lastTaskChange || 0;
-    if (Game.time - lastChange < STUCK_THRESHOLD) return;
+    if (Game.time - lastChange < STUCK_THRESHOLD) return false;
     const spawn = nearestSpawn(creep);
-    if (!spawn) return;
+    if (!spawn) return false;
     logger.event('stuck', '[' + Game.time + '] [stuck-recycle] ' + creep.name + ' idle for ' + (Game.time - lastChange) + ' ticks');
     if (spawn.recycleCreep(creep) === ERR_NOT_IN_RANGE) {
         move.moveCreep(creep, spawn, { visualizePathStyle: { stroke: '#ff8800' }, reusePath: 10 });
     }
     creep.memory._lastTaskChange = Game.time;
+    return true;
 }
 
 function forceTargetFor(creep, room) {
@@ -349,6 +350,12 @@ module.exports = {
                 runCreep(Game.creeps[name]);
             } catch (e) {
                 logger.event('error', '[' + Game.time + '] [creepManager] ' + name + ': ' + e);
+                const failed = Game.creeps[name];
+                if (failed && failed.memory && failed.memory.taskId) {
+                    const tid = failed.memory.taskId;
+                    if (_claimCounts[tid]) _claimCounts[tid] = Math.max(0, _claimCounts[tid] - 1);
+                    failed.memory.taskId = null;
+                }
             }
         }
     },

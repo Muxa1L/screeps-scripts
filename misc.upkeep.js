@@ -23,7 +23,7 @@ function setLastSafeModeActivate(roomName, tick) {
     Memory.rooms[roomName][SAFE_MODE_MEMORY_KEY] = tick;
 }
 
-const TOWER_MIN_ATTACK_ENERGY = 10;
+const TOWER_MIN_ATTACK_ENERGY = 250;
 const TOWER_MIN_HEAL_ENERGY = 250;
 const TOWER_MIN_REPAIR_ENERGY = 500;
 
