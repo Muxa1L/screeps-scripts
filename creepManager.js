@@ -100,6 +100,11 @@ function shouldSwitch(creep, current, currentApprox, best) {
     const bestTask = best.task;
     if (bestTask.id === current.id) return false;
     if (bestTask.type === current.type) return false;
+    if (current.type === 'harvest') {
+        const capacity = creep.store.getCapacity(RESOURCE_ENERGY) || 0;
+        const energy = creep.store[RESOURCE_ENERGY] || 0;
+        if (energy < capacity) return false;
+    }
     if (best.priority < current.priority) {
         const energy = creep.store[RESOURCE_ENERGY] || 0;
         if (energy === 0 && SELF_REFUELING_TASKS[current.type]) return false;
