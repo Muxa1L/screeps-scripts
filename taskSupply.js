@@ -46,9 +46,11 @@ module.exports = new TaskType({
     },
     run: function (creep, task) {
         const target = task.target;
-        if (!target) return false;
-        const capacity = target.store.getCapacity(RESOURCE_ENERGY) || 0;
-        const energy = target.store[RESOURCE_ENERGY] || 0;
+        if (!target || !target.id) return false;
+        const live = Game.getObjectById(target.id);
+        if (!live || live.store === undefined) return false;
+        const capacity = live.store.getCapacity(RESOURCE_ENERGY) || 0;
+        const energy = live.store[RESOURCE_ENERGY] || 0;
         if (energy >= capacity) return false;
 
         if (creep.store[RESOURCE_ENERGY] === 0) {
@@ -66,10 +68,10 @@ module.exports = new TaskType({
             return false;
         }
 
-        move.action(creep, 'supply@' + target.id);
-        const res = creep.transfer(target, RESOURCE_ENERGY);
+        move.action(creep, 'supply@' + live.id);
+        const res = creep.transfer(live, RESOURCE_ENERGY);
         if (res === ERR_NOT_IN_RANGE) {
-            move.moveCreep(creep, target, { visualizePathStyle: { stroke: '#ffffff' } });
+            move.moveCreep(creep, live, { visualizePathStyle: { stroke: '#ffffff' } });
             return true;
         }
         if (res !== OK) return false;
