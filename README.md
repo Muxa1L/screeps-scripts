@@ -7,25 +7,41 @@ is designed but not yet implemented (see `plans/remote-mining.md`).
 ## Architecture
 
 ```
-main.js
-  globals        - per-tick memory init, room-memory housekeeping
-  roomManager    - builds an immutable per-room snapshot each tick
-  creepManager   - per-creep task selection + dispatch (the scheduler)
-  spawnManager   - quota-driven spawning + emergency defender spawning
-  misc.upkeep    - towers, links, safe mode, memory cleanup, stuck recycle
-
-Task system
-  taskBase / taskBaseClass - task model, priorities, distance heuristics, cache
-  taskRegistry / tasksIndex - lists available tasks per room from a snapshot
-  taskHandlers              - thin dispatcher to per-type run functions
-  task*.js                  - one file per task type (harvest, mine, haul, ...)
-
-Support
-  sourceRegistry      - per-source mining slots with claim/release
-  constructionPlanner - extension/road/container/link/tower/storage siting
-  creepsBodies        - tiered body templates per role, cost-aware selection
-  creepsQuotas        - RCL-based role quotas with controller-ttd boosting
-  spawnUtil / moveUtil / logger / assert - utilities
+main.js              - Screeps-required root entry point; delegates to src/main
+src/
+  main.js            - per-tick loop with bucket gating
+  config/
+    constants.js     - numeric thresholds and limits
+    priorities.js    - task priority constants
+    roles.js         - role -> allowed-task metadata
+  utils/
+    memorySchema.js  - safe typed accessors for Memory / creep.memory
+    moveUtil.js      - path/move helpers with failure tracking
+    spawnUtil.js     - spawn helpers
+    logger.js        - per-category logging
+    assert.js        - safeTick wrappers
+  managers/
+    roomManager.js   - builds an immutable per-room snapshot each tick
+    creepManager.js  - per-creep task selection + dispatch (thin scheduler)
+    creepRunner.js   - task switching, assignment, renew/recycle helpers
+    spawnManager.js  - quota-driven spawning + emergency defender spawning
+    upkeepManager.js - towers, links, safe mode, memory cleanup, stuck recycle
+  economy/
+    sourceRegistry.js - per-source mining slots with claim/release
+    creepsBodies.js   - tiered body templates per role, cost-aware selection
+    creepsQuotas.js   - RCL-based role quotas with controller-ttd boosting
+  planning/
+    constructionPlanner.js - orchestrator for extension/road/container/link/tower/storage siting
+    plannerUtils.js        - shared construction-planning helpers
+    strategies/*.js        - one strategy per structure type
+  services/
+    energyService.js  - shared source selection (storage/containers/dropped/harvest)
+    depositService.js - shared deposit selection (spawn/extension/tower/storage/container)
+  tasks/
+    taskBase.js       - task model, distance heuristics, path-score cache
+    taskBaseClass.js  - TaskType wrapper around plain data-driven specs
+    tasksIndex.js     - registry of task specs
+    types/task*.js    - one file per task type (harvest, mine, haul, ...)
 ```
 
 ### Snapshot model
@@ -58,8 +74,8 @@ Cap lookups are cached per `type:roomName` per tick (`_capCache`). Task type
 ### Roles & restrictions
 
 Creep role is inferred from name prefix (`Miner...`, `Hauler...`, etc.) and
-stored in `creep.memory.role`. `RESTRICTED_TASKS` in `creepManager.js` maps
-roles to the task types they may take:
+stored in `creep.memory.role`. `src/config/roles.js` maps roles to the task
+types they may take:
 
 | Role      | Allowed tasks                  |
 |-----------|--------------------------------|
@@ -81,8 +97,8 @@ Defined in `taskBase.js`. Lower number = higher priority.
 | RENEW              | 20    | taskRenew          |
 | HEAL               | 30    | taskHeal           |
 | SUPPLY             | 35    | taskSupply         |
-| SWEEP              | 40    | taskSweep          |
-| HAUL               | 50    | taskHaul           |
+| HAUL               | 40    | taskHaul           |
+| SWEEP              | 50    | taskSweep          |
 | REPAIR_CRITICAL    | 55    | taskRepair (crit)  |
 | BUILD              | 60    | taskBuild          |
 | REPAIR             | 65    | taskRepair         |
@@ -102,6 +118,20 @@ Task `run` handlers re-fetch live game objects via `Game.getObjectById` before
 acting, so a snapshot-captured target that died/completed mid-tick causes the
 task to be released cleanly instead of throwing. Applied to: `taskDefend`,
 `taskHeal`, `taskRepair`, `taskBuild`, `taskSupply`.
+
+## Shared services and memory schema
+
+- `src/services/energyService.js` centralizes all energy-source selection:
+  storage first, then containers, then dropped resources, then source harvesting
+  when allowed. This logic was previously duplicated across `taskBuild`,
+  `taskRepair`, and `taskUpgrade`.
+- `src/services/depositService.js` centralizes deposit selection for haulers,
+  sweepers, and suppliers, with a configurable priority order and per-resource
+  handling.
+- `src/utils/memorySchema.js` provides safe typed accessors for all
+  `creep.memory` and `Memory` keys used by the AI. All setters initialize
+  missing parent objects so callers never have to guard against undefined
+  intermediate keys.
 
 ## Feature flags
 
@@ -139,7 +169,7 @@ Memory.logCategories = { creep: false, summary: false };
 | roomManager   | always           |
 | creepManager  | > 1000           |
 | spawnManager  | > 2000           |
-| misc.upkeep   | > 500            |
+| upkeepManager | > 500            |
 
 When the bucket is low, creeps stop running first, then spawning, then upkeep.
 `roomManager` always runs so snapshots stay fresh.
@@ -148,6 +178,21 @@ When the bucket is low, creeps stop running first, then spawning, then upkeep.
 
 - **Lint:** `npm run lint` (ESLint flat config in `eslint.config.mjs`).
 - **Lint fix:** `npm run lint:fix`.
+- **Test:** `npm test` (Node built-in test runner + `tests/mocks/screeps.js`).
+- **Build:** `npm run build` copies `src/` and the root `main.js` shim into
+  `dist/`, preserving the module layout Screeps expects.
+- **Deploy:** `npm run deploy` builds and pushes `dist/` to Screeps using
+  `screeps-api`. Set credentials in `.env`:
+  ```
+  SCREEPS_TOKEN=your-token
+  SCREEPS_BRANCH=main
+  # or for a private server:
+  SCREEPS_EMAIL=email
+  SCREEPS_PASSWORD=password
+  SCREEPS_HOST=localhost
+  SCREEPS_PORT=21025
+  SCREEPS_PROTOCOL=http
+  ```
 - **Husky + lint-staged:** pre-commit hook runs `eslint --fix` on staged `.js`
   files.
 - **Screeps globals:** `screeps-globals.json` lists every readonly global

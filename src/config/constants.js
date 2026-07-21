@@ -1,0 +1,64 @@
+module.exports = {
+    // CPU bucket gating
+    BUCKET_SPAWN_THRESHOLD: 2000,
+    BUCKET_CREEP_THRESHOLD: 1000,
+    BUCKET_UPKEEP_THRESHOLD: 500,
+
+    // Renew / recycle / stuck handling
+    RENEW_THRESHOLD_SMALL: 150,
+    RENEW_THRESHOLD_LARGE: 400,
+    STUCK_THRESHOLD: 200,
+    MAX_RECYCLES_PER_TICK: 3,
+    TASK_SWITCH_COOLDOWN: 5,
+    MOVE_FAIL_THRESHOLD: 5,
+
+    // Safe mode and rampart thresholds
+    SAFE_MODE_TRIGGER_HITS: 5000,
+    SAFE_MODE_TTD_THRESHOLD: 3000,
+    SAFE_MODE_COOLDOWN_TICKS: 5000,
+    RAMPART_TARGET_HITS: 100000,
+
+    // Tower energy minimums
+    TOWER_MIN_ATTACK_ENERGY: 250,
+    TOWER_MIN_HEAL_ENERGY: 250,
+    TOWER_MIN_REPAIR_ENERGY: 500,
+
+    // Controller upgrade urgency
+    UPGRADE_EMERGENCY_THRESHOLD: 500,
+    UPGRADE_URGENT_THRESHOLD: 1500,
+    UPGRADE_CRITICAL_THRESHOLD: 3000,
+
+    // Supply urgency
+    SUPPLY_CRITICAL_THRESHOLD: 0.3,
+    SUPPLY_LOW_THRESHOLD: 0.6,
+
+    // Energy-source minimums
+    STORAGE_WITHDRAW_MIN: 200,
+    CONTAINER_WITHDRAW_MIN: 50,
+    DROPPED_ENERGY_MIN: 100,
+
+    // Construction planning
+    MAX_SITES_PER_TICK: 3,
+    PLANNING_INTERVAL: 100,
+
+    // Path cache
+    PATH_SCORE_TTL: 10,
+    PATH_SCORE_CLEANUP_INTERVAL: 50,
+
+    // Logger state
+    MAX_PERIODIC_KEYS: 200,
+
+    // Error ring buffer
+    MAX_ERRORS: 50,
+
+    // Quota / economy thresholds
+    STORAGE_FULL_THRESHOLD: 0.8,
+    STORAGE_LOW_THRESHOLD: 0.2,
+    CONSTRUCTION_BACKLOG_THRESHOLD: 5000,
+    URGENT_TTD: 1000,
+    CRITICAL_TTD: 4000,
+    WARN_TTD: 6000,
+
+    // Creep-memory cleanup
+    GHOST_CRITICAL_AGE: 5,
+};

@@ -6,14 +6,19 @@
   "devDependencies": {
     "@eslint/js": "^9.39.1",
     "@types/node": "^26.1.1",
+    "dotenv": "^16.5.0",
     "eslint": "^9.39.1",
     "globals": "^16.5.0",
     "husky": "^9.1.7",
-    "lint-staged": "^16.2.4"
+    "lint-staged": "^16.2.4",
+    "screeps-api": "^2.0.0"
   },
   "scripts": {
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
+    "test": "node --test \"tests/**/*.test.js\"",
+    "build": "node scripts/build.js",
+    "deploy": "node scripts/build.js && node scripts/deploy.js",
     "prepare": "husky"
   },
   "lint-staged": {

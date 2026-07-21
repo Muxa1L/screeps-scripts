@@ -1,0 +1,15 @@
+module.exports = {
+    DEFEND: 10,
+    RENEW: 20,
+    HEAL: 30,
+    SUPPLY: 35,
+    HAUL: 40,
+    SWEEP: 50,
+    REPAIR_CRITICAL: 55,
+    BUILD: 60,
+    REPAIR: 65,
+    UPGRADE: 70,
+    MINE: 80,
+    HARVEST: 90,
+    IDLE: 100,
+};
