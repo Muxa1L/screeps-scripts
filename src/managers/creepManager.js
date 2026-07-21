@@ -6,6 +6,7 @@ const creepRunner = require('./creepRunner');
 let _claimCounts = {};
 let _taskListCache = {};
 let _capCache = {};
+let _roleTaskCache = {};
 
 function refreshClaimCounts() {
     _claimCounts = {};
@@ -69,6 +70,7 @@ function runCreep(creep) {
         claimCounts: _claimCounts,
         taskListCache: _taskListCache,
         capCache: _capCache,
+        roleTaskCache: _roleTaskCache,
     };
     creepRunner.runCreep(creep, context);
 }
@@ -78,6 +80,7 @@ module.exports = {
         refreshClaimCounts();
         _taskListCache = {};
         _capCache = {};
+        _roleTaskCache = {};
 
         logger.periodic('summary', 50, 'tick', buildSummary());
 

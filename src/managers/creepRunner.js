@@ -93,7 +93,18 @@ function capForType(type, room, snap, capCache) {
     return capCache[key];
 }
 
-function bestTaskFor(creep, taskList, allowed, snap, claimCounts, capCache) {
+function filterByRole(taskList, role) {
+    const allowed = roles.allowedSet(role);
+    if (!allowed) return taskList;
+    const out = [];
+    for (let i = 0; i < taskList.length; i++) {
+        const t = taskList[i];
+        if (allowed[t.type]) out.push(t);
+    }
+    return out;
+}
+
+function bestTaskFor(creep, taskList, snap, claimCounts, capCache) {
     const capacity = creep.store.getCapacity(RESOURCE_ENERGY) || 0;
     const energy = creep.store[RESOURCE_ENERGY] || 0;
     const isFull = capacity > 0 && energy >= capacity;
@@ -101,7 +112,6 @@ function bestTaskFor(creep, taskList, allowed, snap, claimCounts, capCache) {
     const candidates = [];
     for (let i = 0; i < taskList.length; i++) {
         const t = taskList[i];
-        if (allowed && !allowed[t.type]) continue;
         if (!tasks.canDo(t.type, creep)) continue;
         const target = t.target;
         if (!target || !target.pos) continue;
@@ -177,9 +187,9 @@ function findCurrentTask(taskList, taskId) {
     return null;
 }
 
-function selectTask(creep, taskList, allowed, snap, currentTask, claimCounts, capCache) {
+function selectTask(creep, taskList, snap, currentTask, claimCounts, capCache) {
     const currentApprox = currentTask ? taskBase.approxDistance(creep, currentTask.target) : null;
-    const best = bestTaskFor(creep, taskList, allowed, snap, claimCounts, capCache);
+    const best = bestTaskFor(creep, taskList, snap, claimCounts, capCache);
     let assigned = currentTask;
     if (best) {
         if (!currentTask) {
@@ -405,15 +415,30 @@ function runCreep(creep, context) {
     // Combat roles (fighter/healer) can take tasks from any visible room,
     // not just the room they are currently standing in.
     const role = memory.getRole(creep);
+    let combatTasks = null;
     if (role === 'fighter' || role === 'healer') {
-        const combatTasks = collectCombatTasks(role);
+        combatTasks = collectCombatTasks(role);
         if (combatTasks.length > 0) {
             taskList = combatTasks;
         }
     }
 
     const snap = roomManager.get(room.name);
-    const allowed = roles.allowedSet(role);
+    // Pre-filter the task list by role once per (room, role) per tick so
+    // bestTaskFor only iterates tasks this role can actually take. Combat
+    // creeps already have a type-specific list, so filter inline (cheap).
+    let roleTasks;
+    if (combatTasks) {
+        roleTasks = filterByRole(combatTasks, role);
+    } else {
+        const key = room.name + ':' + role;
+        roleTasks = context.roleTaskCache[key];
+        if (!roleTasks) {
+            roleTasks = filterByRole(taskList, role);
+            context.roleTaskCache[key] = roleTasks;
+        }
+    }
+
     const currentTaskId = memory.getTaskId(creep);
     let currentTask = null;
     if (currentTaskId) {
@@ -423,7 +448,7 @@ function runCreep(creep, context) {
         }
     }
 
-    const assigned = selectTask(creep, taskList, allowed, snap, currentTask, context.claimCounts, context.capCache);
+    const assigned = selectTask(creep, roleTasks, snap, currentTask, context.claimCounts, context.capCache);
     if (!assigned) {
         releaseTask(creep, context.claimCounts);
         runIdleFallback(creep, room);

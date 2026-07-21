@@ -18,32 +18,32 @@ function snapshotFor(room) {
     });
     const damagedCritical = [];
     const damagedNonCritical = [];
+    const energyStructures = [];
+    const containers = [];
+    const links = [];
+    // Single FIND_STRUCTURES scan; categorize every structure in one pass to
+    // avoid re-running the (expensive) find for energy structures, containers,
+    // and links.
     const allStructures = room.find(FIND_STRUCTURES);
     for (let i = 0; i < allStructures.length; i++) {
         const s = allStructures[i];
-        if (s.structureType === STRUCTURE_RAMPART || s.structureType === STRUCTURE_WALL) {
+        const st = s.structureType;
+        if (st === STRUCTURE_RAMPART || st === STRUCTURE_WALL) {
             if (s.hits < 10000) damagedCritical.push(s);
             else if (s.hits < s.hitsMax) damagedNonCritical.push(s);
-        } else if (s.structureType === STRUCTURE_CONTAINER || s.structureType === STRUCTURE_ROAD) {
+        } else if (st === STRUCTURE_CONTAINER) {
+            containers.push(s);
             if (s.hits < s.hitsMax) damagedNonCritical.push(s);
+        } else if (st === STRUCTURE_ROAD) {
+            if (s.hits < s.hitsMax) damagedNonCritical.push(s);
+        } else if (st === STRUCTURE_EXTENSION || st === STRUCTURE_SPAWN || st === STRUCTURE_TOWER) {
+            if (s.energy < s.energyCapacity) energyStructures.push(s);
+        } else if (st === STRUCTURE_LINK) {
+            links.push(s);
         }
     }
     const sources = room.find(FIND_SOURCES);
     const hostileStructures = room.find(FIND_HOSTILE_STRUCTURES);
-    const energyStructures = room.find(FIND_STRUCTURES, {
-        filter: function (s) {
-            return (s.structureType === STRUCTURE_EXTENSION ||
-                    s.structureType === STRUCTURE_SPAWN ||
-                    s.structureType === STRUCTURE_TOWER) &&
-                   s.energy < s.energyCapacity;
-        },
-    });
-    const containers = room.find(FIND_STRUCTURES, {
-        filter: function (s) { return s.structureType === STRUCTURE_CONTAINER; },
-    });
-    const links = room.find(FIND_STRUCTURES, {
-        filter: function (s) { return s.structureType === STRUCTURE_LINK; },
-    });
 
     const controller = room.controller;
     let controllerState = null;

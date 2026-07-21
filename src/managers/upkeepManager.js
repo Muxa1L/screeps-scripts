@@ -7,22 +7,19 @@ const memoryCleanupService = require('./upkeep/memoryCleanupService');
 const stuckRecycleService = require('./upkeep/stuckRecycleService');
 const watchdogService = require('./upkeep/watchdogService');
 
-function runTowers() {
+function runStructures() {
+    // Single pass over Game.structures; dispatch towers and links in one
+    // iteration instead of two full scans. Per-structure safeRun keeps the
+    // per-service error labels ('towers' / 'links') and isolates failures.
     for (const name in Game.structures) {
         const s = Game.structures[name];
         if (!s.structureType) continue;
         if (s.structureType === STRUCTURE_TOWER) {
-            towerService.runTower(s);
+            assert.safeRun('towers', function () { towerService.runTower(s); });
+        } else if (s.structureType === STRUCTURE_LINK) {
+            if (s.cooldown > 0) continue;
+            assert.safeRun('links', function () { linkService.runLink(s); });
         }
-    }
-}
-
-function runLinks() {
-    for (const lname in Game.structures) {
-        const link = Game.structures[lname];
-        if (!link.structureType || link.structureType !== STRUCTURE_LINK) continue;
-        if (link.cooldown > 0) continue;
-        linkService.runLink(link);
     }
 }
 
@@ -35,8 +32,7 @@ function run() {
         }
     });
 
-    assert.safeRun('towers', runTowers);
-    assert.safeRun('links', runLinks);
+    assert.safeRun('structures', runStructures);
     assert.safeRun('safeMode', safeModeService.runSafeMode);
     assert.safeRun('creepMemoryCleanup', memoryCleanupService.runMemoryCleanup);
     assert.safeRun('stuckRecycle', stuckRecycleService.runStuckRecycle);
