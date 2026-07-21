@@ -16,6 +16,7 @@ function runLink(link) {
     if (!isSourceLink) return;
 
     if (link.store[RESOURCE_ENERGY] < 50) return;
+    if (link.cooldown > 0) return;
 
     let storageLink = null;
     let controllerLink = null;
@@ -32,9 +33,15 @@ function runLink(link) {
         }
     }
 
-    const target = controllerLink || storageLink;
+    let target = null;
+    if (controllerLink && !controllerLink.cooldown &&
+        controllerLink.store[RESOURCE_ENERGY] < controllerLink.store.getCapacity(RESOURCE_ENERGY) - 10) {
+        target = controllerLink;
+    } else if (storageLink && !storageLink.cooldown &&
+               storageLink.store[RESOURCE_ENERGY] < storageLink.store.getCapacity(RESOURCE_ENERGY) - 10) {
+        target = storageLink;
+    }
     if (!target) return;
-    if (target.store[RESOURCE_ENERGY] >= target.store.getCapacity(RESOURCE_ENERGY) - 10) return;
 
     link.transferEnergy(target);
 }

@@ -14,7 +14,8 @@ function scoreSource(creep, source) {
     const free = creep.store.getFreeCapacity(RESOURCE_ENERGY);
     const useful = Math.min(energy, free);
     const dist = taskBase.approxDistance(creep, source);
-    return useful / Math.max(1, dist);
+    const reserve = source.store ? ((source.store.getCapacity(RESOURCE_ENERGY) || 0) - energy) : 0;
+    return (useful + reserve * 0.05) / Math.max(1, dist);
 }
 
 function closestSafeSource(creep, snapshot) {

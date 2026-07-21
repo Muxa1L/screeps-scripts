@@ -30,9 +30,9 @@ module.exports = {
         const capacity = creep.store.getCapacity(RESOURCE_ENERGY) || 0;
         const energy = creep.store[RESOURCE_ENERGY] || 0;
         const workParts = creep.getActiveBodyparts(WORK);
-        const minEnergy = workParts;
+        const minEnergy = workParts * REPAIR_POWER;
         const isFull = energy >= capacity;
-        if (isFull) memory.clearRefueling(creep);
+        if (isFull || energy >= minEnergy) memory.clearRefueling(creep);
         if (memory.getRefueling(creep) || energy < minEnergy) {
             if (!isFull) {
                 const source = energyService.findEnergySource(creep, snap, { allowHarvest: true });
@@ -43,7 +43,7 @@ module.exports = {
                 }
             }
             memory.clearRefueling(creep);
-            if (energy === 0) return false;
+            if (energy < minEnergy) return false;
         }
         const res = creep.repair(live);
         if (res === ERR_NOT_IN_RANGE) {

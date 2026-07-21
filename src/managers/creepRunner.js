@@ -12,7 +12,6 @@ const roomManager = require('./roomManager');
 
 const RENEW_THRESHOLD_SMALL = constants.RENEW_THRESHOLD_SMALL;
 const RENEW_THRESHOLD_LARGE = constants.RENEW_THRESHOLD_LARGE;
-const STUCK_THRESHOLD = constants.STUCK_THRESHOLD;
 const TASK_SWITCH_COOLDOWN = constants.TASK_SWITCH_COOLDOWN;
 const MOVE_FAIL_THRESHOLD = move.MOVE_FAIL_THRESHOLD;
 
@@ -133,8 +132,15 @@ function shouldSwitch(creep, current, currentApprox, best) {
         if (energy < capacity) return false;
     }
     if (best.priority < current.priority) {
+        // Empty builders/repairers/upgraders should still switch to combat,
+        // critical supply, or emergency upgrade to defend the room.
         const energy = creep.store[RESOURCE_ENERGY] || 0;
-        if (energy === 0 && SELF_REFUELING_TASKS[current.type]) return false;
+        if (energy === 0 && SELF_REFUELING_TASKS[current.type] &&
+            bestTask.type !== 'defend' && bestTask.type !== 'heal' &&
+            !(bestTask.type === 'supply' && best.priority <= taskBase.PRIORITY.SUPPLY) &&
+            !(bestTask.type === 'upgrade' && best.priority <= taskBase.PRIORITY.SUPPLY)) {
+            return false;
+        }
         return true;
     }
     if (best.priority > current.priority) return false;
@@ -204,15 +210,16 @@ function renewOrRecycle(creep) {
 
 function checkStuck(creep) {
     if (!Memory.flags || !Memory.flags.stuckRecycle) return false;
-    const lastChange = memory.getLastTaskChange(creep);
-    if (Game.time - lastChange < STUCK_THRESHOLD) return false;
+    if (creep.spawning) return false;
+    const moveFailures = memory.getMoveFailures(creep);
+    if (moveFailures < MOVE_FAIL_THRESHOLD) return false;
     const spawn = spawnUtil.nearestSpawn(creep);
     if (!spawn) return false;
-    logger.event('stuck', '[' + Game.time + '] [stuck-recycle] ' + creep.name + ' idle for ' + (Game.time - lastChange) + ' ticks');
+    logger.event('stuck', '[' + Game.time + '] [stuck-recycle] ' + creep.name + ' move-failures=' + moveFailures);
     if (spawn.recycleCreep(creep) === ERR_NOT_IN_RANGE) {
         move.moveCreep(creep, spawn, { visualizePathStyle: { stroke: '#ff8800' }, reusePath: 10 });
     }
-    memory.setLastTaskChange(creep, Game.time);
+    memory.setMoveFailures(creep, 0);
     return true;
 }
 

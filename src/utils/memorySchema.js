@@ -148,7 +148,7 @@ function getRoomMemory(roomName) {
 function getSourceMemory(id) {
     if (!Memory.sources) Memory.sources = {};
     if (!Memory.sources[id]) {
-        Memory.sources[id] = {
+        return {
             roomName: '',
             x: 0,
             y: 0,

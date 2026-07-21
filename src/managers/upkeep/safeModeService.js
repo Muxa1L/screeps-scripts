@@ -25,10 +25,11 @@ function runSafeMode() {
         const lowTtd = typeof ttd === 'number' && ttd < SAFE_MODE_TTD_THRESHOLD && hostileCount > 0;
 
         const lastSafeMode = memory.getRoomMemory(rn)[SAFE_MODE_MEMORY_KEY] || 0;
+        const cooldownClear = !controller.safeModeCooldown && Game.time - lastSafeMode > SAFE_MODE_COOLDOWN_TICKS;
         if ((lowHealth || lowTtd) &&
             controller.safeModeAvailable > 0 &&
             !controller.safeMode &&
-            Game.time - lastSafeMode > SAFE_MODE_COOLDOWN_TICKS) {
+            cooldownClear) {
             const res = controller.activateSafeMode();
             if (res === OK) {
                 memory.getRoomMemory(rn)[SAFE_MODE_MEMORY_KEY] = Game.time;

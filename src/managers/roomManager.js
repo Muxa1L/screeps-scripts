@@ -23,11 +23,13 @@ function snapshotFor(room) {
         const s = allStructures[i];
         if (s.structureType === STRUCTURE_RAMPART || s.structureType === STRUCTURE_WALL) {
             if (s.hits < 10000) damagedCritical.push(s);
+            else if (s.hits < s.hitsMax) damagedNonCritical.push(s);
         } else if (s.structureType === STRUCTURE_CONTAINER || s.structureType === STRUCTURE_ROAD) {
             if (s.hits < s.hitsMax) damagedNonCritical.push(s);
         }
     }
     const sources = room.find(FIND_SOURCES);
+    const hostileStructures = room.find(FIND_HOSTILE_STRUCTURES);
     const energyStructures = room.find(FIND_STRUCTURES, {
         filter: function (s) {
             return (s.structureType === STRUCTURE_EXTENSION ||
@@ -61,6 +63,7 @@ function snapshotFor(room) {
         roomName: room.name,
         hostiles: hostiles,
         hostilePositions: hostiles.map(function (h) { return h.pos; }),
+        hostileStructures: hostileStructures,
         damagedFriendlies: damagedFriendlies,
         constructionSites: constructionSites,
         droppedEnergy: droppedEnergy,

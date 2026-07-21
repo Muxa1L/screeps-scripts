@@ -57,13 +57,13 @@ test('move and action accessors read and write safely', function () {
     assert.equal(memory.getAction(creep), 'moving');
 });
 
-test('room and source memory initialize missing parents', function () {
+test('room memory initializes parents; source memory does not pollute for unknown ids', function () {
     mocks.resetMemory();
     const roomMem = memory.getRoomMemory('W1N1');
     assert.ok(roomMem);
     assert.equal(Memory.rooms.W1N1, roomMem);
     const sourceMem = memory.getSourceMemory('source-1');
     assert.ok(sourceMem);
-    assert.equal(Memory.sources['source-1'], sourceMem);
+    assert.equal(Memory.sources['source-1'], undefined);
     assert.deepEqual(sourceMem, { roomName: '', x: 0, y: 0, slots: [] });
 });

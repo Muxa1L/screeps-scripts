@@ -188,6 +188,7 @@ function resetMemory() {
 }
 
 function resetGame() {
+    const objectsById = {};
     global.Game = {
         time: 0,
         rooms: {},
@@ -199,7 +200,8 @@ function resetGame() {
         cpu: { bucket: 10000, tickLimit: 500, getUsed: function () { return 0; } },
         shard: { name: 'sim', type: 'normal', ptr: false },
         map: { describeExits: function () { return {}; } },
-        getObjectById: function (_id) { return null; },
+        getObjectById: function (id) { return objectsById[id] || null; },
+        _registerObject: function (obj) { if (obj && obj.id) objectsById[obj.id] = obj; },
     };
 }
 
@@ -273,7 +275,7 @@ function mockStructure(type, options) {
     const energy = options.energy || 0;
     const capacity = options.capacity !== undefined ? options.capacity : 100;
     const free = options.freeCapacity !== undefined ? options.freeCapacity : capacity - energy;
-    return {
+    const obj = {
         id: options.id || type + '_' + Math.random().toString(36).slice(2),
         structureType: type,
         pos: makePos(options.pos),
@@ -284,26 +286,32 @@ function mockStructure(type, options) {
             getUsedCapacity: function (rtype) { return rtype === RESOURCE_ENERGY ? energy : 0; },
         },
     };
+    if (Game && Game._registerObject) Game._registerObject(obj);
+    return obj;
 }
 
 function mockSource(options) {
     options = options || {};
-    return {
+    const obj = {
         id: options.id || 'source_' + Math.random().toString(36).slice(2),
         pos: makePos(options.pos),
         energy: options.energy || 1000,
         store: undefined,
         amount: undefined,
     };
+    if (Game && Game._registerObject) Game._registerObject(obj);
+    return obj;
 }
 
 function mockDroppedResource(amount, p) {
-    return {
+    const obj = {
         id: 'drop_' + Math.random().toString(36).slice(2),
         pos: makePos(p),
         resourceType: RESOURCE_ENERGY,
         amount: amount || 50,
     };
+    if (Game && Game._registerObject) Game._registerObject(obj);
+    return obj;
 }
 
 module.exports = {

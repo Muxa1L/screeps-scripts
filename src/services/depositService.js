@@ -17,11 +17,12 @@ function structureNeedsEnergy(s) {
 }
 
 function scoreDeposit(creep, s, priorityIds) {
-    if (priorityIds && priorityIds[s.id]) return -100000;
     const dist = taskBase.approxDistance(creep, s);
     const priority = DEPOSIT_PRIORITY[s.structureType] || 10;
     const free = (s.store.getCapacity(RESOURCE_ENERGY) || 0) - (s.store[RESOURCE_ENERGY] || 0);
-    return priority * 1000 - free * 10 + dist;
+    let score = priority * 1000 - free * 10 + dist;
+    if (priorityIds && priorityIds[s.id]) score -= 100000;
+    return score;
 }
 
 function findDeposit(creep, snapshot, options) {
@@ -37,18 +38,23 @@ function findDeposit(creep, snapshot, options) {
             for (let i = 0; i < snapshot.energyStructures.length; i++) {
                 const s = snapshot.energyStructures[i];
                 if (excludeTypes[s.structureType]) continue;
-                if (structureNeedsEnergy(s)) candidates.push(s);
+                const live = Game.getObjectById(s.id);
+                if (!live || !structureNeedsEnergy(live)) continue;
+                candidates.push(live);
             }
         }
-        if (snapshot.storage && !excludeTypes[STRUCTURE_STORAGE] && structureNeedsEnergy(snapshot.storage)) {
-            candidates.push(snapshot.storage);
+        if (snapshot.storage && !excludeTypes[STRUCTURE_STORAGE]) {
+            const liveStorage = Game.getObjectById(snapshot.storage.id);
+            if (liveStorage && structureNeedsEnergy(liveStorage)) candidates.push(liveStorage);
         }
         if (snapshot.containers) {
             for (let i = 0; i < snapshot.containers.length; i++) {
                 const c = snapshot.containers[i];
                 if (excludeId && c.id === excludeId) continue;
                 if (excludeTypes[STRUCTURE_CONTAINER]) continue;
-                if (structureNeedsEnergy(c)) candidates.push(c);
+                const live = Game.getObjectById(c.id);
+                if (!live || !structureNeedsEnergy(live)) continue;
+                candidates.push(live);
             }
         }
         if (candidates.length === 0) return null;
@@ -65,10 +71,12 @@ function findDeposit(creep, snapshot, options) {
 function transferTo(creep, target, resourceType) {
     resourceType = resourceType || RESOURCE_ENERGY;
     if (!target) return false;
-    move.action(creep, 'transfer@' + target.id);
-    const res = creep.transfer(target, resourceType);
+    const live = Game.getObjectById(target.id);
+    if (!live || !live.store || live.store.getFreeCapacity(resourceType) <= 0) return false;
+    move.action(creep, 'transfer@' + live.id);
+    const res = creep.transfer(live, resourceType);
     if (res === ERR_NOT_IN_RANGE) {
-        move.moveCreep(creep, target, { visualizePathStyle: { stroke: '#ffffff' } });
+        move.moveCreep(creep, live, { visualizePathStyle: { stroke: '#ffffff' } });
         return true;
     }
     return res === OK && (creep.store[resourceType] || 0) > 0;

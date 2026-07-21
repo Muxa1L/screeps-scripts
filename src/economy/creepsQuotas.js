@@ -12,7 +12,7 @@ const QUOTAS = {
     8: { miner: 8, hauler: 8, upgrader: 3, builder: 2 },
 };
 
-const ROLE_PRIORITY = ['fighter', 'healer', 'hauler', 'miner', 'harvester', 'builder', 'upgrader'];
+const ROLE_PRIORITY = ['fighter', 'healer', 'miner', 'hauler', 'harvester', 'builder', 'upgrader'];
 
 const URGENT_TTD = constants.URGENT_TTD;
 const CRITICAL_TTD = constants.CRITICAL_TTD;
@@ -77,7 +77,10 @@ function contextualQuota(rcl, controller, storage, constructionSites) {
     if (ratio >= STORAGE_FULL_THRESHOLD) {
         q.upgrader = Math.min(6, Math.max(baseUpgraders, baseUpgraders + 2));
     } else if (ratio <= STORAGE_LOW_THRESHOLD) {
-        q.upgrader = Math.max(1, Math.floor(baseUpgraders / 2));
+        const isUrgent = controller && controller.ticksToDowngrade < URGENT_TTD;
+        if (!isUrgent) {
+            q.upgrader = Math.max(1, Math.floor(baseUpgraders / 2));
+        }
         if (backlog > CONSTRUCTION_BACKLOG_THRESHOLD) {
             q.builder = Math.max(baseBuilders, Math.min(4, baseBuilders + 1));
         }

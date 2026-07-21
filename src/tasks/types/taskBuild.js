@@ -15,7 +15,10 @@ module.exports = {
         return snap.constructionSites.map(function (s) { return { target: s }; });
     },
     score: function (creep, target) {
-        return taskBase.pathScore(creep, target);
+        const base = taskBase.pathScore(creep, target);
+        // Strongly prefer close construction sites so creeps work on nearby
+        // roads and extensions instead of crossing the room to a distant site.
+        return Math.floor(base / 2);
     },
     run: function (creep, task, snap) {
         const site = task.target;
@@ -28,7 +31,7 @@ module.exports = {
         const workParts = creep.getActiveBodyparts(WORK);
         const minEnergy = workParts * BUILD_POWER;
         const isFull = energy >= capacity;
-        if (isFull) memory.clearRefueling(creep);
+        if (isFull || energy >= minEnergy) memory.clearRefueling(creep);
         if (memory.getRefueling(creep) || energy < minEnergy) {
             if (!isFull) {
                 const source = energyService.findEnergySource(creep, snap, { allowHarvest: true });
@@ -39,7 +42,7 @@ module.exports = {
                 }
             }
             memory.clearRefueling(creep);
-            if (energy === 0) return false;
+            if (energy < minEnergy) return false;
         }
         const res = creep.build(live);
         if (res === ERR_NOT_IN_RANGE) {

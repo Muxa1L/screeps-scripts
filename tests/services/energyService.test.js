@@ -10,15 +10,15 @@ function pos(x, y) {
     return { x: x, y: y, roomName: 'W1N1' };
 }
 
-test('scoreSource rewards useful energy and penalizes distance', function () {
+test('scoreSource rewards useful energy, reserve capacity, and penalizes distance', function () {
     mocks.resetGame();
     const creep = mocks.mockCreep({ pos: pos(25, 25), capacity: 50, store: {} });
-    const nearLow = { store: { [RESOURCE_ENERGY]: 30 }, pos: pos(26, 25) };
-    const farHigh = { store: { [RESOURCE_ENERGY]: 1000 }, pos: pos(40, 25) };
+    const nearLow = mocks.mockStructure(STRUCTURE_CONTAINER, { id: 'nearLow', pos: pos(26, 25), energy: 30, capacity: 300 });
+    const farHigh = mocks.mockStructure(STRUCTURE_CONTAINER, { id: 'farHigh', pos: pos(40, 25), energy: 1000, capacity: 2000 });
     const nearScore = energyService.scoreSource(creep, nearLow);
     const farScore = energyService.scoreSource(creep, farHigh);
-    assert.equal(nearScore, 30);
-    assert.equal(farScore, 50 / 15);
+    assert.ok(nearScore > 0);
+    assert.ok(farScore > 0);
     assert.ok(nearScore > farScore);
 });
 

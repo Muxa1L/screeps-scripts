@@ -100,7 +100,8 @@ function tick() {
 function tryRunForSpawn(spawn) {
     const room = spawn.room;
     const hostiles = hostilesInRoom(room);
-    if (tryDefenders(spawn, hostiles)) {
+    tryDefenders(spawn, hostiles);
+    if (hostiles.length > 0) {
         summaryLog(spawn, creepCountByRole(room.name), room.controller.level);
         return;
     }

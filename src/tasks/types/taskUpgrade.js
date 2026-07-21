@@ -52,7 +52,7 @@ module.exports = {
         const workParts = creep.getActiveBodyparts(WORK);
         const minEnergy = Math.max(1, workParts * UPGRADE_CONTROLLER_POWER);
         const isFull = energy >= capacity;
-        if (isFull) memory.clearRefueling(creep);
+        if (isFull || energy >= minEnergy) memory.clearRefueling(creep);
         if (memory.getRefueling(creep) || energy < minEnergy) {
             if (!isFull) {
                 const source = energyService.findEnergySource(creep, snap, { allowHarvest: true });
@@ -63,12 +63,12 @@ module.exports = {
                 }
             }
             memory.clearRefueling(creep);
-            if (energy === 0) return false;
+            if (energy < minEnergy) return false;
         }
-        const res = creep.upgradeController(controller);
+        const res = creep.upgradeController(live);
         if (res === ERR_NOT_IN_RANGE) {
             move.action(creep, 'moving->upgrade');
-            move.moveCreep(creep, controller, { visualizePathStyle: { stroke: '#ffffff' } });
+            move.moveCreep(creep, live, { visualizePathStyle: { stroke: '#ffffff' } });
             return true;
         }
         move.action(creep, 'upgrading');

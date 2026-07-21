@@ -29,10 +29,13 @@ module.exports = {
         return taskBase.pathScore(creep, target);
     },
     run: function (creep, task, snap) {
-        const t = task.target;
+        const target = task.target;
+        const t = target ? Game.getObjectById(target.id) : null;
         if (!t) return false;
         if (!t.pos) return false;
         if (creep.store.getCapacity() === 0) return false;
+        const remaining = t.store ? _.sum(t.store) : (t.amount || 0);
+        if (remaining <= 0) return false;
         if (creep.store.getFreeCapacity() === 0) {
             const carried = Object.keys(creep.store);
             for (let i = 0; i < carried.length; i++) {

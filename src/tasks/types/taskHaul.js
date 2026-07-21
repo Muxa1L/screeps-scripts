@@ -2,6 +2,7 @@ const taskBase = require('../taskBase');
 const move = require('../../utils/moveUtil');
 const memory = require('../../utils/memorySchema');
 const depositService = require('../../services/depositService');
+const roomFlags = require('../../utils/roomFlags');
 
 module.exports = {
     type: 'haul',
@@ -16,15 +17,17 @@ module.exports = {
     },
     tasks: function (room, snap) {
         const out = [];
+        const priorityIds = roomFlags.getPriorityContainerIds(room.name);
         for (let i = 0; i < snap.containers.length; i++) {
             const c = snap.containers[i];
+            if (priorityIds[c.id]) continue; // flagged containers are caches, not haul sources
             if (c.store[RESOURCE_ENERGY] >= 50) out.push({ target: c });
         }
         return out;
     },
     run: function (creep, task, snap) {
-        const container = task.target;
-        if (!container) return false;
+        const container = task.target ? Game.getObjectById(task.target.id) : null;
+        if (!container || !container.store) return false;
 
         const energy = creep.store[RESOURCE_ENERGY] || 0;
         const freeCapacity = creep.store.getFreeCapacity(RESOURCE_ENERGY) || 0;

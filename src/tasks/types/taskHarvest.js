@@ -25,17 +25,19 @@ module.exports = {
     run: function (creep, task, _snap) {
         const source = task.target;
         if (!source) return false;
+        const live = source.id ? Game.getObjectById(source.id) : null;
+        if (!live || live.energy === 0) return false;
         if (creep.store[RESOURCE_ENERGY] >= creep.store.getCapacity(RESOURCE_ENERGY)) {
             return false;
         }
-        const ret = creep.harvest(source);
+        const ret = creep.harvest(live);
         if (ret === OK) {
-            move.action(creep, 'harvesting@' + source.id);
+            move.action(creep, 'harvesting@' + live.id);
             return true;
         }
-        move.action(creep, 'moving->harvest@' + source.id);
+        move.action(creep, 'moving->harvest@' + live.id);
         if (ret === ERR_NOT_IN_RANGE) {
-            move.moveCreep(creep, source, { visualizePathStyle: { stroke: '#ffaa00' } });
+            move.moveCreep(creep, live, { visualizePathStyle: { stroke: '#ffaa00' } });
         }
         return true;
     },
