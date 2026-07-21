@@ -73,6 +73,9 @@ module.exports = new TaskType({
     run: function (creep, task) {
         const target = task.target;
         if (!target) return false;
+        const live = Game.getObjectById(target.id);
+        if (!live || live.hits === undefined) return false;
+        if (live.hits >= live.hitsMax) return false;
         if (creep.store[RESOURCE_ENERGY] === 0) {
             const source = findEnergySource(creep);
             if (!source) return false;
@@ -88,15 +91,14 @@ module.exports = new TaskType({
             }
             return true;
         }
-        if (target.hits >= target.hitsMax) return false;
-        const res = creep.repair(target);
+        const res = creep.repair(live);
         if (res === ERR_NOT_IN_RANGE) {
-            move.action(creep, 'moving->repair@' + target.id);
-            move.moveCreep(creep, target, { visualizePathStyle: { stroke: '#aaaaff' } });
+            move.action(creep, 'moving->repair@' + live.id);
+            move.moveCreep(creep, live, { visualizePathStyle: { stroke: '#aaaaff' } });
             return true;
         }
-        move.action(creep, 'repairing@' + target.id);
-        if (res === OK && target.hitsMax - target.hits <= creep.getActiveBodyparts(WORK) * REPAIR_POWER) {
+        move.action(creep, 'repairing@' + live.id);
+        if (res === OK && live.hitsMax - live.hits <= creep.getActiveBodyparts(WORK) * REPAIR_POWER) {
             return false;
         }
         return true;

@@ -18,7 +18,7 @@ module.exports = new TaskType({
     run: function (creep, task) {
         const source = task.target;
         if (!source) return false;
-        if (creep.store[RESOURCE_ENERGY] >= creep.store.getCapacity()) {
+        if (creep.store[RESOURCE_ENERGY] >= creep.store.getCapacity(RESOURCE_ENERGY)) {
             return false;
         }
         const ret = creep.harvest(source);

@@ -249,6 +249,30 @@ function planRoom(room) {
                 placed++;
             }
         }
+        if (placedContainers < containerTarget && placed < MAX_SITES_PER_TICK && room.controller) {
+            let existingNearController = false;
+            for (let cdx = -2; cdx <= 2 && !existingNearController; cdx++) {
+                for (let cdy = -2; cdy <= 2 && !existingNearController; cdy++) {
+                    const cpx = room.controller.pos.x + cdx;
+                    const cpy = room.controller.pos.y + cdy;
+                    const cpos = new RoomPosition(cpx, cpy, room.name);
+                    if (hasStructureOrSiteAt(cpos, STRUCTURE_CONTAINER)) {
+                        existingNearController = true;
+                        break;
+                    }
+                }
+            }
+            if (!existingNearController) {
+                const ctrlCpos = findPositionNear(room, room.controller.pos, 1, 3);
+                if (ctrlCpos) {
+                    const cres = room.createConstructionSite(ctrlCpos, STRUCTURE_CONTAINER);
+                    if (cres === OK) {
+                        placedContainers++;
+                        placed++;
+                    }
+                }
+            }
+        }
     }
 
     const storageTarget = limits.storage || 0;
@@ -311,6 +335,30 @@ function planRoom(room) {
                 if (linkCpos) {
                     const cres = room.createConstructionSite(linkCpos, STRUCTURE_LINK);
                     if (cres === OK) {
+                        placedLinks++;
+                        placed++;
+                    }
+                }
+            }
+        }
+        if (placedLinks < linkTarget && placed < MAX_SITES_PER_TICK && room.storage) {
+            let existingLinkNearStorage = false;
+            for (let sdx = -3; sdx <= 3 && !existingLinkNearStorage; sdx++) {
+                for (let sdy = -3; sdy <= 3 && !existingLinkNearStorage; sdy++) {
+                    const spx = room.storage.pos.x + sdx;
+                    const spy = room.storage.pos.y + sdy;
+                    const spos = new RoomPosition(spx, spy, room.name);
+                    if (hasStructureOrSiteAt(spos, STRUCTURE_LINK)) {
+                        existingLinkNearStorage = true;
+                        break;
+                    }
+                }
+            }
+            if (!existingLinkNearStorage) {
+                const storLinkPos = findPositionNear(room, room.storage.pos, 1, 3);
+                if (storLinkPos) {
+                    const sres = room.createConstructionSite(storLinkPos, STRUCTURE_LINK);
+                    if (sres === OK) {
                         placedLinks++;
                         placed++;
                     }

@@ -119,16 +119,30 @@ function run() {
             const c = Game.creeps[name];
             if (c.ticksToLive < 100) continue;
             const lastChange = c.memory._lastTaskChange || 0;
+            if (c.memory._recycling) {
+                const spawn = spawnUtil.nearestSpawn(c);
+                if (spawn) {
+                    const recycleRes = spawn.recycleCreep(c);
+                    if (recycleRes === OK) {
+                        _recyclesThisTick++;
+                    } else if (recycleRes === ERR_NOT_IN_RANGE) {
+                        c.moveTo(spawn, { reusePath: 10 });
+                    }
+                }
+                continue;
+            }
             if (Game.time - lastChange < STUCK_THRESHOLD) continue;
             if (c.getActiveBodyparts(MOVE) === 0) continue;
             const spawn = spawnUtil.nearestSpawn(c);
             if (!spawn) continue;
             console.log('[' + Game.time + '] [stuck-recycle] ' + c.name + ' idle for ' + (Game.time - lastChange) + ' ticks');
-            if (spawn.recycleCreep(c) === ERR_NOT_IN_RANGE) {
+            const recycleRes = spawn.recycleCreep(c);
+            if (recycleRes === OK) {
+                _recyclesThisTick++;
+            } else if (recycleRes === ERR_NOT_IN_RANGE) {
                 c.moveTo(spawn, { reusePath: 10 });
+                c.memory._recycling = Game.time;
             }
-            c.memory._lastTaskChange = Game.time;
-            _recyclesThisTick++;
         }
     });
 
@@ -200,30 +214,17 @@ function runLink(link) {
     if (link.store[RESOURCE_ENERGY] < 50) return;
 
     let storageLink = null;
-    if (room.storage) {
-        const allLinks = room.find(FIND_STRUCTURES, {
-            filter: function (s) { return s.structureType === STRUCTURE_LINK; },
-        });
-        for (let j = 0; j < allLinks.length; j++) {
-            if (allLinks[j].id === link.id) continue;
-            if (allLinks[j].pos.inRangeTo(room.storage.pos, 3)) {
-                storageLink = allLinks[j];
-                break;
-            }
-        }
-    }
-
     let controllerLink = null;
-    if (room.controller && room.controller.my) {
-        const allLinks2 = room.find(FIND_STRUCTURES, {
-            filter: function (s) { return s.structureType === STRUCTURE_LINK; },
-        });
-        for (let k = 0; k < allLinks2.length; k++) {
-            if (allLinks2[k].id === link.id) continue;
-            if (allLinks2[k].pos.inRangeTo(room.controller.pos, 3)) {
-                controllerLink = allLinks2[k];
-                break;
-            }
+    const allLinks = room.find(FIND_STRUCTURES, {
+        filter: function (s) { return s.structureType === STRUCTURE_LINK; },
+    });
+    for (let j = 0; j < allLinks.length; j++) {
+        if (allLinks[j].id === link.id) continue;
+        if (room.storage && allLinks[j].pos.inRangeTo(room.storage.pos, 3)) {
+            storageLink = allLinks[j];
+        }
+        if (room.controller && room.controller.my && allLinks[j].pos.inRangeTo(room.controller.pos, 3)) {
+            controllerLink = allLinks[j];
         }
     }
 
