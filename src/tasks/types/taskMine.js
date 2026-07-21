@@ -17,10 +17,18 @@ module.exports = {
         for (const id in Memory.sources) {
             if (Memory.sources[id].roomName !== room.name) continue;
             const source = Game.getObjectById(id);
-            if (!source || source.energy <= 0) continue;
+            if (!source) continue;
             out.push({ target: { id: id, pos: { x: Memory.sources[id].x, y: Memory.sources[id].y, roomName: room.name } } });
         }
         return out;
+    },
+    score: function (creep, target) {
+        const dist = taskBase.approxDistance(creep, target);
+        const source = Game.getObjectById(target.id);
+        // Strongly prefer active sources so miners harvest when energy is available,
+        // but still consider empty ones so they position on their slot while
+        // regenerating instead of bunching at spawn with no task.
+        return dist + (source && source.energy > 0 ? 0 : 100);
     },
     run: function (creep, task, _snap) {
         const sourceId = task.target.id;
