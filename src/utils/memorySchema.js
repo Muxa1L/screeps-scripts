@@ -68,7 +68,7 @@ function setMoveTargetId(creep, id) {
 }
 
 function getLastMoveResult(creep) {
-    return ensureCreepMemory(creep)._lastMoveResult || null;
+    return ensureCreepMemory(creep)._lastMoveResult !== undefined ? ensureCreepMemory(creep)._lastMoveResult : null;
 }
 
 function setLastMoveResult(creep, result) {

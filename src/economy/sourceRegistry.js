@@ -32,12 +32,7 @@ function computeSlots(room, source) {
     return slots;
 }
 
-function recomputeSlots(room, src) {
-    // Match by stored source id rather than object reference, which was always failing.
-    const sourceId = Object.keys(Memory.sources).find(function (id) {
-        return Memory.sources[id] === src;
-    });
-    if (!sourceId) return;
+function recomputeSlots(room, sourceId, src) {
     const source = Game.getObjectById(sourceId);
     if (!source) return;
     const fresh = computeSlots(room, source);
@@ -61,7 +56,7 @@ function ensureRegistry(room) {
                 slots: computeSlots(room, src),
             };
         } else if (Game.time % 500 === 0) {
-            recomputeSlots(room, Memory.sources[src.id]);
+            recomputeSlots(room, src.id, Memory.sources[src.id]);
         }
     }
     return Memory.sources;

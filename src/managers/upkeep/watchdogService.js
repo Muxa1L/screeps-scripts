@@ -6,14 +6,16 @@ const GHOST_CRITICAL_AGE = constants.GHOST_CRITICAL_AGE;
 function runWatchdog() {
     if (!Memory.creeps) return;
     if (Game.time % 50 !== 0) return;
-    let ghostCount = 0;
+    let maxAge = 0;
     for (const cname in Memory.creeps) {
         if (Game.creeps[cname]) continue;
-        ghostCount++;
+        const diedAt = Memory.creeps[cname]._diedAt || 0;
+        const age = Game.time - diedAt;
+        if (age > maxAge) maxAge = age;
     }
-    if (ghostCount > GHOST_CRITICAL_AGE) {
+    if (maxAge > GHOST_CRITICAL_AGE) {
         assert.recordError('memoryWatchdog', {
-            message: 'critical: ' + ghostCount + ' ghost creeps in memory after ' + GHOST_CRITICAL_AGE + '+ ticks',
+            message: 'critical: ghost creep age ' + maxAge + ' exceeds ' + GHOST_CRITICAL_AGE,
         });
     }
 }

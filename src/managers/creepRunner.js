@@ -82,9 +82,9 @@ function capForType(type, room, snap, capCache) {
 }
 
 function bestTaskFor(creep, taskList, allowed, snap, claimCounts, capCache) {
-    const capacity = creep.store.getCapacity(RESOURCE_ENERGY);
+    const capacity = creep.store.getCapacity(RESOURCE_ENERGY) || 0;
     const energy = creep.store[RESOURCE_ENERGY] || 0;
-    const isFull = energy >= capacity;
+    const isFull = capacity > 0 && energy >= capacity;
     const isEmpty = energy === 0;
     const candidates = [];
     for (let i = 0; i < taskList.length; i++) {
@@ -100,7 +100,8 @@ function bestTaskFor(creep, taskList, allowed, snap, claimCounts, capCache) {
             const excludeId = (memory.getHauledFrom(creep) === target.id) ? target.id : null;
             if (!depositAvailable(snap, excludeId)) continue;
         }
-        if (isEmpty && !SELF_REFUELING_TASKS[t.type] && t.type !== 'harvest' && t.type !== 'sweep' && t.type !== 'haul') continue;
+        if (isEmpty && !SELF_REFUELING_TASKS[t.type] &&
+            t.type !== 'harvest' && t.type !== 'sweep' && t.type !== 'haul' && t.type !== 'mine' && t.type !== 'supply') continue;
         const failedTasks = memory.getFailedTasks(creep);
         if (failedTasks[t.id]) continue;
         let priority = t.priority;
@@ -127,7 +128,6 @@ function bestTaskFor(creep, taskList, allowed, snap, claimCounts, capCache) {
 function shouldSwitch(creep, current, currentApprox, best) {
     const bestTask = best.task;
     if (bestTask.id === current.id) return false;
-    if (bestTask.type === current.type) return false;
     if (current.type === 'harvest') {
         const capacity = creep.store.getCapacity(RESOURCE_ENERGY) || 0;
         const energy = creep.store[RESOURCE_ENERGY] || 0;
@@ -202,8 +202,13 @@ function renewOrRecycle(creep) {
     if (creep.getActiveBodyparts(MOVE) === 0) {
         logger.event('creep', '[' + Game.time + '] [no-move] ' + creep.name + ' has no MOVE parts; recycling');
         const spawn = spawnUtil.nearestSpawn(creep);
-        if (spawn && spawn.recycleCreep(creep) === ERR_NOT_IN_RANGE) {
+        if (!spawn) {
             creep.suicide();
+            return true;
+        }
+        if (spawn.recycleCreep(creep) === ERR_NOT_IN_RANGE) {
+            move.moveCreep(creep, spawn, { visualizePathStyle: { stroke: '#ff8800' }, reusePath: 10 });
+            return true;
         }
         return true;
     }

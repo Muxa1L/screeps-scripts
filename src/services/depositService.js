@@ -21,7 +21,7 @@ function scoreDeposit(creep, s, priorityIds) {
     const priority = DEPOSIT_PRIORITY[s.structureType] || 10;
     const free = (s.store.getCapacity(RESOURCE_ENERGY) || 0) - (s.store[RESOURCE_ENERGY] || 0);
     let score = priority * 1000 - free * 10 + dist;
-    if (priorityIds && priorityIds[s.id]) score -= 100000;
+    if (priorityIds && priorityIds[s.id]) score -= 500;
     return score;
 }
 

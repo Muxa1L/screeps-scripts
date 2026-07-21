@@ -12,6 +12,7 @@ function TaskType(spec) {
     this.describe = spec.describe || taskBase.describeTask;
     this.priorityFor = spec.priorityFor || function (_snapshot) { return this.priority; };
     this.requirements = spec.requirements || {};
+    this.score = spec.score || this.score;
 }
 
 TaskType.prototype.run = function (creep, task, snapshot) {

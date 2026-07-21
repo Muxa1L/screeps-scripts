@@ -3,8 +3,14 @@ function runMemoryCleanup() {
     const dead = [];
     for (const cname in Memory.creeps) {
         if (Game.creeps[cname]) continue;
-        dead.push(cname);
-        delete Memory.creeps[cname];
+        const mem = Memory.creeps[cname];
+        if (!mem._diedAt) mem._diedAt = Game.time;
+        // Allow a short grace period before deletion so other systems can read
+        // the death tick if needed.
+        if (Game.time - mem._diedAt > 3) {
+            dead.push(cname);
+            delete Memory.creeps[cname];
+        }
     }
     if (dead.length === 0 || !Memory.sources) return;
     const deadSet = {};

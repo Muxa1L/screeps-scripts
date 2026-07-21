@@ -29,7 +29,7 @@ module.exports = {
         const capacity = creep.store.getCapacity(RESOURCE_ENERGY) || 0;
         const energy = creep.store[RESOURCE_ENERGY] || 0;
         const workParts = creep.getActiveBodyparts(WORK);
-        const minEnergy = workParts * BUILD_POWER;
+        const minEnergy = Math.max(1, workParts);
         const isFull = energy >= capacity;
         if (isFull || energy >= minEnergy) memory.clearRefueling(creep);
         if (memory.getRefueling(creep) || energy < minEnergy) {

@@ -50,7 +50,10 @@ module.exports = {
         const capacity = creep.store.getCapacity(RESOURCE_ENERGY) || 0;
         const energy = creep.store[RESOURCE_ENERGY] || 0;
         const workParts = creep.getActiveBodyparts(WORK);
-        const minEnergy = Math.max(1, workParts * UPGRADE_CONTROLLER_POWER);
+        const perTickCost = workParts * UPGRADE_CONTROLLER_POWER;
+        // Refuel until at least half full so the creep does not walk to the
+        // controller with only a few energy units.
+        const minEnergy = Math.max(perTickCost, Math.floor(capacity * 0.5));
         const isFull = energy >= capacity;
         if (isFull || energy >= minEnergy) memory.clearRefueling(creep);
         if (memory.getRefueling(creep) || energy < minEnergy) {

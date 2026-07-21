@@ -21,7 +21,7 @@ function scoreSource(creep, source) {
 function closestSafeSource(creep, snapshot) {
     if (!snapshot || !snapshot.sources || snapshot.sources.length === 0) return null;
     const safe = snapshot.sources.filter(function (s) {
-        return !taskBase.isPosNearHostile(snapshot, s.pos, 5);
+        return s.energy > 0 && !taskBase.isPosNearHostile(snapshot, s.pos, 5);
     });
     if (safe.length === 0) return null;
     return creep.pos.findClosestByPath(safe);

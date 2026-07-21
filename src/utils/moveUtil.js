@@ -53,7 +53,24 @@ function moveCreep(creep, target, opts) {
     if (memorySchema.getMoveTargetId(creep) !== targetId) {
         memorySchema.setMoveTargetId(creep, targetId);
         memorySchema.setMoveFailures(creep, 0);
+        memorySchema.setLastMoveResult(creep, null);
     }
+
+    // Detect stalls when the creep has a target but has not moved for
+    // consecutive ticks. Screeps may return OK for queued intents even when
+    // physically blocked, so we track position changes ourselves.
+    const lastResult = memorySchema.getLastMoveResult(creep);
+    if (lastResult !== null) {
+        const lastX = creep.memory._lastMoveX;
+        const lastY = creep.memory._lastMoveY;
+        if (lastX === creep.pos.x && lastY === creep.pos.y) {
+            memorySchema.setMoveFailures(creep, memorySchema.getMoveFailures(creep) + 1);
+        } else {
+            memorySchema.setMoveFailures(creep, 0);
+        }
+    }
+    creep.memory._lastMoveX = creep.pos.x;
+    creep.memory._lastMoveY = creep.pos.y;
 
     const mvr = creep.moveTo(target, Object.assign({
         reusePath: roadReuse !== null ? roadReuse : 5,

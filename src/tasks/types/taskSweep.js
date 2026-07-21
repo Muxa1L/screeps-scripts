@@ -80,7 +80,7 @@ module.exports = {
                 res = creep.pickup(t);
                 move.action(creep, 'pickup@' + t.id);
             }
-            return res !== ERR_NOT_IN_RANGE;
+            return res === OK;
         }
         move.action(creep, 'moving->sweep@' + t.id);
         move.moveCreep(creep, t, { visualizePathStyle: { stroke: '#ffff00' } });
