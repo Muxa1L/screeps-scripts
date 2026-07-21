@@ -33,13 +33,17 @@ module.exports = {
     run: function (creep, task, _snap) {
         const sourceId = task.target.id;
         const currentSource = memory.getSourceId(creep);
-        if (!currentSource) {
+        if (currentSource !== sourceId) {
+            if (currentSource) sourceRegistry.releaseClaim(creep.name);
             memory.setSourceId(creep, sourceId);
-            sourceRegistry.claimSlot(sourceId, creep.name);
-        } else if (currentSource !== sourceId) {
+        }
+
+        // Ensure we have a slot. If all slots are taken, release the task so
+        // the creep doesn't wander onto another miner's tile.
+        if (!sourceRegistry.claimSlot(sourceId, creep.name)) {
             sourceRegistry.releaseClaim(creep.name);
-            memory.setSourceId(creep, sourceId);
-            sourceRegistry.claimSlot(sourceId, creep.name);
+            memory.clearSourceId(creep);
+            return false;
         }
 
         const source = Game.getObjectById(sourceId);
@@ -47,6 +51,15 @@ module.exports = {
             sourceRegistry.releaseClaim(creep.name);
             memory.clearSourceId(creep);
             return false;
+        }
+
+        const slot = sourceRegistry.slotPos(sourceId, creep.name);
+        if (slot && (creep.pos.x !== slot.x || creep.pos.y !== slot.y)) {
+            // Not on our assigned slot; move there instead of harvesting from
+            // a tile that may belong to another miner.
+            move.action(creep, 'moving->mine@' + sourceId);
+            move.moveCreep(creep, slot, { visualizePathStyle: { stroke: '#ffaa00' } });
+            return true;
         }
 
         if (creep.pos.isNearTo(source)) {
@@ -59,9 +72,9 @@ module.exports = {
             return true;
         }
 
-        const slot = sourceRegistry.slotPos(sourceId, creep.name);
+        // No slot assigned; approach the source directly.
         move.action(creep, 'moving->mine@' + sourceId);
-        move.moveCreep(creep, slot || source, { visualizePathStyle: { stroke: '#ffaa00' } });
+        move.moveCreep(creep, source, { visualizePathStyle: { stroke: '#ffaa00' } });
         return true;
     },
 };
