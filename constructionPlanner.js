@@ -158,9 +158,10 @@ function addRoad(room, from, to, planned) {
     return null;
 }
 
-function planRoads(room) {
+function planRoads(room, budget) {
+    if (typeof budget !== 'number' || budget <= 0) return 0;
     const spawns = room.find(FIND_MY_SPAWNS);
-    if (spawns.length === 0) return null;
+    if (spawns.length === 0) return 0;
     const anchor = spawns[0].pos;
     const sources = room.find(FIND_SOURCES);
     const controller = room.controller;
@@ -168,7 +169,7 @@ function planRoads(room) {
 
     const planned = {};
     let placed = 0;
-    const maxRoads = 10;
+    const maxRoads = Math.min(10, budget);
 
     for (let i = 0; i < sources.length && placed < maxRoads; i++) {
         const pos = addRoad(room, anchor, sources[i].pos, planned);
@@ -205,7 +206,7 @@ function planRoom(room) {
     let placed = 0;
 
     if (!Memory.flags || !Memory.flags.disableRoads) {
-        planRoads(room);
+        placed += planRoads(room, MAX_SITES_PER_TICK - placed);
     }
 
     const extensionTarget = limits.extension || 0;

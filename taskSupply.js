@@ -5,6 +5,29 @@ const roomManager = require('roomManager');
 
 const SUPPLY_CRITICAL_THRESHOLD = 0.3;
 
+const WITHDRAW_MIN_STORAGE = 200;
+const WITHDRAW_MIN_CONTAINER = 50;
+
+function pickWithdrawSource(snap) {
+    if (snap.storage && (snap.storage.store[RESOURCE_ENERGY] || 0) >= WITHDRAW_MIN_STORAGE) {
+        return snap.storage;
+    }
+    if (snap.containers) {
+        let best = null;
+        let bestEnergy = 0;
+        for (let i = 0; i < snap.containers.length; i++) {
+            const c = snap.containers[i];
+            const energy = c.store[RESOURCE_ENERGY] || 0;
+            if (energy >= WITHDRAW_MIN_CONTAINER && energy > bestEnergy) {
+                bestEnergy = energy;
+                best = c;
+            }
+        }
+        if (best) return best;
+    }
+    return null;
+}
+
 function supplyPriority(snapshot) {
     if (!snapshot || !snapshot.energyStructures || snapshot.energyStructures.length === 0) {
         return taskBase.PRIORITY.UPGRADE;
@@ -55,7 +78,8 @@ module.exports = new TaskType({
 
         if (creep.store[RESOURCE_ENERGY] === 0) {
             const snap = roomManager.get(creep.room.name);
-            if (snap && snap.droppedEnergy && snap.droppedEnergy.length > 0) {
+            if (!snap) return false;
+            if (snap.droppedEnergy && snap.droppedEnergy.length > 0) {
                 const drop = creep.pos.findClosestByPath(snap.droppedEnergy);
                 if (drop) {
                     move.action(creep, 'pickup@' + drop.id);
@@ -64,6 +88,15 @@ module.exports = new TaskType({
                     }
                     return true;
                 }
+            }
+            const withdrawSource = pickWithdrawSource(snap);
+            if (withdrawSource) {
+                move.action(creep, 'withdraw@' + withdrawSource.id);
+                const wres = creep.withdraw(withdrawSource, RESOURCE_ENERGY);
+                if (wres === ERR_NOT_IN_RANGE) {
+                    move.moveCreep(creep, withdrawSource, { visualizePathStyle: { stroke: '#ffffaa' } });
+                }
+                return true;
             }
             return false;
         }

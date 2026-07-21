@@ -17,6 +17,11 @@ function structureNeedsEnergy(s) {
     return energy < s.store.getCapacity(RESOURCE_ENERGY);
 }
 
+function structureHasEnergy(s) {
+    if (!s || !s.store) return false;
+    return (s.store[RESOURCE_ENERGY] || 0) > 0;
+}
+
 function scoreDeposit(creep, s) {
     const dist = taskBase.approxDistance(creep, s);
     const priority = DEPOSIT_PRIORITY[s.structureType] || 10;
@@ -93,7 +98,7 @@ module.exports = new TaskType({
             return canStillDeposit(creep);
         }
 
-        if (structureNeedsEnergy(container)) {
+        if (structureHasEnergy(container)) {
             move.action(creep, 'withdraw@' + container.id);
             const wRes = creep.withdraw(container, RESOURCE_ENERGY);
             if (wRes === ERR_NOT_IN_RANGE) {

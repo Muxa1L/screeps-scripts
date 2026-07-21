@@ -80,7 +80,7 @@ function bestTaskFor(creep, taskList, allowed, snap) {
             continue;
         }
         if (isFull && (t.type === 'harvest' || t.type === 'mine')) continue;
-        if (isEmpty && !SELF_REFUELING_TASKS[t.type] && t.type !== 'harvest' && t.type !== 'sweep') continue;
+        if (isEmpty && !SELF_REFUELING_TASKS[t.type] && t.type !== 'harvest' && t.type !== 'sweep' && t.type !== 'haul') continue;
         if (creep.memory._failedTasks && creep.memory._failedTasks[t.id]) continue;
         let priority = t.priority;
         if (isEmpty && t.type === 'harvest') priority = 5;
