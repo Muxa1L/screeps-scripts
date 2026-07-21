@@ -65,6 +65,8 @@ function bestTaskFor(creep, taskList, allowed, snap) {
     const capacity = creep.store.getCapacity(RESOURCE_ENERGY);
     const energy = creep.store[RESOURCE_ENERGY] || 0;
     const isFull = energy >= capacity;
+    const isEmpty = energy === 0;
+    const SELF_REFUELING = { build: true, repair: true, upgrade: true };
     const candidates = [];
     for (let i = 0; i < taskList.length; i++) {
         const t = taskList[i];
@@ -77,9 +79,12 @@ function bestTaskFor(creep, taskList, allowed, snap) {
             continue;
         }
         if (isFull && (t.type === 'harvest' || t.type === 'mine')) continue;
+        if (isEmpty && !SELF_REFUELING[t.type] && t.type !== 'harvest' && t.type !== 'sweep') continue;
         if (creep.memory._failedTasks && creep.memory._failedTasks[t.id]) continue;
+        let priority = t.priority;
+        if (isEmpty && t.type === 'harvest') priority = 5;
         const approx = taskBase.approxDistance(creep, target);
-        candidates.push({ task: t, priority: t.priority, approx: approx });
+        candidates.push({ task: t, priority: priority, approx: approx });
     }
     if (candidates.length === 0) return null;
     candidates.sort(function (a, b) {
