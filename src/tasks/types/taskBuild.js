@@ -22,6 +22,7 @@ module.exports = {
         if (!site || !site.id) return false;
         const live = Game.getObjectById(site.id);
         if (!live || live.progress === undefined) return false;
+        if (live.progress >= live.progressTotal) return false;
         const capacity = creep.store.getCapacity(RESOURCE_ENERGY) || 0;
         const energy = creep.store[RESOURCE_ENERGY] || 0;
         const workParts = creep.getActiveBodyparts(WORK);

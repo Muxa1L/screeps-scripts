@@ -56,13 +56,18 @@ function tryDefenders(spawn, hostiles) {
     const healers = counts.healer || 0;
     const cap = spawn.room.energyCapacityAvailable;
     const available = spawn.room.energyAvailable;
-    if (fighters === 0) {
+
+    // Maintain a small combat presence while hostiles are visible.
+    const desiredFighters = 2;
+    const desiredHealers = 1;
+
+    if (fighters < desiredFighters) {
         const pick = bodies.bestBodyForAvailable('fighter', cap, available);
         if (pick) {
             return spawnBody(spawn, pick.body, 'Fighter' + Game.time + '-' + spawn.name, 'fighter');
         }
     }
-    if (fighters > 0 && healers === 0) {
+    if (fighters >= desiredFighters && healers < desiredHealers) {
         const hpick = bodies.bestBodyForAvailable('healer', cap, available);
         if (hpick) {
             return spawnBody(spawn, hpick.body, 'Healer' + Game.time + '-' + spawn.name, 'healer');

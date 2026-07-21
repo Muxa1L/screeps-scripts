@@ -33,9 +33,12 @@ function computeSlots(room, source) {
 }
 
 function recomputeSlots(room, src) {
-    const source = Game.getObjectById(Object.keys(Memory.sources).find(function (id) {
+    // Match by stored source id rather than object reference, which was always failing.
+    const sourceId = Object.keys(Memory.sources).find(function (id) {
         return Memory.sources[id] === src;
-    }));
+    });
+    if (!sourceId) return;
+    const source = Game.getObjectById(sourceId);
     if (!source) return;
     const fresh = computeSlots(room, source);
     for (let i = 0; i < fresh.length; i++) {

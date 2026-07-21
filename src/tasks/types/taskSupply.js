@@ -63,6 +63,11 @@ module.exports = {
             return true;
         }
 
-        return depositService.transferTo(creep, live, RESOURCE_ENERGY);
+        const hadEnergy = creep.store[RESOURCE_ENERGY] || 0;
+        const stillCarrying = depositService.transferTo(creep, live, RESOURCE_ENERGY);
+        // Release the task once we've delivered and are empty, so the creep can
+        // refuel and pick a structure that still needs energy.
+        if (hadEnergy > 0 && !stillCarrying) return false;
+        return true;
     },
 };

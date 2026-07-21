@@ -44,7 +44,9 @@ module.exports = {
     },
     run: function (creep, task, snap) {
         const controller = task.target;
-        if (!controller) return false;
+        if (!controller || !controller.id) return false;
+        const live = Game.getObjectById(controller.id);
+        if (!live || !live.my) return false;
         const capacity = creep.store.getCapacity(RESOURCE_ENERGY) || 0;
         const energy = creep.store[RESOURCE_ENERGY] || 0;
         const workParts = creep.getActiveBodyparts(WORK);
