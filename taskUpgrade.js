@@ -37,9 +37,9 @@ function upgradePriority(snapshot) {
     const c = snapshot.controller;
     const ttd = c.ticksToDowngrade;
     if (ttd === undefined || ttd === null) return taskBase.PRIORITY.UPGRADE;
-    if (ttd < UPGRADE_EMERGENCY_THRESHOLD) return 1;
-    if (ttd < UPGRADE_URGENT_THRESHOLD) return 5;
-    if (ttd < UPGRADE_CRITICAL_THRESHOLD) return taskBase.PRIORITY.SWEEP;
+    if (ttd < UPGRADE_EMERGENCY_THRESHOLD) return taskBase.PRIORITY.DEFEND;
+    if (ttd < UPGRADE_URGENT_THRESHOLD) return taskBase.PRIORITY.RENEW;
+    if (ttd < UPGRADE_CRITICAL_THRESHOLD) return taskBase.PRIORITY.SUPPLY;
     return taskBase.PRIORITY.UPGRADE;
 }
 

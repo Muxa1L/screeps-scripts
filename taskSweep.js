@@ -3,27 +3,32 @@ const taskBase = require('taskBase');
 const move = require('moveUtil');
 const roomManager = require('roomManager');
 
-function findDeposit(creep) {
+function findDeposit(creep, resourceType) {
+    resourceType = resourceType || RESOURCE_ENERGY;
     const snap = roomManager.get(creep.room.name);
     if (!snap) return null;
-    if (snap.energyStructures && snap.energyStructures.length > 0) {
-        const nearest = creep.pos.findClosestByPath(snap.energyStructures);
-        if (nearest) return nearest;
-    }
-    if (snap.storage && snap.storage.store.getCapacity(RESOURCE_ENERGY) - (snap.storage.store[RESOURCE_ENERGY] || 0) > 0) {
-        return snap.storage;
-    }
-    if (snap.containers) {
-        const usable = [];
-        for (let i = 0; i < snap.containers.length; i++) {
-            const c = snap.containers[i];
-            if (c.store.getCapacity(RESOURCE_ENERGY) - (c.store[RESOURCE_ENERGY] || 0) > 0) {
-                usable.push(c);
+    if (resourceType === RESOURCE_ENERGY) {
+        if (snap.energyStructures && snap.energyStructures.length > 0) {
+            const nearest = creep.pos.findClosestByPath(snap.energyStructures);
+            if (nearest) return nearest;
+        }
+        if (snap.storage && snap.storage.store.getCapacity(RESOURCE_ENERGY) - (snap.storage.store[RESOURCE_ENERGY] || 0) > 0) {
+            return snap.storage;
+        }
+        if (snap.containers) {
+            const usable = [];
+            for (let i = 0; i < snap.containers.length; i++) {
+                const c = snap.containers[i];
+                if (c.store.getCapacity(RESOURCE_ENERGY) - (c.store[RESOURCE_ENERGY] || 0) > 0) {
+                    usable.push(c);
+                }
+            }
+            if (usable.length > 0) {
+                return creep.pos.findClosestByPath(usable);
             }
         }
-        if (usable.length > 0) {
-            return creep.pos.findClosestByPath(usable);
-        }
+    } else if (snap.storage && snap.storage.store.getFreeCapacity(resourceType) > 0) {
+        return snap.storage;
     }
     return null;
 }
@@ -59,12 +64,22 @@ module.exports = new TaskType({
         if (!t.pos) return false;
         if (creep.store.getCapacity() === 0) return false;
         if (creep.store.getFreeCapacity() === 0) {
-            const deposit = findDeposit(creep);
-            if (!deposit) return false;
-            move.action(creep, 'deposit@' + deposit.id);
-            if (creep.transfer(deposit, RESOURCE_ENERGY) === ERR_NOT_IN_RANGE) {
-                move.moveCreep(creep, deposit, { visualizePathStyle: { stroke: '#ffffff' } });
+            const carried = Object.keys(creep.store);
+            let depositedAny = false;
+            for (let i = 0; i < carried.length; i++) {
+                const rtype = carried[i];
+                if (creep.store[rtype] <= 0) continue;
+                const deposit = findDeposit(creep, rtype);
+                if (!deposit) continue;
+                move.action(creep, 'deposit@' + deposit.id + ':' + rtype);
+                const tRes = creep.transfer(deposit, rtype);
+                if (tRes === ERR_NOT_IN_RANGE) {
+                    move.moveCreep(creep, deposit, { visualizePathStyle: { stroke: '#ffffff' } });
+                    return true;
+                }
+                if (tRes === OK) depositedAny = true;
             }
+            if (!depositedAny) return false;
             return true;
         }
 

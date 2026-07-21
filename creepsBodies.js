@@ -102,12 +102,16 @@ function bestBodyForCapacity(role, capacity) {
     if (!table) return null;
     const keys = Object.keys(table).map(Number).sort(function (a, b) { return a - b; });
     let chosenKey = null;
+    let chosenCost = null;
     for (let i = 0; i < keys.length; i++) {
-        if (keys[i] <= capacity) chosenKey = keys[i];
-        else break;
+        const body = table[keys[i]];
+        const cost = bodyCost(body);
+        if (cost > capacity) break;
+        chosenKey = keys[i];
+        chosenCost = cost;
     }
     if (chosenKey === null) return null;
-    return { body: table[chosenKey], cost: chosenKey, role: role };
+    return { body: table[chosenKey], cost: chosenCost, role: role };
 }
 
 function bodySummary() {

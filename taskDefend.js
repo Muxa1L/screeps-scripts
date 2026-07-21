@@ -14,7 +14,9 @@ module.exports = new TaskType({
     },
     run: function (creep, task) {
         const target = task.target;
-        if (!target || target.hits === undefined || target.hits <= 0) return false;
+        if (!target || !target.id) return false;
+        const live = Game.getObjectById(target.id);
+        if (!live || live.hits === undefined || live.hits <= 0) return false;
         const attackParts = creep.getActiveBodyparts(ATTACK);
         const rangedParts = creep.getActiveBodyparts(RANGED_ATTACK);
         if (attackParts === 0 && rangedParts === 0) return false;
@@ -22,29 +24,29 @@ module.exports = new TaskType({
         if (creep.hits < creep.hitsMax * 0.4) {
             const retreat = creep.pos.findClosestByRange(FIND_MY_SPAWNS);
             if (retreat) {
-                move.action(creep, 'retreating@' + target.id);
+                move.action(creep, 'retreating@' + live.id);
                 move.moveCreep(creep, retreat, { visualizePathStyle: { stroke: '#ff0000' } });
             }
             return true;
         }
-        if (creep.pos.inRangeTo(target, 1) && rangedParts > 0 && attackParts === 0) {
+        if (creep.pos.inRangeTo(live, 1) && rangedParts > 0 && attackParts === 0) {
             creep.rangedMassAttack();
         }
         if (attackParts > 0) {
-            const res = creep.attack(target);
+            const res = creep.attack(live);
             if (res === ERR_NOT_IN_RANGE) {
-                move.action(creep, 'attacking@' + target.id);
-                move.moveCreep(creep, target, { visualizePathStyle: { stroke: '#ff0000' } });
+                move.action(creep, 'attacking@' + live.id);
+                move.moveCreep(creep, live, { visualizePathStyle: { stroke: '#ff0000' } });
             } else {
-                move.action(creep, 'attacking@' + target.id);
+                move.action(creep, 'attacking@' + live.id);
             }
         } else if (rangedParts > 0) {
-            const res2 = creep.rangedAttack(target);
+            const res2 = creep.rangedAttack(live);
             if (res2 === ERR_NOT_IN_RANGE) {
-                move.action(creep, 'ranged@' + target.id);
-                move.moveCreep(creep, target, { visualizePathStyle: { stroke: '#ff0000' } });
+                move.action(creep, 'ranged@' + live.id);
+                move.moveCreep(creep, live, { visualizePathStyle: { stroke: '#ff0000' } });
             } else {
-                move.action(creep, 'ranged@' + target.id);
+                move.action(creep, 'ranged@' + live.id);
             }
         }
         return true;

@@ -15,19 +15,21 @@ module.exports = new TaskType({
     run: function (creep, task) {
         if (creep.getActiveBodyparts(HEAL) === 0) return false;
         const target = task.target;
-        if (!target) return false;
+        if (!target || !target.id) return false;
+        const live = Game.getObjectById(target.id);
+        if (!live || live.hits === undefined || live.hits >= live.hitsMax) return false;
         if (creep.hits < creep.hitsMax) {
             move.action(creep, 'self-heal');
             creep.heal(creep);
             return true;
         }
-        move.action(creep, 'healing@' + target.id);
-        const res = creep.heal(target);
+        move.action(creep, 'healing@' + live.id);
+        const res = creep.heal(live);
         if (res === ERR_NOT_IN_RANGE) {
-            if (creep.pos.inRangeTo(target, 3)) {
-                creep.rangedHeal(target);
+            if (creep.pos.inRangeTo(live, 3)) {
+                creep.rangedHeal(live);
             } else {
-                move.moveCreep(creep, target, { visualizePathStyle: { stroke: '#00ff00' } });
+                move.moveCreep(creep, live, { visualizePathStyle: { stroke: '#00ff00' } });
             }
         }
         return true;

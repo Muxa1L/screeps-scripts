@@ -43,7 +43,7 @@ function dynamicQuota(rcl, controller) {
         } else if (ttd < CRITICAL_TTD) {
             q.upgrader = Math.max(baseUpgraders, Math.min(3, maxUpgraders));
         } else if (ttd < WARN_TTD) {
-            q.upgrader = Math.max(baseUpgraders, baseUpgraders + 1);
+            q.upgrader = baseUpgraders + 1;
         }
     }
     return q;

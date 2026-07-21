@@ -28,7 +28,7 @@ function shouldRenew(creep) {
 
 const RESTRICTED_TASKS = {
     miner:    ['mine'],
-    hauler:   ['haul', 'sweep'],
+    hauler:   ['haul', 'sweep', 'supply'],
     fighter:  ['defend'],
     healer:   ['heal'],
     builder:  ['build', 'repair', 'upgrade'],

@@ -53,7 +53,7 @@ module.exports = new TaskType({
             return true;
         }
         if (ret === ERR_NOT_IN_RANGE) {
-            move.moveCreep(creep, source, { visualizePathStyle: { stroke: '#ffaa00' } });
+            move.moveCreep(creep, slot || source, { visualizePathStyle: { stroke: '#ffaa00' } });
         }
         return true;
     },

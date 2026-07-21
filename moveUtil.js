@@ -11,9 +11,8 @@ function markCreeps(matrix, roomName, self) {
     for (let i = 0; i < creeps.length; i++) {
         const c = creeps[i];
         if (c === self) continue;
-        if (!c.my) continue;
         const existing = matrix.get(c.pos.x, c.pos.y);
-        if (existing === 0 || existing === undefined) {
+        if (existing === 0) {
             matrix.set(c.pos.x, c.pos.y, CREEP_COST);
         }
     }

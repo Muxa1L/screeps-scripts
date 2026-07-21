@@ -4,21 +4,15 @@ const SLOT_TILES = [
     [-1, 1],  [0, 1],  [1, 1],
 ];
 
-function ensureRegistry(room) {
-    if (!Memory.sources) Memory.sources = {};
-    const sources = room.find(FIND_SOURCES);
-    for (let i = 0; i < sources.length; i++) {
-        const src = sources[i];
-        if (!Memory.sources[src.id]) {
-            Memory.sources[src.id] = {
-                roomName: room.name,
-                x: src.pos.x,
-                y: src.pos.y,
-                slots: computeSlots(room, src),
-            };
+function tileIsWalkable(pos) {
+    const structs = pos.lookFor(LOOK_STRUCTURES);
+    for (let i = 0; i < structs.length; i++) {
+        const st = structs[i].structureType;
+        if (st !== STRUCTURE_ROAD && st !== STRUCTURE_CONTAINER && st !== STRUCTURE_RAMPART) {
+            return false;
         }
     }
-    return Memory.sources;
+    return true;
 }
 
 function computeSlots(room, source) {
@@ -32,9 +26,42 @@ function computeSlots(room, source) {
         const pos = new RoomPosition(x, y, room.name);
         const terrain = pos.lookFor(LOOK_TERRAIN);
         if (terrain[0] === 'wall') continue;
+        if (!tileIsWalkable(pos)) continue;
         slots.push({ x: x, y: y, claimedBy: null });
     }
     return slots;
+}
+
+function recomputeSlots(room, src) {
+    const source = Game.getObjectById(Object.keys(Memory.sources).find(function (id) {
+        return Memory.sources[id] === src;
+    }));
+    if (!source) return;
+    const fresh = computeSlots(room, source);
+    for (let i = 0; i < fresh.length; i++) {
+        const match = src.slots.find(function (s) { return s.x === fresh[i].x && s.y === fresh[i].y; });
+        if (match) fresh[i].claimedBy = match.claimedBy;
+    }
+    src.slots = fresh;
+}
+
+function ensureRegistry(room) {
+    if (!Memory.sources) Memory.sources = {};
+    const sources = room.find(FIND_SOURCES);
+    for (let i = 0; i < sources.length; i++) {
+        const src = sources[i];
+        if (!Memory.sources[src.id]) {
+            Memory.sources[src.id] = {
+                roomName: room.name,
+                x: src.pos.x,
+                y: src.pos.y,
+                slots: computeSlots(room, src),
+            };
+        } else if (Game.time % 500 === 0) {
+            recomputeSlots(room, Memory.sources[src.id]);
+        }
+    }
+    return Memory.sources;
 }
 
 function freeSlot(sourceId) {

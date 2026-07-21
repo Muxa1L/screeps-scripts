@@ -4,7 +4,8 @@ const taskBase = require('taskBase');
 function TaskType(spec) {
     this.type = spec.type;
     this.priority = spec.priority;
-    this.cap = spec.cap || 99;
+    this.cap = spec.cap === undefined ? 99 : spec.cap;
+    this.capFor = spec.capFor || null;
     this.canDo = spec.canDo || function () { return true; };
     this.tasks = spec.tasks || function () { return []; };
     this.run = spec.run || function () { return true; };
