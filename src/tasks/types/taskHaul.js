@@ -21,9 +21,16 @@ module.exports = {
         for (let i = 0; i < snap.containers.length; i++) {
             const c = snap.containers[i];
             if (priorityIds[c.id]) continue; // flagged containers are caches, not haul sources
-            if (c.store[RESOURCE_ENERGY] >= 50) out.push({ target: c });
+            if (c.store[RESOURCE_ENERGY] >= 20) out.push({ target: c });
         }
         return out;
+    },
+    score: function (creep, target) {
+        const dist = taskBase.approxDistance(creep, target);
+        const energy = target.store ? (target.store[RESOURCE_ENERGY] || 0) : 0;
+        // Prefer fuller containers over closer nearly-empty ones, but cap the
+        // energy bonus so distance still matters for extremely far sources.
+        return dist - Math.min(energy / 25, 20);
     },
     run: function (creep, task, snap) {
         const container = task.target ? Game.getObjectById(task.target.id) : null;

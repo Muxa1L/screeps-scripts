@@ -105,8 +105,10 @@ function bestTaskFor(creep, taskList, allowed, snap, claimCounts, capCache) {
         if (failedTasks[t.id]) continue;
         let priority = t.priority;
         if (isEmpty && t.type === 'harvest') priority = 5;
-        const approx = taskBase.approxDistance(creep, target);
-        candidates.push({ task: t, priority: priority, approx: approx });
+        // Use task-specific scoring when available so task types can weight
+        // distance against target state (e.g. haul prefers fuller containers).
+        const score = tasks.score(t.type, creep, target);
+        candidates.push({ task: t, priority: priority, approx: score });
     }
     if (candidates.length === 0) return null;
     let best = candidates[0];
@@ -146,11 +148,12 @@ function shouldSwitch(creep, current, currentApprox, best) {
     if (best.priority > current.priority) return false;
     const lastChange = memory.getLastTaskChange(creep);
     if (Game.time - lastChange < TASK_SWITCH_COOLDOWN) return false;
-    // Collection/delivery tasks (haul/sweep) must beat current by a distance
-    // margin to avoid rapid target flipping when several sources/deposits are
-    // close together.
+    // Collection/delivery tasks (haul/sweep) must beat current by a score
+    // margin. The score now includes target state (e.g. haul energy amount),
+    // so keep a smaller margin to avoid lock-in while still preventing rapid
+    // target flipping.
     if (current.type === 'haul' || current.type === 'sweep') {
-        return best.approx <= currentApprox - 5;
+        return best.approx <= currentApprox - 3;
     }
     return best.approx < currentApprox;
 }
