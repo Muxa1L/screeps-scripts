@@ -60,6 +60,6 @@ module.exports = {
     WARN_TTD: 6000,
 
     // Creep-memory cleanup
-    GHOST_CRITICAL_AGE: 5,
+    GHOST_CRITICAL_AGE: 15,
     GHOST_GRACE_TICKS: 10,
 };
