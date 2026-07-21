@@ -1,5 +1,19 @@
 const assert = require('./utils/assert');
 
+// CPU history instrumentation. Records a rolling buffer of {tick, bucket, cpu}
+// samples into Memory.stats.cpuHistory so it can be read back remotely via the
+// memory API (which works on shard3, unlike the console endpoint).
+const CPU_SAMPLE_INTERVAL = 5;
+const CPU_HISTORY_MAX = 120;
+
+function recordCpu() {
+    if (Game.time % CPU_SAMPLE_INTERVAL !== 0) return;
+    if (!Memory.stats) Memory.stats = {};
+    const hist = Memory.stats.cpuHistory || (Memory.stats.cpuHistory = []);
+    hist.push({ t: Game.time, b: Game.cpu.bucket, c: Game.cpu.getUsed() });
+    if (hist.length > CPU_HISTORY_MAX) hist.shift();
+}
+
 module.exports.loop = function () {
     assert.safeTick('globals',    function () { require('./utils/globals').tick(); });
     assert.safeTick('roomManager', function () { require('./managers/roomManager').tick(); });
@@ -13,6 +27,8 @@ module.exports.loop = function () {
     if (Game.cpu.bucket > 500 || Game.shard.name === 'sim') {
         assert.safeTick('upkeepManager',  function () { require('./managers/upkeepManager').run(); });
     }
+
+    recordCpu();
 
     if (Game.time % 100 === 0) {
         const meta = '[' + Game.time + '] [meta] bucket=' + Game.cpu.bucket +
