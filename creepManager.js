@@ -53,10 +53,19 @@ function getClaimCount(taskId) {
 
 const HARVEST_NEED_THRESHOLD = 0.25;
 
+function wantsToHarvest(creep) {
+    const capacity = creep.store.getCapacity(RESOURCE_ENERGY);
+    const energy = creep.store[RESOURCE_ENERGY] || 0;
+    const free = capacity - energy;
+    if (free <= 0) return false;
+    if (creep.memory.role === 'harvester') return true;
+    return energy < capacity * HARVEST_NEED_THRESHOLD;
+}
+
 function bestTaskFor(creep, taskList, allowed, snap) {
     const capacity = creep.store.getCapacity(RESOURCE_ENERGY);
     const energy = creep.store[RESOURCE_ENERGY] || 0;
-    const needsHarvest = energy < capacity * HARVEST_NEED_THRESHOLD;
+    const wantsHarvest = wantsToHarvest(creep);
     const isFull = energy >= capacity;
     const candidates = [];
     for (let i = 0; i < taskList.length; i++) {
@@ -69,10 +78,10 @@ function bestTaskFor(creep, taskList, allowed, snap) {
         if (cap < 99 && getClaimCount(t.id) >= cap) {
             continue;
         }
-        if (needsHarvest && (t.type === 'build' || t.type === 'repair' || t.type === 'upgrade')) continue;
+        if (wantsHarvest && (t.type === 'build' || t.type === 'repair' || t.type === 'upgrade' || t.type === 'supply')) continue;
         if (isFull && (t.type === 'harvest' || t.type === 'mine')) continue;
         let priority = t.priority;
-        if (needsHarvest && t.type === 'harvest') priority = 5;
+        if (wantsHarvest && t.type === 'harvest') priority = 5;
         if (creep.memory._failedTasks && creep.memory._failedTasks[t.id]) continue;
         const approx = taskBase.approxDistance(creep, target);
         candidates.push({ task: t, priority: priority, approx: approx });
