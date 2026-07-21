@@ -63,6 +63,31 @@ function capForType(type, room, snap) {
 
 const SELF_REFUELING_TASKS = { build: true, repair: true, upgrade: true };
 
+function depositAvailable(snap, excludeContainerId) {
+    if (!snap) return false;
+    if (snap.energyStructures) {
+        for (let i = 0; i < snap.energyStructures.length; i++) {
+            const s = snap.energyStructures[i];
+            if (s.structureType === STRUCTURE_TOWER) continue;
+            const cap = s.store.getCapacity(RESOURCE_ENERGY) || 0;
+            if ((s.store[RESOURCE_ENERGY] || 0) < cap) return true;
+        }
+    }
+    if (snap.storage) {
+        const cap = snap.storage.store.getCapacity(RESOURCE_ENERGY) || 0;
+        if ((snap.storage.store[RESOURCE_ENERGY] || 0) < cap) return true;
+    }
+    if (snap.containers) {
+        for (let i = 0; i < snap.containers.length; i++) {
+            const c = snap.containers[i];
+            if (c.id === excludeContainerId) continue;
+            const cap = c.store.getCapacity(RESOURCE_ENERGY) || 0;
+            if ((c.store[RESOURCE_ENERGY] || 0) < cap) return true;
+        }
+    }
+    return false;
+}
+
 function bestTaskFor(creep, taskList, allowed, snap) {
     const capacity = creep.store.getCapacity(RESOURCE_ENERGY);
     const energy = creep.store[RESOURCE_ENERGY] || 0;
@@ -80,6 +105,10 @@ function bestTaskFor(creep, taskList, allowed, snap) {
             continue;
         }
         if (isFull && (t.type === 'harvest' || t.type === 'mine')) continue;
+        if (isFull && t.type === 'haul') {
+            const excludeId = (creep.memory._hauledFrom === target.id) ? target.id : null;
+            if (!depositAvailable(snap, excludeId)) continue;
+        }
         if (isEmpty && !SELF_REFUELING_TASKS[t.type] && t.type !== 'harvest' && t.type !== 'sweep' && t.type !== 'haul') continue;
         if (creep.memory._failedTasks && creep.memory._failedTasks[t.id]) continue;
         let priority = t.priority;
