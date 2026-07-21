@@ -100,12 +100,6 @@ function moveCreep(creep, target, opts) {
                     (Math.abs(targetY - selfY) >= Math.abs(targetX - selfX) && dy !== 0 && (targetY - selfY) * dy > 0)) {
                     continue;
                 }
-                // If the other creep is adjacent to the target, it is likely
-                // the one currently interacting with it; route around it.
-                if (Math.abs(p.x - targetX) <= 1 && Math.abs(p.y - targetY) <= 1) {
-                    matrix.set(p.x, p.y, 0xff);
-                    continue;
-                }
                 const existing = matrix.get(p.x, p.y);
                 if (existing === 0) {
                     matrix.set(p.x, p.y, CREEP_COST);

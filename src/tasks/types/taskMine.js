@@ -49,25 +49,19 @@ module.exports = {
             return false;
         }
 
-        const slot = sourceRegistry.slotPos(sourceId, creep.name);
-        if (slot && !creep.pos.isEqualTo(slot)) {
-            move.action(creep, 'moving->mine@' + sourceId);
-            move.moveCreep(creep, slot, { visualizePathStyle: { stroke: '#ffaa00' } });
+        if (creep.pos.isNearTo(source)) {
+            const ret = creep.harvest(source);
+            if (ret === OK) {
+                move.action(creep, 'harvesting@' + sourceId);
+                return true;
+            }
+            // Source depleted or busy; stay put and wait.
             return true;
         }
 
-        const ret = creep.harvest(source);
-        if (ret === OK) {
-            move.action(creep, 'harvesting@' + sourceId);
-            return true;
-        }
-        if (ret === ERR_NOT_IN_RANGE) {
-            move.action(creep, 'moving->mine@' + sourceId);
-            move.moveCreep(creep, slot || source, { visualizePathStyle: { stroke: '#ffaa00' } });
-            return true;
-        }
-        // Keep the mine task even if the source is temporarily depleted; it will
-        // regenerate and the miner is already positioned nearby.
+        const slot = sourceRegistry.slotPos(sourceId, creep.name);
+        move.action(creep, 'moving->mine@' + sourceId);
+        move.moveCreep(creep, slot || source, { visualizePathStyle: { stroke: '#ffaa00' } });
         return true;
     },
 };
