@@ -37,6 +37,18 @@ function moveCreep(creep, target, opts) {
     }
     if (creep.fatigue > 0) return;
 
+    // If both the creep and the target are on roads, use a short path cache
+    // so the creep recalculates more often and avoids creating "passing" paths
+    // around slower traffic that is actually heading the same way.
+    const selfOnRoad = creep.room && creep.room.lookForAt(LOOK_STRUCTURES, creep.pos.x, creep.pos.y).some(function (s) {
+        return s.structureType === STRUCTURE_ROAD;
+    });
+    const targetOnRoad = target.pos.roomName === creep.pos.roomName &&
+        creep.room && creep.room.lookForAt(LOOK_STRUCTURES, target.pos.x, target.pos.y).some(function (s) {
+        return s.structureType === STRUCTURE_ROAD;
+    });
+    const roadReuse = (selfOnRoad || targetOnRoad) ? 2 : null;
+
     const targetId = target.id || (target.pos.x + ',' + target.pos.y + ',' + target.pos.roomName);
     if (memorySchema.getMoveTargetId(creep) !== targetId) {
         memorySchema.setMoveTargetId(creep, targetId);
@@ -44,7 +56,7 @@ function moveCreep(creep, target, opts) {
     }
 
     const mvr = creep.moveTo(target, Object.assign({
-        reusePath: 5,
+        reusePath: roadReuse !== null ? roadReuse : 5,
         maxOps: 2000,
         ignoreCreeps: false,
         costCallback: function (roomName, matrix) {
