@@ -36,6 +36,7 @@ const RESTRICTED_TASKS = {
 
 let _claimCounts = {};
 let _taskListCache = {};
+let _capCache = {};
 
 function refreshClaimCounts() {
     _claimCounts = {};
@@ -49,6 +50,14 @@ function refreshClaimCounts() {
 
 function getClaimCount(taskId) {
     return _claimCounts[taskId] || 0;
+}
+
+function capForType(type, room, snap) {
+    const key = type + ':' + room.name;
+    if (_capCache[key] === undefined) {
+        _capCache[key] = tasks.cap(type, room, snap);
+    }
+    return _capCache[key];
 }
 
 const HARVEST_NEED_THRESHOLD = 0.25;
@@ -74,7 +83,7 @@ function bestTaskFor(creep, taskList, allowed, snap) {
         if (!tasks.canDo(t.type, creep)) continue;
         const target = t.target;
         if (!target || !target.pos) continue;
-        const cap = tasks.cap(t.type, creep.room, snap);
+        const cap = capForType(t.type, creep.room, snap);
         if (cap < 99 && getClaimCount(t.id) >= cap) {
             continue;
         }
@@ -90,7 +99,7 @@ function bestTaskFor(creep, taskList, allowed, snap) {
     candidates.sort(function (a, b) {
         return (a.priority * 1000 + a.approx) - (b.priority * 1000 + b.approx);
     });
-    return candidates[0].task;
+    return candidates[0];
 }
 
 const TASK_SWITCH_COOLDOWN = 5;
@@ -151,6 +160,7 @@ function runCreep(creep) {
             logger.event('creep', '[' + Game.time + '] [unreachable] ' + creep.name + ' releasing task ' + creep.memory.taskId + ' after ' + creep.memory._moveFailures + ' move failures');
             if (!creep.memory._failedTasks) creep.memory._failedTasks = {};
             creep.memory._failedTasks[creep.memory.taskId] = Game.time + 50;
+            if (_claimCounts[creep.memory.taskId]) _claimCounts[creep.memory.taskId] = Math.max(0, _claimCounts[creep.memory.taskId] - 1);
             creep.memory.taskId = null;
         }
         creep.memory._moveFailures = 0;
@@ -181,6 +191,7 @@ function runCreep(creep) {
             }
         }
         if (!current) {
+            if (_claimCounts[creep.memory.taskId]) _claimCounts[creep.memory.taskId] = Math.max(0, _claimCounts[creep.memory.taskId] - 1);
             creep.memory.taskId = null;
         }
     }
@@ -188,9 +199,9 @@ function runCreep(creep) {
     let assigned = current;
     if (best) {
         if (!current) {
-            assigned = best;
+            assigned = best.task;
         } else if (shouldSwitch(creep, current, currentApprox, best)) {
-            assigned = best;
+            assigned = best.task;
         }
     }
     if (assigned) {
@@ -200,7 +211,10 @@ function runCreep(creep) {
         }
     }
     if (!assigned) {
-        creep.memory.taskId = null;
+        if (creep.memory.taskId) {
+            if (_claimCounts[creep.memory.taskId]) _claimCounts[creep.memory.taskId] = Math.max(0, _claimCounts[creep.memory.taskId] - 1);
+            creep.memory.taskId = null;
+        }
         creep.memory._lastTaskChange = Game.time;
         const forceTarget = forceTargetFor(creep, room);
         if (forceTarget) {
@@ -231,6 +245,8 @@ function runCreep(creep) {
     if (prevTask !== assigned.id) {
         creep.memory._lastTaskChange = Game.time;
         logger.setAction(creep, assigned.type);
+        if (prevTask) _claimCounts[prevTask] = Math.max(0, (_claimCounts[prevTask] || 1) - 1);
+        _claimCounts[assigned.id] = (_claimCounts[assigned.id] || 0) + 1;
     }
 
     const keep = taskHandlers.run(assigned.type, creep, assigned);
@@ -238,6 +254,7 @@ function runCreep(creep) {
         logger.event('creep', '[' + Game.time + '] [release] ' + creep.name + ' finished ' + taskBase.describeTask(assigned));
         creep.memory.taskId = null;
         creep.memory._lastTaskChange = Game.time;
+        if (_claimCounts[assigned.id]) _claimCounts[assigned.id] = Math.max(0, _claimCounts[assigned.id] - 1);
         logger.setAction(creep, 'released');
     }
 
@@ -269,6 +286,7 @@ module.exports = {
     tick: function () {
         refreshClaimCounts();
         _taskListCache = {};
+        _capCache = {};
 
         const byRole = {};
         const byTask = {};
