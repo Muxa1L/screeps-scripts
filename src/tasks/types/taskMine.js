@@ -16,6 +16,8 @@ module.exports = {
         const out = [];
         for (const id in Memory.sources) {
             if (Memory.sources[id].roomName !== room.name) continue;
+            const source = Game.getObjectById(id);
+            if (!source || source.energy <= 0) continue;
             out.push({ target: { id: id, pos: { x: Memory.sources[id].x, y: Memory.sources[id].y, roomName: room.name } } });
         }
         return out;
@@ -58,9 +60,8 @@ module.exports = {
             move.moveCreep(creep, slot || source, { visualizePathStyle: { stroke: '#ffaa00' } });
             return true;
         }
-        if (ret === ERR_NOT_ENOUGH_RESOURCES) {
-            return false;
-        }
+        // Keep the mine task even if the source is temporarily depleted; it will
+        // regenerate and the miner is already positioned on its slot.
         return true;
     },
 };

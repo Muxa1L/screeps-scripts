@@ -66,7 +66,8 @@ module.exports = {
         }
 
         // Collection phase: withdraw from the source container.
-        if (depositService.structureNeedsEnergy(container)) {
+        const containerEnergy = container.store ? (container.store[RESOURCE_ENERGY] || 0) : 0;
+        if (containerEnergy > 0) {
             move.action(creep, 'withdraw@' + container.id);
             const wRes = creep.withdraw(container, RESOURCE_ENERGY);
             if (wRes === ERR_NOT_IN_RANGE) {
