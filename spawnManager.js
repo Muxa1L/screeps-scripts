@@ -6,7 +6,15 @@ const roomManager = require('roomManager');
 
 const BUCKET_SPAWN_THRESHOLD = 2000;
 
+let _countsCache = {};
+let _countsTick = -1;
+
 function creepCountByRole(roomName) {
+    if (_countsTick !== Game.time) {
+        _countsTick = Game.time;
+        _countsCache = {};
+    }
+    if (_countsCache[roomName]) return _countsCache[roomName];
     const counts = {};
     for (const name in Game.creeps) {
         const c = Game.creeps[name];
@@ -15,6 +23,7 @@ function creepCountByRole(roomName) {
         if (!r) continue;
         counts[r] = (counts[r] || 0) + 1;
     }
+    _countsCache[roomName] = counts;
     return counts;
 }
 
@@ -40,13 +49,9 @@ function hostilesInRoom(room) {
 function tryDefenders(spawn, hostiles) {
     if (hostiles.length === 0) return false;
     const roomName = spawn.room.name;
-    let fighters = 0, healers = 0;
-    for (const cn in Game.creeps) {
-        const c = Game.creeps[cn];
-        if (c.pos.roomName !== roomName) continue;
-        if (c.memory.role === 'fighter') fighters++;
-        else if (c.memory.role === 'healer') healers++;
-    }
+    const counts = creepCountByRole(roomName);
+    const fighters = counts.fighter || 0;
+    const healers = counts.healer || 0;
     const cap = spawn.room.energyCapacityAvailable;
     const available = spawn.room.energyAvailable;
     if (fighters === 0) {

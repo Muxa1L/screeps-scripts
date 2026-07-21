@@ -16,21 +16,17 @@ function snapshotFor(room) {
     const ruins = room.find(FIND_RUINS, {
         filter: function (r) { return _.sum(r.store) > 10; },
     });
-    const damagedCritical = room.find(FIND_STRUCTURES, {
-        filter: function (s) {
-            if (s.structureType === STRUCTURE_RAMPART || s.structureType === STRUCTURE_WALL) {
-                return s.hits < 10000;
-            }
-            return false;
-        },
-    });
-    const damagedNonCritical = room.find(FIND_STRUCTURES, {
-        filter: function (s) {
-            if (s.structureType === STRUCTURE_RAMPART || s.structureType === STRUCTURE_WALL) return false;
-            if (s.hits >= s.hitsMax) return false;
-            return s.structureType === STRUCTURE_CONTAINER || s.structureType === STRUCTURE_ROAD;
-        },
-    });
+    const damagedCritical = [];
+    const damagedNonCritical = [];
+    const allStructures = room.find(FIND_STRUCTURES);
+    for (let i = 0; i < allStructures.length; i++) {
+        const s = allStructures[i];
+        if (s.structureType === STRUCTURE_RAMPART || s.structureType === STRUCTURE_WALL) {
+            if (s.hits < 10000) damagedCritical.push(s);
+        } else if (s.structureType === STRUCTURE_CONTAINER || s.structureType === STRUCTURE_ROAD) {
+            if (s.hits < s.hitsMax) damagedNonCritical.push(s);
+        }
+    }
     const sources = room.find(FIND_SOURCES);
     const energyStructures = room.find(FIND_STRUCTURES, {
         filter: function (s) {

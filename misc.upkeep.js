@@ -1,6 +1,7 @@
 const assert = require('assert');
 const spawnUtil = require('spawnUtil');
 const constructionPlanner = require('constructionPlanner');
+const roomManager = require('roomManager');
 
 const RAMPART_TARGET_HITS = 100000;
 const SAFE_MODE_TRIGGER_HITS = 5000;
@@ -74,9 +75,10 @@ function run() {
             for (let i = 0; i < spawnsHere.length; i++) {
                 if (spawnsHere[i].hits < SAFE_MODE_TRIGGER_HITS) { lowHealth = true; break; }
             }
-            const hostiles = room.find(FIND_HOSTILE_CREEPS);
+            const snap = roomManager.get(rn);
+            const hostileCount = snap ? snap.hostiles.length : room.find(FIND_HOSTILE_CREEPS).length;
             const ttd = controller.ticksToDowngrade;
-            const lowTtd = typeof ttd === 'number' && ttd < SAFE_MODE_TTD_THRESHOLD && hostiles.length > 0;
+            const lowTtd = typeof ttd === 'number' && ttd < SAFE_MODE_TTD_THRESHOLD && hostileCount > 0;
 
             const lastSafeMode = getLastSafeModeActivate(rn);
             if ((lowHealth || lowTtd) &&
@@ -96,17 +98,20 @@ function run() {
 
     assert.safeRun('creepMemoryCleanup', function () {
         if (!Memory.creeps) return;
+        const dead = [];
         for (const cname in Memory.creeps) {
             if (Game.creeps[cname]) continue;
+            dead.push(cname);
             delete Memory.creeps[cname];
-            if (Memory.sources) {
-                for (const sid in Memory.sources) {
-                    const slots = Memory.sources[sid].slots;
-                    if (!slots) continue;
-                    for (let si = 0; si < slots.length; si++) {
-                        if (slots[si].claimedBy === cname) slots[si].claimedBy = null;
-                    }
-                }
+        }
+        if (dead.length === 0 || !Memory.sources) return;
+        const deadSet = {};
+        for (let i = 0; i < dead.length; i++) deadSet[dead[i]] = true;
+        for (const sid in Memory.sources) {
+            const slots = Memory.sources[sid].slots;
+            if (!slots) continue;
+            for (let si = 0; si < slots.length; si++) {
+                if (deadSet[slots[si].claimedBy]) slots[si].claimedBy = null;
             }
         }
     });
@@ -162,17 +167,44 @@ function run() {
     });
 }
 
+function closestByRangeFrom(pos, candidates) {
+    let best = null;
+    let bestRange = Infinity;
+    for (let i = 0; i < candidates.length; i++) {
+        const c = candidates[i];
+        const r = pos.getRangeTo(c);
+        if (r < bestRange) {
+            bestRange = r;
+            best = c;
+        }
+    }
+    return best;
+}
+
 function runTower(tower) {
     const energy = tower.energy;
-    const closestHostile = tower.pos.findClosestByRange(FIND_HOSTILE_CREEPS);
+    const snap = roomManager.get(tower.room.name);
+    let closestHostile = null;
+    if (snap) {
+        if (snap.hostiles.length > 0) closestHostile = closestByRangeFrom(tower.pos, snap.hostiles);
+    } else {
+        closestHostile = tower.pos.findClosestByRange(FIND_HOSTILE_CREEPS);
+    }
     if (closestHostile && energy >= TOWER_MIN_ATTACK_ENERGY) {
         tower.attack(closestHostile);
         return;
     }
     if (energy >= TOWER_MIN_HEAL_ENERGY) {
-        const closestDamagedCreep = tower.pos.findClosestByRange(FIND_MY_CREEPS, {
-            filter: function (c) { return c.hits < c.hitsMax; },
-        });
+        let closestDamagedCreep = null;
+        if (snap) {
+            if (snap.damagedFriendlies.length > 0) {
+                closestDamagedCreep = closestByRangeFrom(tower.pos, snap.damagedFriendlies);
+            }
+        } else {
+            closestDamagedCreep = tower.pos.findClosestByRange(FIND_MY_CREEPS, {
+                filter: function (c) { return c.hits < c.hitsMax; },
+            });
+        }
         if (closestDamagedCreep) {
             tower.heal(closestDamagedCreep);
             return;
@@ -200,9 +232,10 @@ function runTower(tower) {
 function runLink(link) {
     const room = link.room;
     if (!room) return;
+    const snap = roomManager.get(room.name);
 
     let isSourceLink = false;
-    const sources = room.find(FIND_SOURCES);
+    const sources = snap ? snap.sources : room.find(FIND_SOURCES);
     for (let i = 0; i < sources.length; i++) {
         if (link.pos.inRangeTo(sources[i].pos, 3)) {
             isSourceLink = true;
@@ -215,7 +248,7 @@ function runLink(link) {
 
     let storageLink = null;
     let controllerLink = null;
-    const allLinks = room.find(FIND_STRUCTURES, {
+    const allLinks = snap ? snap.links : room.find(FIND_STRUCTURES, {
         filter: function (s) { return s.structureType === STRUCTURE_LINK; },
     });
     for (let j = 0; j < allLinks.length; j++) {

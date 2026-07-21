@@ -27,12 +27,12 @@ function shouldRenew(creep) {
 }
 
 const RESTRICTED_TASKS = {
-    miner:    ['mine'],
-    hauler:   ['haul', 'sweep', 'supply'],
-    fighter:  ['defend'],
-    healer:   ['heal'],
-    builder:  ['build', 'repair', 'upgrade'],
-    upgrader: ['upgrade', 'harvest'],
+    miner:    { mine: true },
+    hauler:   { haul: true, sweep: true, supply: true },
+    fighter:  { defend: true },
+    healer:   { heal: true },
+    builder:  { build: true, repair: true, upgrade: true },
+    upgrader: { upgrade: true, harvest: true },
 };
 
 let _claimCounts = {};
@@ -71,7 +71,7 @@ function bestTaskFor(creep, taskList, allowed, snap) {
     const candidates = [];
     for (let i = 0; i < taskList.length; i++) {
         const t = taskList[i];
-        if (allowed && allowed.indexOf(t.type) === -1) continue;
+        if (allowed && !allowed[t.type]) continue;
         if (!tasks.canDo(t.type, creep)) continue;
         const target = t.target;
         if (!target || !target.pos) continue;
@@ -88,10 +88,17 @@ function bestTaskFor(creep, taskList, allowed, snap) {
         candidates.push({ task: t, priority: priority, approx: approx });
     }
     if (candidates.length === 0) return null;
-    candidates.sort(function (a, b) {
-        return (a.priority * 1000 + a.approx) - (b.priority * 1000 + b.approx);
-    });
-    return candidates[0];
+    let best = candidates[0];
+    let bestScore = best.priority * 1000 + best.approx;
+    for (let i = 1; i < candidates.length; i++) {
+        const c = candidates[i];
+        const score = c.priority * 1000 + c.approx;
+        if (score < bestScore) {
+            bestScore = score;
+            best = c;
+        }
+    }
+    return best;
 }
 
 const TASK_SWITCH_COOLDOWN = 5;
@@ -331,20 +338,6 @@ module.exports = {
         if (ctrlParts.length > 0) summary += ' | ' + ctrlParts.join(' ');
         logger.periodic('summary', 50, 'tick', summary);
 
-        if (Game.time % 50 === 0) {
-            for (const rname in Game.rooms) {
-                const rroom = Game.rooms[rname];
-                if (!rroom.controller || !rroom.controller.my) continue;
-                const tlist = taskRegistry.list(rroom);
-                const tsum = {};
-                for (let ti = 0; ti < tlist.length; ti++) {
-                    const tt = tlist[ti].type;
-                    tsum[tt] = (tsum[tt] || 0) + 1;
-                }
-                console.log('[' + Game.time + '] [tasklist] ' + rname + ' count=' + tlist.length + ' ' + JSON.stringify(tsum));
-            }
-        }
-
         for (const name in Game.creeps) {
             try {
                 runCreep(Game.creeps[name]);
@@ -356,6 +349,20 @@ module.exports = {
                     if (_claimCounts[tid]) _claimCounts[tid] = Math.max(0, _claimCounts[tid] - 1);
                     failed.memory.taskId = null;
                 }
+            }
+        }
+
+        if (Game.time % 50 === 0) {
+            for (const rname in Game.rooms) {
+                const rroom = Game.rooms[rname];
+                if (!rroom.controller || !rroom.controller.my) continue;
+                const tlist = _taskListCache[rname] || taskRegistry.list(rroom);
+                const tsum = {};
+                for (let ti = 0; ti < tlist.length; ti++) {
+                    const tt = tlist[ti].type;
+                    tsum[tt] = (tsum[tt] || 0) + 1;
+                }
+                console.log('[' + Game.time + '] [tasklist] ' + rname + ' count=' + tlist.length + ' ' + JSON.stringify(tsum));
             }
         }
     },
