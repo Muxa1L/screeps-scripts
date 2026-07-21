@@ -5,7 +5,6 @@ module.exports = {
     BUCKET_UPKEEP_THRESHOLD: 500,
 
     // Renew / recycle / stuck handling
-    RENEW_MIN_BODY_LENGTH: 6,
     RENEW_THRESHOLD_SMALL: 100,
     RENEW_THRESHOLD_LARGE: 250,
     STUCK_THRESHOLD: 200,

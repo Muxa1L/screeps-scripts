@@ -139,6 +139,18 @@ function setRenewComplete(creep, tick) {
     ensureCreepMemory(creep)._renewComplete = tick;
 }
 
+function getRenewing(creep) {
+    return ensureCreepMemory(creep)._renewing || false;
+}
+
+function setRenewing(creep, value) {
+    ensureCreepMemory(creep)._renewing = value;
+}
+
+function clearRenewing(creep) {
+    delete ensureCreepMemory(creep)._renewing;
+}
+
 function getRoomMemory(roomName) {
     if (!Memory.rooms) Memory.rooms = {};
     if (!Memory.rooms[roomName]) Memory.rooms[roomName] = {};
@@ -191,6 +203,9 @@ module.exports = {
     clearRecycling: clearRecycling,
     getRenewComplete: getRenewComplete,
     setRenewComplete: setRenewComplete,
+    getRenewing: getRenewing,
+    setRenewing: setRenewing,
+    clearRenewing: clearRenewing,
     getRoomMemory: getRoomMemory,
     getSourceMemory: getSourceMemory,
 };

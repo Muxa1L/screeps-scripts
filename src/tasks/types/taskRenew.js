@@ -18,6 +18,7 @@ function run(creep, _snap) {
         move.moveCreep(creep, spawn, { visualizePathStyle: { stroke: '#88ffff' } });
     } else if (res === ERR_FULL) {
         memory.setRenewComplete(creep, Game.time);
+        memory.clearRenewing(creep);
     }
     // ERR_NOT_ENOUGH_ENERGY: wait silently; caller re-checks shouldRenew next tick
 }

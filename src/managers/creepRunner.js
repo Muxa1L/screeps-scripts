@@ -10,9 +10,9 @@ const spawnUtil = require('../utils/spawnUtil');
 const move = require('../utils/moveUtil');
 const roomManager = require('./roomManager');
 
-const RENEW_MIN_BODY_LENGTH = constants.RENEW_MIN_BODY_LENGTH;
 const RENEW_THRESHOLD_SMALL = constants.RENEW_THRESHOLD_SMALL;
 const RENEW_THRESHOLD_LARGE = constants.RENEW_THRESHOLD_LARGE;
+const RENEW_FINISH_TTL = 1400;
 const TASK_SWITCH_COOLDOWN = constants.TASK_SWITCH_COOLDOWN;
 const MOVE_FAIL_THRESHOLD = move.MOVE_FAIL_THRESHOLD;
 
@@ -23,7 +23,16 @@ function renewThresholdFor(creep) {
 }
 
 function shouldRenew(creep) {
-    if (creep.body.length < RENEW_MIN_BODY_LENGTH) return false;
+    const isRenewing = memory.getRenewing(creep);
+    if (isRenewing) {
+        // Once a creep has committed to renewing, keep it at the spawn until it
+        // is nearly topped off, so it does not leave with only a small extension.
+        if (creep.ticksToLive >= RENEW_FINISH_TTL) {
+            memory.clearRenewing(creep);
+            return false;
+        }
+        return true;
+    }
     if (creep.ticksToLive >= renewThresholdFor(creep)) return false;
     const used = creep.store.getUsedCapacity(RESOURCE_ENERGY);
     if (used === 0) return true;
@@ -217,9 +226,12 @@ function renewOrRecycle(creep) {
     if (shouldRenew(creep)) {
         const renewSpawn = spawnUtil.nearestSpawn(creep);
         if (renewSpawn && renewSpawn.energy > 50) {
+            memory.setRenewing(creep, true);
             renew.run(creep);
             return true;
         }
+        // No spawn energy available; stop trying to renew this tick.
+        memory.clearRenewing(creep);
     }
     return false;
 }
