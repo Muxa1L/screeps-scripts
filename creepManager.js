@@ -158,11 +158,20 @@ function runCreep(creep) {
 
     if (creep.memory._moveFailures && creep.memory._moveFailures >= move.MOVE_FAIL_THRESHOLD) {
         if (creep.memory.taskId) {
-            logger.event('creep', '[' + Game.time + '] [unreachable] ' + creep.name + ' releasing task ' + creep.memory.taskId + ' after ' + creep.memory._moveFailures + ' move failures');
-            if (!creep.memory._failedTasks) creep.memory._failedTasks = {};
-            creep.memory._failedTasks[creep.memory.taskId] = Game.time + 50;
-            if (_claimCounts[creep.memory.taskId]) _claimCounts[creep.memory.taskId] = Math.max(0, _claimCounts[creep.memory.taskId] - 1);
-            creep.memory.taskId = null;
+            const parts = creep.memory.taskId.split(':');
+            const taskType = parts[0];
+            const targetId = parts[2];
+            const liveTarget = targetId ? Game.getObjectById(targetId) : null;
+            const nearTarget = liveTarget && creep.pos.inRangeTo(liveTarget, 3);
+            if (taskType === 'harvest' && nearTarget) {
+                creep.memory._moveFailures = 0;
+            } else {
+                logger.event('creep', '[' + Game.time + '] [unreachable] ' + creep.name + ' releasing task ' + creep.memory.taskId + ' after ' + creep.memory._moveFailures + ' move failures');
+                if (!creep.memory._failedTasks) creep.memory._failedTasks = {};
+                creep.memory._failedTasks[creep.memory.taskId] = Game.time + 50;
+                if (_claimCounts[creep.memory.taskId]) _claimCounts[creep.memory.taskId] = Math.max(0, _claimCounts[creep.memory.taskId] - 1);
+                creep.memory.taskId = null;
+            }
         }
         creep.memory._moveFailures = 0;
     }
