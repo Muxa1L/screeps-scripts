@@ -146,6 +146,12 @@ function shouldSwitch(creep, current, currentApprox, best) {
     if (best.priority > current.priority) return false;
     const lastChange = memory.getLastTaskChange(creep);
     if (Game.time - lastChange < TASK_SWITCH_COOLDOWN) return false;
+    // Collection/delivery tasks (haul/sweep) must beat current by a distance
+    // margin to avoid rapid target flipping when several sources/deposits are
+    // close together.
+    if (current.type === 'haul' || current.type === 'sweep') {
+        return best.approx <= currentApprox - 5;
+    }
     return best.approx < currentApprox;
 }
 

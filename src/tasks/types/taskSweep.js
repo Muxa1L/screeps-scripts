@@ -42,7 +42,11 @@ module.exports = {
                 const rtype = carried[i];
                 if (creep.store[rtype] <= 0) continue;
                 const deposit = depositService.findDeposit(creep, snap, { resourceType: rtype });
-                if (!deposit) continue;
+                if (!deposit) {
+                    // No deposit available; keep the sweep task to avoid
+                    // rapidly cycling between pickup targets.
+                    return true;
+                }
                 if (depositService.transferTo(creep, deposit, rtype)) {
                     // Still carrying this resource type; keep sweeping/depositing.
                     return true;

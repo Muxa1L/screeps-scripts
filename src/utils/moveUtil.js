@@ -28,20 +28,6 @@ function getCreepPositions(roomName) {
     return positions;
 }
 
-function markCreeps(matrix, roomName, self) {
-    const positions = getCreepPositions(roomName);
-    const selfX = self ? self.pos.x : -1;
-    const selfY = self ? self.pos.y : -1;
-    for (let i = 0; i < positions.length; i++) {
-        const p = positions[i];
-        if (p.x === selfX && p.y === selfY) continue;
-        const existing = matrix.get(p.x, p.y);
-        if (existing === 0) {
-            matrix.set(p.x, p.y, CREEP_COST);
-        }
-    }
-}
-
 function moveCreep(creep, target, opts) {
     if (!target) return;
     if (!target.pos) return;
@@ -63,7 +49,38 @@ function moveCreep(creep, target, opts) {
         ignoreCreeps: false,
         costCallback: function (roomName, matrix) {
             if (roomName !== creep.pos.roomName) return matrix;
-            markCreeps(matrix, roomName, creep);
+            // In 1-tile corridors creeps can deadlock if they all plan around
+            // static positions. Only mark creeps that are not immediately behind
+            // us (same direction of travel) and are not already adjacent to the
+            // target, so head-on traffic gets routed around while following
+            // traffic is allowed through.
+            const positions = getCreepPositions(roomName);
+            const selfX = creep.pos.x;
+            const selfY = creep.pos.y;
+            const targetX = target.pos.x;
+            const targetY = target.pos.y;
+            for (let i = 0; i < positions.length; i++) {
+                const p = positions[i];
+                if (p.x === selfX && p.y === selfY) continue;
+                const dx = p.x - selfX;
+                const dy = p.y - selfY;
+                // If a creep is directly behind us it is probably following;
+                // don't block it.
+                if ((Math.abs(targetX - selfX) > Math.abs(targetY - selfY) && dx !== 0 && (targetX - selfX) * dx > 0) ||
+                    (Math.abs(targetY - selfY) >= Math.abs(targetX - selfX) && dy !== 0 && (targetY - selfY) * dy > 0)) {
+                    continue;
+                }
+                // If the other creep is adjacent to the target, it is likely
+                // the one currently interacting with it; route around it.
+                if (Math.abs(p.x - targetX) <= 1 && Math.abs(p.y - targetY) <= 1) {
+                    matrix.set(p.x, p.y, 0xff);
+                    continue;
+                }
+                const existing = matrix.get(p.x, p.y);
+                if (existing === 0) {
+                    matrix.set(p.x, p.y, CREEP_COST);
+                }
+            }
             return matrix;
         },
     }, opts || {}));

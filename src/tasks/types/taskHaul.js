@@ -44,7 +44,11 @@ module.exports = {
                 excludeId: container.id,
                 excludeTypes: { [STRUCTURE_TOWER]: true },
             });
-            if (!deposit) return false;
+            if (!deposit) {
+                // No deposit available; keep hauling this container rather than
+                // flipping to a different source every tick.
+                return true;
+            }
             const hadEnergy = energy;
             const stillCarrying = depositService.transferTo(creep, deposit, RESOURCE_ENERGY);
             // Release the haul task once we have attempted delivery and no longer
