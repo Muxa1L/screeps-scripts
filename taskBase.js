@@ -2,6 +2,7 @@ const PRIORITY = {
     DEFEND: 10,
     RENEW: 20,
     HEAL: 30,
+    SUPPLY: 35,
     SWEEP: 40,
     HAUL: 50,
     REPAIR_CRITICAL: 55,
@@ -16,6 +17,7 @@ const PRIORITY = {
 const TASK_TYPE = {
     DEFEND: 'defend',
     HEAL: 'heal',
+    SUPPLY: 'supply',
     SWEEP: 'sweep',
     HAUL: 'haul',
     BUILD: 'build',

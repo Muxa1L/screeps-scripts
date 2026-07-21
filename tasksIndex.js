@@ -3,6 +3,7 @@ const taskBase = require('taskBase');
 const harvest = require('taskHarvest');
 const mine = require('taskMine');
 const haul = require('taskHaul');
+const supply = require('taskSupply');
 const sweep = require('taskSweep');
 const build = require('taskBuild');
 const repair = require('taskRepair');
@@ -14,6 +15,7 @@ const registry = {
     harvest: harvest,
     mine: mine,
     haul: haul,
+    supply: supply,
     sweep: sweep,
     build: build,
     repair: repair,
