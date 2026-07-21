@@ -79,28 +79,35 @@ module.exports = new TaskType({
         const live = Game.getObjectById(target.id);
         if (!live || live.hits === undefined) return false;
         if (live.hits >= live.hitsMax) return false;
+        const capacity = creep.store.getCapacity(RESOURCE_ENERGY) || 0;
         const energy = creep.store[RESOURCE_ENERGY] || 0;
         const workParts = creep.getActiveBodyparts(WORK);
         const minEnergy = workParts * REPAIR_POWER;
-        if (energy < minEnergy) {
-            const source = findEnergySource(creep);
-            if (source) {
-                move.action(creep, 'refuel@' + source.id);
-                if (source.store) {
-                    if (creep.withdraw(source, RESOURCE_ENERGY) === ERR_NOT_IN_RANGE) {
-                        move.moveCreep(creep, source, { visualizePathStyle: { stroke: '#ffffaa' } });
+        const isFull = energy >= capacity;
+        if (isFull) creep.memory._refueling = false;
+        if (creep.memory._refueling || energy < minEnergy) {
+            if (!isFull) {
+                const source = findEnergySource(creep);
+                if (source) {
+                    creep.memory._refueling = true;
+                    move.action(creep, 'refuel@' + source.id);
+                    if (source.store) {
+                        if (creep.withdraw(source, RESOURCE_ENERGY) === ERR_NOT_IN_RANGE) {
+                            move.moveCreep(creep, source, { visualizePathStyle: { stroke: '#ffffaa' } });
+                        }
+                    } else if (source.amount !== undefined) {
+                        if (creep.pickup(source) === ERR_NOT_IN_RANGE) {
+                            move.moveCreep(creep, source, { visualizePathStyle: { stroke: '#ffff00' } });
+                        }
+                    } else {
+                        if (creep.harvest(source) === ERR_NOT_IN_RANGE) {
+                            move.moveCreep(creep, source, { visualizePathStyle: { stroke: '#ffaa00' } });
+                        }
                     }
-                } else if (source.amount !== undefined) {
-                    if (creep.pickup(source) === ERR_NOT_IN_RANGE) {
-                        move.moveCreep(creep, source, { visualizePathStyle: { stroke: '#ffff00' } });
-                    }
-                } else {
-                    if (creep.harvest(source) === ERR_NOT_IN_RANGE) {
-                        move.moveCreep(creep, source, { visualizePathStyle: { stroke: '#ffaa00' } });
-                    }
+                    return true;
                 }
-                return true;
             }
+            creep.memory._refueling = false;
             if (energy === 0) return false;
         }
         const res = creep.repair(live);
