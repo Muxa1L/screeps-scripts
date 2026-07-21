@@ -30,8 +30,9 @@ function getCreepPositions(roomName) {
 
 function moveCreep(creep, target, opts) {
     if (!target) return;
-    if (!target.pos) return;
-    if (creep.pos.isNearTo(target)) {
+    const pos = target.pos || target;
+    if (!pos || pos.x === undefined || pos.y === undefined) return;
+    if (creep.pos.isNearTo(pos)) {
         memorySchema.setMoveFailures(creep, 0);
         return;
     }
@@ -43,13 +44,13 @@ function moveCreep(creep, target, opts) {
     const selfOnRoad = creep.room && creep.room.lookForAt(LOOK_STRUCTURES, creep.pos.x, creep.pos.y).some(function (s) {
         return s.structureType === STRUCTURE_ROAD;
     });
-    const targetOnRoad = target.pos.roomName === creep.pos.roomName &&
-        creep.room && creep.room.lookForAt(LOOK_STRUCTURES, target.pos.x, target.pos.y).some(function (s) {
+    const targetOnRoad = pos.roomName === creep.pos.roomName &&
+        creep.room && creep.room.lookForAt(LOOK_STRUCTURES, pos.x, pos.y).some(function (s) {
         return s.structureType === STRUCTURE_ROAD;
     });
     const roadReuse = (selfOnRoad || targetOnRoad) ? 2 : null;
 
-    const targetId = target.id || (target.pos.x + ',' + target.pos.y + ',' + target.pos.roomName);
+    const targetId = target.id || (pos.x + ',' + pos.y + ',' + pos.roomName);
     if (memorySchema.getMoveTargetId(creep) !== targetId) {
         memorySchema.setMoveTargetId(creep, targetId);
         memorySchema.setMoveFailures(creep, 0);
@@ -86,8 +87,8 @@ function moveCreep(creep, target, opts) {
             const positions = getCreepPositions(roomName);
             const selfX = creep.pos.x;
             const selfY = creep.pos.y;
-            const targetX = target.pos.x;
-            const targetY = target.pos.y;
+            const targetX = pos.x;
+            const targetY = pos.y;
             for (let i = 0; i < positions.length; i++) {
                 const p = positions[i];
                 if (p.x === selfX && p.y === selfY) continue;
