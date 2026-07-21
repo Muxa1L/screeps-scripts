@@ -61,16 +61,9 @@ function capForType(type, room, snap) {
     return _capCache[key];
 }
 
-function wantsToHarvest(creep) {
-    const energy = creep.store[RESOURCE_ENERGY] || 0;
-    if (energy > 0) return false;
-    return true;
-}
-
 function bestTaskFor(creep, taskList, allowed, snap) {
     const capacity = creep.store.getCapacity(RESOURCE_ENERGY);
     const energy = creep.store[RESOURCE_ENERGY] || 0;
-    const wantsHarvest = wantsToHarvest(creep);
     const isFull = energy >= capacity;
     const candidates = [];
     for (let i = 0; i < taskList.length; i++) {
@@ -83,13 +76,10 @@ function bestTaskFor(creep, taskList, allowed, snap) {
         if (cap < 99 && getClaimCount(t.id) >= cap) {
             continue;
         }
-        if (wantsHarvest && (t.type === 'build' || t.type === 'repair' || t.type === 'upgrade' || t.type === 'supply')) continue;
         if (isFull && (t.type === 'harvest' || t.type === 'mine')) continue;
-        let priority = t.priority;
-        if (wantsHarvest && t.type === 'harvest') priority = 5;
         if (creep.memory._failedTasks && creep.memory._failedTasks[t.id]) continue;
         const approx = taskBase.approxDistance(creep, target);
-        candidates.push({ task: t, priority: priority, approx: approx });
+        candidates.push({ task: t, priority: t.priority, approx: approx });
     }
     if (candidates.length === 0) return null;
     candidates.sort(function (a, b) {
