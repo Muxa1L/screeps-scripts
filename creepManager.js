@@ -61,12 +61,13 @@ function capForType(type, room, snap) {
     return _capCache[key];
 }
 
+const SELF_REFUELING_TASKS = { build: true, repair: true, upgrade: true };
+
 function bestTaskFor(creep, taskList, allowed, snap) {
     const capacity = creep.store.getCapacity(RESOURCE_ENERGY);
     const energy = creep.store[RESOURCE_ENERGY] || 0;
     const isFull = energy >= capacity;
     const isEmpty = energy === 0;
-    const SELF_REFUELING = { build: true, repair: true, upgrade: true };
     const candidates = [];
     for (let i = 0; i < taskList.length; i++) {
         const t = taskList[i];
@@ -79,7 +80,7 @@ function bestTaskFor(creep, taskList, allowed, snap) {
             continue;
         }
         if (isFull && (t.type === 'harvest' || t.type === 'mine')) continue;
-        if (isEmpty && !SELF_REFUELING[t.type] && t.type !== 'harvest' && t.type !== 'sweep') continue;
+        if (isEmpty && !SELF_REFUELING_TASKS[t.type] && t.type !== 'harvest' && t.type !== 'sweep') continue;
         if (creep.memory._failedTasks && creep.memory._failedTasks[t.id]) continue;
         let priority = t.priority;
         if (isEmpty && t.type === 'harvest') priority = 5;
@@ -99,7 +100,11 @@ function shouldSwitch(creep, current, currentApprox, best) {
     const bestTask = best.task;
     if (bestTask.id === current.id) return false;
     if (bestTask.type === current.type) return false;
-    if (best.priority < current.priority) return true;
+    if (best.priority < current.priority) {
+        const energy = creep.store[RESOURCE_ENERGY] || 0;
+        if (energy === 0 && SELF_REFUELING_TASKS[current.type]) return false;
+        return true;
+    }
     if (best.priority > current.priority) return false;
     const lastChange = creep.memory._lastTaskChange || 0;
     if (Game.time - lastChange < TASK_SWITCH_COOLDOWN) return false;
