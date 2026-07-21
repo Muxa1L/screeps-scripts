@@ -237,8 +237,60 @@ function handleMoveFailures(creep, claimCounts) {
     return true;
 }
 
+function combatIdleFallback(creep) {
+    memory.setLastTaskChange(creep, Game.time);
+    // Move toward the nearest visible hostile, or any known hostile position from snapshots.
+    const nearest = creep.pos.findClosestByRange(FIND_HOSTILE_CREEPS);
+    if (nearest) {
+        logger.setAction(creep, 'patrol->hostile@' + nearest.id);
+        move.moveCreep(creep, nearest, { visualizePathStyle: { stroke: '#ff0000' }, reusePath: 10 });
+        return;
+    }
+    // No hostile in this room; try to path toward an adjacent known hostile room.
+    const hostileRoom = findClosestHostileRoom(creep.pos.roomName);
+    if (hostileRoom) {
+        logger.setAction(creep, 'patrol->room@' + hostileRoom);
+        const exitDir = Game.map.findExit(creep.pos.roomName, hostileRoom);
+        if (exitDir !== ERR_NO_PATH && exitDir !== ERR_INVALID_ARGS) {
+            const exitPos = creep.pos.findClosestByRange(exitDir);
+            if (exitPos) {
+                move.moveCreep(creep, exitPos, { visualizePathStyle: { stroke: '#ff0000' }, reusePath: 20 });
+                return;
+            }
+        }
+    }
+    // Nothing to fight; idle near the nearest spawn.
+    const idleSpawn = spawnUtil.nearestSpawn(creep);
+    if (idleSpawn && !creep.pos.isNearTo(idleSpawn)) {
+        logger.setAction(creep, 'idle->spawn');
+        move.moveCreep(creep, idleSpawn, { visualizePathStyle: { stroke: '#888888' }, reusePath: 10 });
+    } else {
+        logger.setAction(creep, 'idle');
+    }
+}
+
+function findClosestHostileRoom(fromRoomName) {
+    let best = null;
+    let bestDist = Infinity;
+    for (const name in Game.rooms) {
+        const snap = roomManager.get(name);
+        if (!snap || !snap.hostiles || snap.hostiles.length === 0) continue;
+        const dist = Game.map.getRoomLinearDistance(fromRoomName, name) || Infinity;
+        if (dist < bestDist) {
+            bestDist = dist;
+            best = name;
+        }
+    }
+    return best;
+}
+
 function runIdleFallback(creep, room) {
     memory.setLastTaskChange(creep, Game.time);
+    const role = memory.getRole(creep);
+    if (role === 'fighter' || role === 'healer') {
+        combatIdleFallback(creep);
+        return;
+    }
     const forceTarget = forceTargetFor(creep, room);
     if (forceTarget) {
         if (!creep.pos.isNearTo(forceTarget)) {
@@ -260,6 +312,28 @@ function runIdleFallback(creep, room) {
     } else {
         logger.setAction(creep, 'idle');
     }
+}
+
+function collectCombatTasks(role) {
+    const out = [];
+    const types = role === 'healer' ? ['heal'] : ['defend'];
+    for (const roomName in Game.rooms) {
+        const snap = roomManager.get(roomName);
+        if (!snap) continue;
+        for (let t = 0; t < types.length; t++) {
+            const type = types[t];
+            const tt = tasks.get(type);
+            if (!tt) continue;
+            const items = tt.tasks(Game.rooms[roomName], snap) || [];
+            const priority = tt.priorityFor ? tt.priorityFor(snap) : tt.priority;
+            for (let i = 0; i < items.length; i++) {
+                const item = items[i];
+                if (!item || !item.target) continue;
+                out.push(taskBase.makeTask(type, priority, item.target, roomName));
+            }
+        }
+    }
+    return out;
 }
 
 function runCreep(creep, context) {
@@ -285,8 +359,18 @@ function runCreep(creep, context) {
         context.taskListCache[room.name] = taskList;
     }
 
+    // Combat roles (fighter/healer) can take tasks from any visible room,
+    // not just the room they are currently standing in.
+    const role = memory.getRole(creep);
+    if (role === 'fighter' || role === 'healer') {
+        const combatTasks = collectCombatTasks(role);
+        if (combatTasks.length > 0) {
+            taskList = combatTasks;
+        }
+    }
+
     const snap = roomManager.get(room.name);
-    const allowed = roles.allowedSet(memory.getRole(creep));
+    const allowed = roles.allowedSet(role);
     const currentTaskId = memory.getTaskId(creep);
     let currentTask = null;
     if (currentTaskId) {
