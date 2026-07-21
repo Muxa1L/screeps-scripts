@@ -74,9 +74,10 @@ module.exports = new TaskType({
         if (!site || !site.id) return false;
         const live = Game.getObjectById(site.id);
         if (!live || live.progress === undefined) return false;
-        const capacity = creep.store.getCapacity(RESOURCE_ENERGY) || 0;
         const energy = creep.store[RESOURCE_ENERGY] || 0;
-        if (energy < capacity) {
+        const workParts = creep.getActiveBodyparts(WORK);
+        const minEnergy = workParts * BUILD_POWER;
+        if (energy < minEnergy) {
             const source = findEnergySource(creep);
             if (source) {
                 move.action(creep, 'refuel@' + source.id);
@@ -104,7 +105,7 @@ module.exports = new TaskType({
             return true;
         }
         move.action(creep, 'building@' + live.id);
-        if (res === OK && live.progressTotal - live.progress <= creep.getActiveBodyparts(WORK) * BUILD_POWER) {
+        if (res === OK && live.progressTotal - live.progress <= workParts * BUILD_POWER) {
             return false;
         }
         return true;

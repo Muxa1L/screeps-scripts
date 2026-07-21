@@ -71,9 +71,10 @@ module.exports = new TaskType({
     run: function (creep, task) {
         const controller = task.target;
         if (!controller) return false;
-        const capacity = creep.store.getCapacity(RESOURCE_ENERGY) || 0;
         const energy = creep.store[RESOURCE_ENERGY] || 0;
-        if (energy < capacity) {
+        const workParts = creep.getActiveBodyparts(WORK);
+        const minEnergy = Math.max(1, workParts * UPGRADE_CONTROLLER_POWER);
+        if (energy < minEnergy) {
             const source = findEnergySource(creep);
             if (source) {
                 if (source.structureType) {
