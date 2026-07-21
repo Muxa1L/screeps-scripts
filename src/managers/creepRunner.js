@@ -460,6 +460,11 @@ function runCreep(creep, context) {
 
     const keep = tasks.run(assigned.type, creep, assigned, snap);
     if (keep === false) {
+        // Blacklist this task briefly so a stale target (e.g. an already-empty
+        // sweep pile that preempts build every tick then immediately fails)
+        // is not re-picked next tick. Per-creep-per-target, so other targets
+        // of the same type remain available.
+        memory.addFailedTask(creep, assigned.id, 5);
         logger.event('creep', '[' + Game.time + '] [release] ' + creep.name + ' finished ' + taskBase.describeTask(assigned));
         releaseTask(creep, context.claimCounts);
         memory.setLastTaskChange(creep, Game.time);
