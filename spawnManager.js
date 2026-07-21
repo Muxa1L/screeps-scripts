@@ -75,7 +75,7 @@ function tryRoleSpawn(spawn, role) {
 }
 
 function tick() {
-    if (Game.cpu.bucket < BUCKET_SPAWN_THRESHOLD) return;
+    if (Game.cpu.bucket !== undefined && Game.cpu.bucket < BUCKET_SPAWN_THRESHOLD && Game.shard.name !== 'sim') return;
     for (const sn in Game.spawns) {
         const spawn = Game.spawns[sn];
         if (spawn.spawning) continue;
