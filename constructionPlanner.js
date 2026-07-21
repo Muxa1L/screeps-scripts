@@ -204,7 +204,9 @@ function planRoom(room) {
     const anchor = spawns[0].pos;
     let placed = 0;
 
-    planRoads(room);
+    if (!Memory.flags || !Memory.flags.disableRoads) {
+        planRoads(room);
+    }
 
     const extensionTarget = limits.extension || 0;
     let extensionCurrent = counts.extension || 0;
