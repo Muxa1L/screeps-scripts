@@ -64,6 +64,7 @@ function snapshotFor(room) {
     return {
         roomName: room.name,
         hostiles: hostiles,
+        hostilePositions: hostiles.map(function (h) { return h.pos; }),
         damagedFriendlies: damagedFriendlies,
         constructionSites: constructionSites,
         droppedEnergy: droppedEnergy,
@@ -95,7 +96,20 @@ function get(roomName) {
     return snapshots[roomName] || null;
 }
 
+function isPosNearHostile(roomName, pos, range) {
+    range = range || 5;
+    const snap = snapshots[roomName];
+    if (!snap || !snap.hostilePositions) return false;
+    for (let i = 0; i < snap.hostilePositions.length; i++) {
+        const hp = snap.hostilePositions[i];
+        if (hp.roomName !== pos.roomName) continue;
+        if (Math.abs(hp.x - pos.x) <= range && Math.abs(hp.y - pos.y) <= range) return true;
+    }
+    return false;
+}
+
 module.exports = {
     tick: tick,
     get: get,
+    isPosNearHostile: isPosNearHostile,
 };

@@ -51,7 +51,10 @@ function findEnergySource(creep) {
         }
     }
     if (!best && snap.sources && snap.sources.length > 0) {
-        return creep.pos.findClosestByPath(snap.sources);
+        const safe = snap.sources.filter(function (s) {
+            return !roomManager.isPosNearHostile(creep.room.name, s.pos, 5);
+        });
+        if (safe.length > 0) return creep.pos.findClosestByPath(safe);
     }
     return best;
 }

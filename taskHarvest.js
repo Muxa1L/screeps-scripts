@@ -1,6 +1,7 @@
 const TaskType = require('taskBaseClass');
 const taskBase = require('taskBase');
 const move = require('moveUtil');
+const roomManager = require('roomManager');
 
 module.exports = new TaskType({
     type: 'harvest',
@@ -10,7 +11,13 @@ module.exports = new TaskType({
         return creep.getActiveBodyparts(WORK) > 0 && creep.getActiveBodyparts(CARRY) > 0;
     },
     tasks: function (room, snap) {
-        return snap.sources.map(function (s) { return { target: s }; });
+        const out = [];
+        for (let i = 0; i < snap.sources.length; i++) {
+            const s = snap.sources[i];
+            if (roomManager.isPosNearHostile(room.name, s.pos, 5)) continue;
+            out.push({ target: s });
+        }
+        return out;
     },
     score: function (creep, target) {
         return taskBase.pathScore(creep, target);
