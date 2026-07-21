@@ -22,8 +22,17 @@ function markCreeps(matrix, roomName, self) {
 function moveCreep(creep, target, opts) {
     if (!target) return;
     if (!target.pos) return;
-    if (creep.pos.isNearTo(target)) return;
+    if (creep.pos.isNearTo(target)) {
+        creep.memory._moveFailures = 0;
+        return;
+    }
     if (creep.fatigue > 0) return;
+
+    const targetId = target.id || (target.pos.x + ',' + target.pos.y + ',' + target.pos.roomName);
+    if (creep.memory._moveTargetId !== targetId) {
+        creep.memory._moveTargetId = targetId;
+        creep.memory._moveFailures = 0;
+    }
 
     const mvr = creep.moveTo(target, Object.assign({
         reusePath: 5,
@@ -37,13 +46,15 @@ function moveCreep(creep, target, opts) {
     }, opts || {}));
 
     creep.memory._lastMoveResult = mvr;
-    if (mvr === ERR_NO_PATH) {
-        creep.memory._moveFailures = (creep.memory._moveFailures || 0) + 1;
-    } else if (mvr === OK || mvr === ERR_TIRED || mvr === ERR_BUSY) {
+    if (mvr === OK) {
         creep.memory._moveFailures = 0;
+    } else if (mvr === ERR_NO_PATH) {
+        creep.memory._moveFailures = (creep.memory._moveFailures || 0) + 1;
+    } else if (mvr === ERR_TIRED || mvr === ERR_BUSY) {
+        // transient, keep current count
     } else {
         if (Memory.flags && Memory.flags.debugStuck) {
-            console.log('[stuck] ' + creep.name + ' moveTo ' + (target.id || '?') + ' -> ' + mvr);
+            console.log('[stuck] ' + creep.name + ' moveTo ' + targetId + ' -> ' + mvr);
         }
     }
 }

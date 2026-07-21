@@ -16,6 +16,8 @@ function shouldLog(category) {
     return true;
 }
 
+const MAX_PERIODIC_KEYS = 200;
+
 function periodic(category, interval, key, message) {
     if (!shouldLog(category)) return;
     const t = Game.time;
@@ -23,6 +25,14 @@ function periodic(category, interval, key, message) {
     const id = category + ':' + key + ':' + slot;
     if (_lastPeriodic[id] === slot) return;
     _lastPeriodic[id] = slot;
+    if (t % 1000 === 0) {
+        const keys = Object.keys(_lastPeriodic);
+        if (keys.length > MAX_PERIODIC_KEYS) {
+            for (let i = 0; i < keys.length - MAX_PERIODIC_KEYS; i++) {
+                delete _lastPeriodic[keys[i]];
+            }
+        }
+    }
     console.log(message);
 }
 
