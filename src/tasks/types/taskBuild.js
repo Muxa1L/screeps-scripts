@@ -31,7 +31,7 @@ module.exports = {
         const workParts = creep.getActiveBodyparts(WORK);
         const minEnergy = Math.max(1, workParts);
         const isFull = energy >= capacity;
-        if (isFull || energy >= minEnergy) memory.clearRefueling(creep);
+        if (isFull) memory.clearRefueling(creep);
         if (memory.getRefueling(creep) || energy < minEnergy) {
             if (!isFull) {
                 const source = energyService.findEnergySource(creep, snap, { allowHarvest: true });
