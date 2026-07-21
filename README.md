@@ -18,6 +18,7 @@ src/
     memorySchema.js  - safe typed accessors for Memory / creep.memory
     moveUtil.js      - path/move helpers with failure tracking
     spawnUtil.js     - spawn helpers
+    roomFlags.js     - Screeps flag helpers (e.g. 'haul:' priority containers)
     logger.js        - per-category logging
     assert.js        - safeTick wrappers
   managers/
@@ -122,16 +123,32 @@ task to be released cleanly instead of throwing. Applied to: `taskDefend`,
 ## Shared services and memory schema
 
 - `src/services/energyService.js` centralizes all energy-source selection:
-  storage first, then containers, then dropped resources, then source harvesting
-  when allowed. This logic was previously duplicated across `taskBuild`,
-  `taskRepair`, and `taskUpgrade`.
+  storage first, then dropped resources (they decay, so they take precedence
+  over containers), then containers, with `haul:` flagged priority containers
+  preferred over regular containers, then source harvesting when allowed.
+  This logic was previously duplicated across `taskBuild`, `taskRepair`, and
+  `taskUpgrade`.
 - `src/services/depositService.js` centralizes deposit selection for haulers,
   sweepers, and suppliers, with a configurable priority order and per-resource
-  handling.
+  handling. Containers marked with a `haul:` flag are chosen before other
+  deposits so energy can be staged closer to where it is needed.
 - `src/utils/memorySchema.js` provides safe typed accessors for all
   `creep.memory` and `Memory` keys used by the AI. All setters initialize
   missing parent objects so callers never have to guard against undefined
   intermediate keys.
+
+## In-game flags
+
+Screeps flags placed on containers can influence behavior. Flags are matched
+by **prefix** in the flag name.
+
+| Prefix    | Effect                                                                            |
+|-----------|-----------------------------------------------------------------------------------|
+| `haul:`   | Marks the container as a priority haul cache. Haulers will deliver here first, and |
+|           | non-haulers will withdraw from it before normal containers. Useful for staging    |
+|           | energy near a controller, spawn cluster, or construction site.                    |
+
+Example flag names: `haul:controller`, `haul:spawn`, `haul:extensions`.
 
 ## Feature flags
 
@@ -179,9 +196,11 @@ When the bucket is low, creeps stop running first, then spawning, then upkeep.
 - **Lint:** `npm run lint` (ESLint flat config in `eslint.config.mjs`).
 - **Lint fix:** `npm run lint:fix`.
 - **Test:** `npm test` (Node built-in test runner + `tests/mocks/screeps.js`).
-- **Build:** `npm run build` copies `src/` and the root `main.js` shim into
-  `dist/`, preserving the module layout Screeps expects.
-- **Deploy:** `npm run deploy` builds and pushes `dist/` to Screeps using
+- **Build:** `npm run build` bundles all `src/` modules and the root `main.js`
+  shim into a single `dist/main.js` file. Screeps does not support subfolders,
+  so the build resolves CommonJS `require` calls internally and produces one
+  uploadable module.
+- **Deploy:** `npm run deploy` builds and pushes `dist/main.js` to Screeps using
   `screeps-api`. Set credentials in `.env`:
   ```
   SCREEPS_TOKEN=your-token
