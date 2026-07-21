@@ -32,6 +32,7 @@ const RESTRICTED_TASKS = {
     fighter:  ['defend'],
     healer:   ['heal'],
     builder:  ['build', 'repair', 'upgrade'],
+    upgrader: ['upgrade', 'harvest'],
 };
 
 let _claimCounts = {};

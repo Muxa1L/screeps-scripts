@@ -29,6 +29,9 @@ function findEnergySource(creep) {
         }
         if (best) return best;
     }
+    if (snap.sources && snap.sources.length > 0) {
+        return creep.pos.findClosestByPath(snap.sources);
+    }
     return null;
 }
 
@@ -46,7 +49,15 @@ function upgradePriority(snapshot) {
 module.exports = new TaskType({
     type: 'upgrade',
     priority: taskBase.PRIORITY.UPGRADE,
-    cap: 4,
+    capFor: function (room, snap) {
+        if (!snap || !snap.controller) return 4;
+        const ttd = snap.controller.ticksToDowngrade;
+        if (typeof ttd !== 'number') return 4;
+        if (ttd < UPGRADE_EMERGENCY_THRESHOLD) return 12;
+        if (ttd < UPGRADE_URGENT_THRESHOLD) return 8;
+        if (ttd < UPGRADE_CRITICAL_THRESHOLD) return 6;
+        return 4;
+    },
     canDo: function (creep) {
         return creep.getActiveBodyparts(WORK) > 0 && creep.getActiveBodyparts(CARRY) > 0;
     },
@@ -63,10 +74,18 @@ module.exports = new TaskType({
         if (creep.store[RESOURCE_ENERGY] === 0) {
             const source = findEnergySource(creep);
             if (!source) return false;
-            move.action(creep, 'withdraw@' + source.id);
-            const wres = creep.withdraw(source, RESOURCE_ENERGY);
-            if (wres === ERR_NOT_IN_RANGE) {
-                move.moveCreep(creep, source, { visualizePathStyle: { stroke: '#ffffaa' } });
+            if (source.structureType) {
+                move.action(creep, 'withdraw@' + source.id);
+                const wres = creep.withdraw(source, RESOURCE_ENERGY);
+                if (wres === ERR_NOT_IN_RANGE) {
+                    move.moveCreep(creep, source, { visualizePathStyle: { stroke: '#ffffaa' } });
+                }
+            } else {
+                move.action(creep, 'harvest@' + source.id);
+                const hres = creep.harvest(source);
+                if (hres === ERR_NOT_IN_RANGE) {
+                    move.moveCreep(creep, source, { visualizePathStyle: { stroke: '#ffaa00' } });
+                }
             }
             return true;
         }

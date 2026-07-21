@@ -12,9 +12,9 @@ const QUOTAS = {
 
 const ROLE_PRIORITY = ['fighter', 'healer', 'hauler', 'miner', 'harvester', 'builder', 'upgrader'];
 
-const URGENT_TTD = 500;
-const CRITICAL_TTD = 2000;
-const WARN_TTD = 5000;
+const URGENT_TTD = 1000;
+const CRITICAL_TTD = 4000;
+const WARN_TTD = 6000;
 
 const STORAGE_FULL_THRESHOLD = 0.8;
 const STORAGE_LOW_THRESHOLD = 0.2;
