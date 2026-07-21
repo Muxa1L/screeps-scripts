@@ -71,27 +71,34 @@ module.exports = new TaskType({
     run: function (creep, task) {
         const controller = task.target;
         if (!controller) return false;
+        const capacity = creep.store.getCapacity(RESOURCE_ENERGY) || 0;
         const energy = creep.store[RESOURCE_ENERGY] || 0;
         const workParts = creep.getActiveBodyparts(WORK);
         const minEnergy = Math.max(1, workParts * UPGRADE_CONTROLLER_POWER);
-        if (energy < minEnergy) {
-            const source = findEnergySource(creep);
-            if (source) {
-                if (source.structureType) {
-                    move.action(creep, 'withdraw@' + source.id);
-                    const wres = creep.withdraw(source, RESOURCE_ENERGY);
-                    if (wres === ERR_NOT_IN_RANGE) {
-                        move.moveCreep(creep, source, { visualizePathStyle: { stroke: '#ffffaa' } });
+        const isFull = energy >= capacity;
+        if (isFull) creep.memory._refueling = false;
+        if (creep.memory._refueling || energy < minEnergy) {
+            if (!isFull) {
+                const source = findEnergySource(creep);
+                if (source) {
+                    creep.memory._refueling = true;
+                    if (source.structureType) {
+                        move.action(creep, 'withdraw@' + source.id);
+                        const wres = creep.withdraw(source, RESOURCE_ENERGY);
+                        if (wres === ERR_NOT_IN_RANGE) {
+                            move.moveCreep(creep, source, { visualizePathStyle: { stroke: '#ffffaa' } });
+                        }
+                    } else {
+                        move.action(creep, 'harvest@' + source.id);
+                        const hres = creep.harvest(source);
+                        if (hres === ERR_NOT_IN_RANGE) {
+                            move.moveCreep(creep, source, { visualizePathStyle: { stroke: '#ffaa00' } });
+                        }
                     }
-                } else {
-                    move.action(creep, 'harvest@' + source.id);
-                    const hres = creep.harvest(source);
-                    if (hres === ERR_NOT_IN_RANGE) {
-                        move.moveCreep(creep, source, { visualizePathStyle: { stroke: '#ffaa00' } });
-                    }
+                    return true;
                 }
-                return true;
             }
+            creep.memory._refueling = false;
             if (energy === 0) return false;
         }
         const res = creep.upgradeController(controller);
