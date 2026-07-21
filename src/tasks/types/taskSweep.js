@@ -35,16 +35,18 @@ module.exports = {
         if (creep.store.getCapacity() === 0) return false;
         if (creep.store.getFreeCapacity() === 0) {
             const carried = Object.keys(creep.store);
-            let depositedAny = false;
             for (let i = 0; i < carried.length; i++) {
                 const rtype = carried[i];
                 if (creep.store[rtype] <= 0) continue;
                 const deposit = depositService.findDeposit(creep, snap, { resourceType: rtype });
                 if (!deposit) continue;
-                if (depositService.transferTo(creep, deposit, rtype)) return true;
-                depositedAny = true;
+                if (depositService.transferTo(creep, deposit, rtype)) {
+                    // Still carrying this resource type; keep sweeping/depositing.
+                    return true;
+                }
             }
-            return depositedAny;
+            // No resources left to deposit; release so the creep can pick up again.
+            return false;
         }
 
         let amount;

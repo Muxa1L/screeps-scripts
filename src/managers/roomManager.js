@@ -83,7 +83,8 @@ function tick() {
     snapshots = {};
     for (const name in Game.rooms) {
         const room = Game.rooms[name];
-        if (!room.controller || !room.controller.my) continue;
+        // Snapshot every visible room so combat tasks (defend/heal) are generated
+        // even in unowned/remote rooms. Economy fields will simply be empty there.
         snapshots[name] = snapshotFor(room);
     }
 }

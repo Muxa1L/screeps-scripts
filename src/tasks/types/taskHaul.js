@@ -3,10 +3,6 @@ const move = require('../../utils/moveUtil');
 const memory = require('../../utils/memorySchema');
 const depositService = require('../../services/depositService');
 
-function canStillDeposit(creep) {
-    return creep.store[RESOURCE_ENERGY] > 0;
-}
-
 module.exports = {
     type: 'haul',
     priority: taskBase.PRIORITY.HAUL,
@@ -30,22 +26,32 @@ module.exports = {
         const container = task.target;
         if (!container) return false;
 
-        if (creep.store[RESOURCE_ENERGY] === 0) {
+        const energy = creep.store[RESOURCE_ENERGY] || 0;
+        const freeCapacity = creep.store.getFreeCapacity(RESOURCE_ENERGY) || 0;
+        const hauledFrom = memory.getHauledFrom(creep);
+
+        if (energy === 0) {
             memory.clearHauledFrom(creep);
         }
 
-        if (creep.store.getFreeCapacity(RESOURCE_ENERGY) === 0 ||
-            (creep.store[RESOURCE_ENERGY] > 0 && (!container || !depositService.structureNeedsEnergy(container)))) {
-            if (!canStillDeposit(creep)) return false;
-            const excludeId = (memory.getHauledFrom(creep) === container.id) ? container.id : null;
+        // Delivery phase: we have energy (or are full) and a deposit exists.
+        // Always exclude the source container so we don't dump back into it.
+        if (energy > 0 && (freeCapacity === 0 || !depositService.structureNeedsEnergy(container) || hauledFrom === container.id)) {
             const deposit = depositService.findDeposit(creep, snap, {
-                excludeId: excludeId,
+                excludeId: container.id,
                 excludeTypes: { [STRUCTURE_TOWER]: true },
             });
             if (!deposit) return false;
-            return depositService.transferTo(creep, deposit, RESOURCE_ENERGY);
+            const hadEnergy = energy;
+            const stillCarrying = depositService.transferTo(creep, deposit, RESOURCE_ENERGY);
+            // Release the haul task once we have attempted delivery and no longer
+            // have a full load. This prevents endless withdraw/deposit loops on
+            // the same container.
+            if (hadEnergy > 0 && !stillCarrying) return false;
+            return true;
         }
 
+        // Collection phase: withdraw from the source container.
         if (depositService.structureNeedsEnergy(container)) {
             move.action(creep, 'withdraw@' + container.id);
             const wRes = creep.withdraw(container, RESOURCE_ENERGY);
@@ -54,6 +60,7 @@ module.exports = {
                 return true;
             }
             if (wRes === OK) memory.setHauledFrom(creep, container.id);
+            // After a successful withdraw, keep the task so the next tick delivers.
             return wRes === OK;
         }
 
