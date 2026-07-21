@@ -61,15 +61,10 @@ function capForType(type, room, snap) {
     return _capCache[key];
 }
 
-const HARVEST_NEED_THRESHOLD = 0.25;
-
 function wantsToHarvest(creep) {
-    const capacity = creep.store.getCapacity(RESOURCE_ENERGY);
     const energy = creep.store[RESOURCE_ENERGY] || 0;
-    const free = capacity - energy;
-    if (free <= 0) return false;
-    if (creep.memory.role === 'harvester') return true;
-    return energy < capacity * HARVEST_NEED_THRESHOLD;
+    if (energy > 0) return false;
+    return true;
 }
 
 function bestTaskFor(creep, taskList, allowed, snap) {
