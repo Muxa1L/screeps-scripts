@@ -108,18 +108,12 @@ const TASK_SWITCH_COOLDOWN = 5;
 function shouldSwitch(creep, current, currentApprox, best) {
     const bestTask = best.task;
     if (bestTask.id === current.id) return false;
+    if (bestTask.type === current.type) return false;
     if (best.priority < current.priority) return true;
     if (best.priority > current.priority) return false;
-    if (bestTask.type === current.type) {
-        const lastChange = creep.memory._lastTaskChange || 0;
-        if (Game.time - lastChange < TASK_SWITCH_COOLDOWN) return false;
-        const currentTarget = current.target;
-        if (currentTarget && creep.pos.inRangeTo(currentTarget, 3)) return false;
-        return best.approx < currentApprox;
-    }
     const lastChange = creep.memory._lastTaskChange || 0;
     if (Game.time - lastChange < TASK_SWITCH_COOLDOWN) return false;
-    return best.approx < currentApprox * 2;
+    return best.approx < currentApprox;
 }
 
 function inferRoleFromName(name) {
