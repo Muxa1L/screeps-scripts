@@ -61,4 +61,5 @@ module.exports = {
 
     // Creep-memory cleanup
     GHOST_CRITICAL_AGE: 5,
+    GHOST_GRACE_TICKS: 10,
 };

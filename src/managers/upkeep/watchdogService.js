@@ -5,7 +5,6 @@ const GHOST_CRITICAL_AGE = constants.GHOST_CRITICAL_AGE;
 
 function runWatchdog() {
     if (!Memory.creeps) return;
-    if (Game.time % 50 !== 0) return;
     let maxAge = 0;
     for (const cname in Memory.creeps) {
         if (Game.creeps[cname]) continue;

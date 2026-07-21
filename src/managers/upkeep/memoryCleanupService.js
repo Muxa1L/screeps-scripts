@@ -1,3 +1,7 @@
+const constants = require('../../config/constants');
+
+const GHOST_GRACE_TICKS = constants.GHOST_GRACE_TICKS;
+
 function runMemoryCleanup() {
     if (!Memory.creeps) return;
     const dead = [];
@@ -7,7 +11,7 @@ function runMemoryCleanup() {
         if (!mem._diedAt) mem._diedAt = Game.time;
         // Allow a short grace period before deletion so other systems can read
         // the death tick if needed.
-        if (Game.time - mem._diedAt > 3) {
+        if (Game.time - mem._diedAt > GHOST_GRACE_TICKS) {
             dead.push(cname);
             delete Memory.creeps[cname];
         }

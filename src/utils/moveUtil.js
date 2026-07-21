@@ -96,8 +96,8 @@ function moveCreep(creep, target, opts) {
                 const dy = p.y - selfY;
                 // If a creep is directly behind us it is probably following;
                 // don't block it.
-                if ((Math.abs(targetX - selfX) > Math.abs(targetY - selfY) && dx !== 0 && (targetX - selfX) * dx > 0) ||
-                    (Math.abs(targetY - selfY) >= Math.abs(targetX - selfX) && dy !== 0 && (targetY - selfY) * dy > 0)) {
+                if ((Math.abs(targetX - selfX) > Math.abs(targetY - selfY) && dx !== 0 && (targetX - selfX) * dx < 0) ||
+                    (Math.abs(targetY - selfY) >= Math.abs(targetX - selfX) && dy !== 0 && (targetY - selfY) * dy < 0)) {
                     continue;
                 }
                 const existing = matrix.get(p.x, p.y);
@@ -110,9 +110,10 @@ function moveCreep(creep, target, opts) {
     }, opts || {}));
 
     memorySchema.setLastMoveResult(creep, mvr);
-    if (mvr === OK) {
-        memorySchema.setMoveFailures(creep, 0);
-    } else if (mvr === ERR_NO_PATH) {
+    // Note: do not reset moveFailures on OK — Screeps returns OK for queued
+    // intents even when the creep is physically blocked. The position-based
+    // detection above is the sole source of truth for actual movement.
+    if (mvr === ERR_NO_PATH) {
         memorySchema.setMoveFailures(creep, memorySchema.getMoveFailures(creep) + 1);
     } else if (mvr === ERR_TIRED || mvr === ERR_BUSY) {
         // transient, keep current count

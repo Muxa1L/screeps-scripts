@@ -81,9 +81,6 @@ function contextualQuota(rcl, controller, storage, constructionSites) {
         if (!isUrgent) {
             q.upgrader = Math.max(1, Math.floor(baseUpgraders / 2));
         }
-        if (backlog > CONSTRUCTION_BACKLOG_THRESHOLD) {
-            q.builder = Math.max(baseBuilders, Math.min(4, baseBuilders + 1));
-        }
     }
 
     if (backlog > CONSTRUCTION_BACKLOG_THRESHOLD) {

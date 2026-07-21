@@ -9,6 +9,7 @@ const logger = require('../utils/logger');
 const spawnUtil = require('../utils/spawnUtil');
 const move = require('../utils/moveUtil');
 const roomManager = require('./roomManager');
+const sourceRegistry = require('../economy/sourceRegistry');
 
 const RENEW_THRESHOLD_SMALL = constants.RENEW_THRESHOLD_SMALL;
 const RENEW_THRESHOLD_LARGE = constants.RENEW_THRESHOLD_LARGE;
@@ -195,11 +196,19 @@ function releaseTask(creep, claimCounts) {
     if (!tid) return;
     if (claimCounts[tid]) claimCounts[tid] = Math.max(0, claimCounts[tid] - 1);
     memory.clearTaskId(creep);
+    if (memory.getSourceId(creep)) {
+        sourceRegistry.releaseClaim(creep.name);
+        memory.clearSourceId(creep);
+    }
 }
 
 function applyTaskAssignment(creep, assigned, claimCounts) {
     const prev = memory.getTaskId(creep);
     if (prev !== assigned.id) {
+        if (prev && memory.getSourceId(creep) && assigned.type !== 'mine') {
+            sourceRegistry.releaseClaim(creep.name);
+            memory.clearSourceId(creep);
+        }
         logger.event('creep', '[' + Game.time + '] [task] ' + creep.name + ' (' + memory.getRole(creep) + ') -> ' + taskBase.describeTask(assigned));
         memory.setTaskId(creep, assigned.id);
         memory.setLastTaskChange(creep, Game.time);
@@ -230,8 +239,9 @@ function renewOrRecycle(creep) {
             renew.run(creep);
             return true;
         }
-        // No spawn energy available; stop trying to renew this tick.
-        memory.clearRenewing(creep);
+        // No spawn energy available; keep the renewing intent so the creep
+        // resumes renewal as soon as the spawn has energy again. Fall through
+        // to task selection so the creep can work while waiting.
     }
     return false;
 }
@@ -273,7 +283,6 @@ function handleMoveFailures(creep, claimCounts) {
 }
 
 function combatIdleFallback(creep) {
-    memory.setLastTaskChange(creep, Game.time);
     // Move toward the nearest visible hostile, or any known hostile position from snapshots.
     const nearest = creep.pos.findClosestByRange(FIND_HOSTILE_CREEPS);
     if (nearest) {
@@ -320,7 +329,6 @@ function findClosestHostileRoom(fromRoomName) {
 }
 
 function runIdleFallback(creep, room) {
-    memory.setLastTaskChange(creep, Game.time);
     const role = memory.getRole(creep);
     if (role === 'fighter' || role === 'healer') {
         combatIdleFallback(creep);
