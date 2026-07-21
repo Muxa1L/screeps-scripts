@@ -20,6 +20,18 @@ function findEnergySource(creep) {
     const snap = roomManager.get(creep.room.name);
     if (!snap) return null;
 
+    // Harvesters harvest from sources; don't drain storage/containers
+    // (those are for haulers, and harvesters have WORK to harvest directly).
+    if (creep.memory.role === 'harvester') {
+        if (snap.sources && snap.sources.length > 0) {
+            const safe = snap.sources.filter(function (s) {
+                return !roomManager.isPosNearHostile(creep.room.name, s.pos, 5);
+            });
+            if (safe.length > 0) return creep.pos.findClosestByPath(safe);
+        }
+        return null;
+    }
+
     let best = null;
     let bestScore = 0;
 
@@ -85,7 +97,7 @@ module.exports = new TaskType({
         const capacity = creep.store.getCapacity(RESOURCE_ENERGY) || 0;
         const energy = creep.store[RESOURCE_ENERGY] || 0;
         const workParts = creep.getActiveBodyparts(WORK);
-        const minEnergy = workParts * REPAIR_POWER;
+        const minEnergy = workParts;
         const isFull = energy >= capacity;
         if (isFull) creep.memory._refueling = false;
         if (creep.memory._refueling || energy < minEnergy) {

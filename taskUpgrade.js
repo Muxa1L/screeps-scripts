@@ -13,6 +13,18 @@ function findEnergySource(creep) {
     const snap = roomManager.get(creep.room.name);
     if (!snap) return null;
 
+    // Harvesters harvest from sources; don't drain storage/containers
+    // (those are for haulers, and harvesters have WORK to harvest directly).
+    if (creep.memory.role === 'harvester') {
+        if (snap.sources && snap.sources.length > 0) {
+            const safe = snap.sources.filter(function (s) {
+                return !roomManager.isPosNearHostile(creep.room.name, s.pos, 5);
+            });
+            if (safe.length > 0) return creep.pos.findClosestByPath(safe);
+        }
+        return null;
+    }
+
     if (snap.storage && snap.storage.store[RESOURCE_ENERGY] >= STORAGE_WITHDRAW_MIN) {
         return snap.storage;
     }
