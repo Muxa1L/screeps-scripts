@@ -10,6 +10,7 @@ const spawnUtil = require('../utils/spawnUtil');
 const move = require('../utils/moveUtil');
 const roomManager = require('./roomManager');
 const sourceRegistry = require('../economy/sourceRegistry');
+const roomFlags = require('../utils/roomFlags');
 
 const RENEW_THRESHOLD_SMALL = constants.RENEW_THRESHOLD_SMALL;
 const RENEW_THRESHOLD_LARGE = constants.RENEW_THRESHOLD_LARGE;
@@ -53,6 +54,10 @@ function inferRoleFromName(name) {
 }
 
 function forceTargetFor(creep, room) {
+    // Only force-harvest in rooms we own. Otherwise a full creep in a
+    // foreign room would latch onto a foreign source, fill up with no
+    // way to deposit, and get stranded there.
+    if (!room.controller || !room.controller.my) return null;
     const sources = room.find(FIND_SOURCES_ACTIVE);
     if (sources.length > 0) {
         return creep.pos.findClosestByPath(sources);
@@ -415,6 +420,27 @@ function runCreep(creep, context) {
     // Combat roles (fighter/healer) can take tasks from any visible room,
     // not just the room they are currently standing in.
     const role = memory.getRole(creep);
+    // Non-combat creeps must not accept tasks in rooms we don't own. A
+    // harvester that dips across a border would otherwise pick up foreign
+    // sweep/haul targets with no deposit to empty into, thrashing on the
+    // foreign task until the blacklist expires and repeating. Send it home
+    // — unless the room is on the `room_allow:<room>` whitelist, in which
+    // case the creep may stay and harvest there. A full creep still walks
+    // home to deposit (no owned deposit exists in a foreign room); that
+    // is handled by forceTargetFor returning null for unowned rooms.
+    if (role !== 'fighter' && role !== 'healer' && (!room.controller || !room.controller.my) &&
+        !roomFlags.getAllowedRooms()[room.name]) {
+        if (memory.getTaskId(creep)) releaseTask(creep, context.claimCounts);
+        const idleSpawn = spawnUtil.nearestSpawn(creep);
+        if (idleSpawn && !creep.pos.isNearTo(idleSpawn)) {
+            logger.setAction(creep, 'return->home');
+            move.moveCreep(creep, idleSpawn, { visualizePathStyle: { stroke: '#888888' }, reusePath: 20 });
+        } else {
+            logger.setAction(creep, 'idle-foreign');
+        }
+        logger.periodic('status', 25, creep.name, '[' + Game.time + '] [status] ' + logger.statusLine(creep));
+        return;
+    }
     let combatTasks = null;
     if (role === 'fighter' || role === 'healer') {
         combatTasks = collectCombatTasks(role);
