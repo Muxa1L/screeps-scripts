@@ -79,11 +79,28 @@ function tryDefenders(spawn, hostiles) {
 function tryRoleSpawn(spawn, role) {
     const cap = spawn.room.energyCapacityAvailable;
     const available = spawn.room.energyAvailable;
-    const pick = bodies.bestBodyForAvailable(role, cap, available);
-    if (!pick) return false;
     const prefix = role.charAt(0).toUpperCase() + role.slice(1);
     const name = prefix + Game.time + '-' + spawn.name;
-    return spawnBody(spawn, pick.body, name, role);
+    // Target the best body the room's RCL can support and wait for enough
+    // energy to afford it, rather than spawning a weaker body now that
+    // underperforms for its whole lifespan.
+    const target = bodies.bestBodyForAvailable(role, cap, cap);
+    if (target && available >= target.cost) {
+        return spawnBody(spawn, target.body, name, role);
+    }
+    // Not enough energy for the full body. If no harvester/miner is alive,
+    // income has stopped and waiting would deadlock — spawn whatever we
+    // can afford now to restart income (bootstrap escape).
+    if (noIncomeProducer(spawn.room)) {
+        const fallback = bodies.bestBodyForAvailable(role, cap, available);
+        if (fallback) return spawnBody(spawn, fallback.body, name, role);
+    }
+    return false;
+}
+
+function noIncomeProducer(room) {
+    const counts = creepCountByRole(room.name);
+    return (counts.harvester || 0) + (counts.miner || 0) === 0;
 }
 
 function tick() {
