@@ -72,6 +72,7 @@ function findEnergySource(creep, snapshot, options) {
             if (options.excludeContainerId && c.id === options.excludeContainerId) continue;
             const energy = c.store[RESOURCE_ENERGY] || 0;
             const isPriority = priorityIds[c.id];
+            if (isPriority && role === 'hauler') continue;
             if (!isPriority && energy < constants.CONTAINER_WITHDRAW_MIN) continue;
             if (isPriority && energy === 0) continue;
             consider(c, isPriority ? 1.5 : 1.0);
