@@ -1,8 +1,10 @@
 # screeps-scripts
 
 A task-queued Screeps AI with a snapshot-driven room model, role-restricted creep
-dispatcher, and a per-tick cap-aware scheduler. Single-room focused; remote mining
-is designed but not yet implemented (see `plans/remote-mining.md`).
+dispatcher, and a per-tick cap-aware scheduler. Single-room focused; a `room_allow:`
+flag whitelist permits non-combat creeps to harvest in adjacent unowned rooms (see
+[In-game flags](#in-game-flags)). Full remote mining is designed but not yet
+implemented (see `plans/remote-mining.md`).
 
 ## Architecture
 
@@ -18,7 +20,7 @@ src/
     memorySchema.js  - safe typed accessors for Memory / creep.memory
     moveUtil.js      - path/move helpers with failure tracking
     spawnUtil.js     - spawn helpers
-    roomFlags.js     - Screeps flag helpers (e.g. 'haul:' priority containers)
+    roomFlags.js     - Screeps flag helpers ('haul:' priority containers, 'room_allow:' foreign-room whitelist)
     logger.js        - per-category logging
     assert.js        - safeTick wrappers
   managers/
@@ -30,7 +32,7 @@ src/
   economy/
     sourceRegistry.js - per-source mining slots with claim/release
     creepsBodies.js   - tiered body templates per role, cost-aware selection
-    creepsQuotas.js   - RCL-based role quotas with controller-ttd boosting
+    creepsQuotas.js   - RCL-based role quotas with controller-ttd and storage-ratio contextual boosting
   planning/
     constructionPlanner.js - orchestrator for extension/road/container/link/tower/storage siting
     plannerUtils.js        - shared construction-planning helpers
@@ -66,8 +68,20 @@ For each creep, `creepManager.runCreep`:
    by `(priority * 1000 + approxDistance)` and returns the best.
 5. Decides whether to switch via `shouldSwitch` (priority must be better, or
    equal priority + closer after a 5-tick cooldown).
-6. Runs the task handler. If it returns `false`, the task is released and the
-   creep re-evaluates next tick.
+6. Runs the task handler. If it returns `false`, the task is released, the
+   target id is added to a per-creep failed-task blacklist for ~5 ticks
+   (`memory.addFailedTask`), and the creep re-evaluates next tick. This stops
+   a stale target from preempting a good task every tick only to fail on run.
+
+Non-combat creeps in rooms the player does not own are sent home instead of
+taking tasks there: a harvester that dips across a border would otherwise pick
+up foreign `sweep`/`haul` targets with no owned deposit to empty into and
+thrash on them. The guard in `runCreep` releases the current task and paths
+to the nearest spawn (`return->home`), unless the room is on the `room_allow:`
+whitelist. Combat roles (fighter/healer) are exempt and operate across rooms.
+`forceTargetFor` (the idle force-harvest fallback) also returns null for
+unowned rooms, so a stranded creep walks home rather than latching onto a
+foreign source.
 
 Cap lookups are cached per `type:roomName` per tick (`_capCache`). Task type
 `capFor` callbacks (e.g. `taskHaul`) are now wired through `taskBaseClass`.
@@ -90,7 +104,7 @@ types they may take:
 
 ### Task priorities
 
-Defined in `taskBase.js`. Lower number = higher priority.
+Defined in `src/config/priorities.js` (re-exported via `taskBase.PRIORITY`). Lower number = higher priority.
 
 | Constant           | Value | Used by            |
 |--------------------|-------|--------------------|
@@ -98,8 +112,8 @@ Defined in `taskBase.js`. Lower number = higher priority.
 | RENEW              | 20    | taskRenew          |
 | HEAL               | 30    | taskHeal           |
 | SUPPLY             | 35    | taskSupply         |
-| HAUL               | 40    | taskHaul           |
-| SWEEP              | 50    | taskSweep          |
+| SWEEP              | 40    | taskSweep          |
+| HAUL               | 50    | taskHaul           |
 | REPAIR_CRITICAL    | 55    | taskRepair (crit)  |
 | BUILD              | 60    | taskBuild          |
 | REPAIR             | 65    | taskRepair         |
@@ -126,8 +140,11 @@ task to be released cleanly instead of throwing. Applied to: `taskDefend`,
   storage first, then dropped resources (they decay, so they take precedence
   over containers), then containers, with `haul:` flagged priority containers
   preferred over regular containers, then source harvesting when allowed.
-  This logic was previously duplicated across `taskBuild`, `taskRepair`, and
-  `taskUpgrade`.
+  `findEnergySource` accepts an `options.anchor` (defaults to the creep) so
+  callers can score candidates by distance from a fixed point — `taskUpgrade`
+  passes the controller so upgraders prefer the controller-side container
+  rather than walking to a mining-side container or a source. This logic was
+  previously duplicated across `taskBuild`, `taskRepair`, and `taskUpgrade`.
 - `src/services/depositService.js` centralizes deposit selection for haulers,
   sweepers, and suppliers, with a configurable priority order and per-resource
   handling. Containers marked with a `haul:` flag are chosen before other
@@ -139,16 +156,23 @@ task to be released cleanly instead of throwing. Applied to: `taskDefend`,
 
 ## In-game flags
 
-Screeps flags placed on containers can influence behavior. Flags are matched
-by **prefix** in the flag name.
+Screeps flags can influence behavior. `haul:` flags are placed on containers;
+`room_allow:` flags may be placed anywhere. Flags are matched by **prefix** in
+the flag name (case-insensitive).
 
-| Prefix    | Effect                                                                            |
-|-----------|-----------------------------------------------------------------------------------|
-| `haul:`   | Marks the container as a priority haul cache. Haulers will deliver here first, and |
-|           | non-haulers will withdraw from it before normal containers. Useful for staging    |
-|           | energy near a controller, spawn cluster, or construction site.                    |
+| Prefix          | Effect                                                                              |
+|-----------------|-------------------------------------------------------------------------------------|
+| `haul:`         | Marks the container as a priority haul cache. Haulers will deliver here first, and   |
+|                 | non-haulers will withdraw from it before normal containers. Useful for staging      |
+|                 | energy near a controller, spawn cluster, or construction site.                      |
+| `room_allow:`   | Whitelists a foreign room for non-combat creeps. The allowed room name is parsed     |
+|                 | from the flag name (e.g. `room_allow:E42S26`), so the flag's position is irrelevant. |
+|                 | A creep in a whitelisted room is not sent home and may take tasks there (e.g.        |
+|                 | harvest an unowned source). A full creep still walks home to deposit, since there    |
+|                 | is no owned deposit in a foreign room. No active dispatch yet — creeps only harvest  |
+|                 | there if already in the room.                                                        |
 
-Example flag names: `haul:controller`, `haul:spawn`, `haul:extensions`.
+Example flag names: `haul:controller`, `haul:spawn`, `haul:extensions`, `room_allow:E42S26`.
 
 ## Feature flags
 
