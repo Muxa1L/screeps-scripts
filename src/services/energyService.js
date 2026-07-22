@@ -9,11 +9,11 @@ function structureHasEnergy(s) {
     return (s.store[RESOURCE_ENERGY] || 0) > 0;
 }
 
-function scoreSource(creep, source) {
+function scoreSource(anchor, source) {
     const energy = source.store ? (source.store[RESOURCE_ENERGY] || 0) : (source.amount || 0);
-    const free = creep.store.getFreeCapacity(RESOURCE_ENERGY);
+    const free = anchor.store ? (anchor.store.getFreeCapacity(RESOURCE_ENERGY) || 0) : 9999;
     const useful = Math.min(energy, free);
-    const dist = taskBase.approxDistance(creep, source);
+    const dist = taskBase.approxDistance(anchor, source);
     const reserve = source.store ? ((source.store.getCapacity(RESOURCE_ENERGY) || 0) - energy) : 0;
     return (useful + reserve * 0.05) / Math.max(1, dist);
 }
@@ -38,9 +38,12 @@ function findEnergySource(creep, snapshot, options) {
 
     let best = null;
     let bestScore = 0;
+    // Score candidates by distance from an anchor (e.g. the controller for
+    // upgraders) when provided, otherwise from the creep itself.
+    const anchor = options.anchor || creep;
 
     function consider(source, weight) {
-        const s = scoreSource(creep, source) * weight;
+        const s = scoreSource(anchor, source) * weight;
         if (s > bestScore) {
             bestScore = s;
             best = source;

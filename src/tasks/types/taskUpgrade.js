@@ -58,7 +58,7 @@ module.exports = {
         if (isFull) memory.clearRefueling(creep);
         if (memory.getRefueling(creep) || energy < minEnergy) {
             if (!isFull) {
-                const source = energyService.findEnergySource(creep, snap, { allowHarvest: true });
+                const source = energyService.findEnergySource(creep, snap, { anchor: live, allowHarvest: true });
                 if (source) {
                     memory.setRefueling(creep, true);
                     energyService.acquireEnergy(creep, source);
