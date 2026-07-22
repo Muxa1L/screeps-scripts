@@ -9,7 +9,7 @@ module.exports = {
     requirements: { work: 1 },
     cap: 4,
     canDo: function (creep) {
-        return creep.getActiveBodyparts(WORK) > 0 && creep.getActiveBodyparts(CARRY) === 0;
+        return creep.getActiveBodyparts(WORK) > 0 && memory.getRole(creep) === 'miner';
     },
     tasks: function (room, _snap) {
         if (!Memory.sources) return [];
@@ -30,7 +30,7 @@ module.exports = {
         // regenerating instead of bunching at spawn with no task.
         return dist + (source && source.energy > 0 ? 0 : 100);
     },
-    run: function (creep, task, _snap) {
+    run: function (creep, task, snap) {
         const sourceId = task.target.id;
         const currentSource = memory.getSourceId(creep);
         if (currentSource !== sourceId) {
@@ -63,6 +63,28 @@ module.exports = {
         }
 
         if (creep.pos.isNearTo(source)) {
+            // Offload phase: deposit carried energy into an adjacent container/storage
+            // so it doesn't decay on the floor. Only offload when full (or source depleted)
+            // to minimize transfer ticks (each transfer replaces one harvest tick).
+            const carried = creep.store[RESOURCE_ENERGY] || 0;
+            if (carried > 0 &&
+                (creep.store.getFreeCapacity(RESOURCE_ENERGY) === 0 || source.energy === 0)) {
+                const deposit = adjacentDeposit(creep, snap);
+                if (deposit) {
+                    const r = creep.transfer(deposit, RESOURCE_ENERGY);
+                    if (r === ERR_FULL) {
+                        // Container full (haulers behind); drop so sweep can collect.
+                        creep.drop(RESOURCE_ENERGY);
+                    }
+                    move.action(creep, 'mine->store@' + deposit.id);
+                    return true;
+                }
+                // No adjacent container/storage; drop so sweep can collect (legacy behavior).
+                creep.drop(RESOURCE_ENERGY);
+                move.action(creep, 'mine->drop@' + sourceId);
+                return true;
+            }
+
             const ret = creep.harvest(source);
             if (ret === OK) {
                 move.action(creep, 'harvesting@' + sourceId);
@@ -78,3 +100,21 @@ module.exports = {
         return true;
     },
 };
+
+function adjacentDeposit(creep, snap) {
+    if (!snap) return null;
+    if (snap.storage && creep.pos.inRangeTo(snap.storage, 1) &&
+        (snap.storage.store.getFreeCapacity(RESOURCE_ENERGY) || 0) > 0) {
+        return snap.storage;
+    }
+    if (snap.containers) {
+        for (let i = 0; i < snap.containers.length; i++) {
+            const c = snap.containers[i];
+            if (creep.pos.inRangeTo(c, 1) &&
+                (c.store.getFreeCapacity(RESOURCE_ENERGY) || 0) > 0) {
+                return c;
+            }
+        }
+    }
+    return null;
+}

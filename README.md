@@ -103,6 +103,11 @@ types they may take:
 | upgrader  | upgrade, harvest (refuel only) |
 | harvester | (unrestricted)                 |
 
+Miners carry 1 CARRY part and offload into an adjacent container/storage when
+their store is full (or the source is depleted), so energy doesn't decay on the
+floor. If no adjacent deposit exists or it's full, they `drop` so haulers'
+`sweep` still collects it.
+
 ### Task priorities
 
 Defined in `src/config/priorities.js` (re-exported via `taskBase.PRIORITY`). Lower number = higher priority.
