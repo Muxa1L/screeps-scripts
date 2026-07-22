@@ -10,6 +10,7 @@ const spawnUtil = require('../utils/spawnUtil');
 const move = require('../utils/moveUtil');
 const roomManager = require('./roomManager');
 const sourceRegistry = require('../economy/sourceRegistry');
+const bodies = require('../economy/creepsBodies');
 const roomFlags = require('../utils/roomFlags');
 
 const RENEW_THRESHOLD_SMALL = constants.RENEW_THRESHOLD_SMALL;
@@ -24,7 +25,63 @@ function renewThresholdFor(creep) {
     return creep.body.length >= 12 ? RENEW_THRESHOLD_LARGE : RENEW_THRESHOLD_SMALL;
 }
 
+function obsoleteRecycleEnabled() {
+    return !!(Memory.flags && Memory.flags.obsoleteRecycle);
+}
+
+let _obsoleteTick = -1;
+let _obsoleteCache = {};
+function isObsolete(creep) {
+    if (_obsoleteTick !== Game.time) { _obsoleteTick = Game.time; _obsoleteCache = {}; }
+    const name = creep.name;
+    if (_obsoleteCache[name] !== undefined) return _obsoleteCache[name];
+    const role = memory.getRole(creep);
+    let result = false;
+    if (role !== 'fighter' && role !== 'healer') {
+        const spawn = spawnUtil.nearestSpawn(creep);
+        if (spawn) {
+            const cap = spawn.room.energyCapacityAvailable;
+            const target = bodies.bestBodyForAvailable(role, cap, cap);
+            if (target && bodies.bodyCostOfCreep(creep) < target.cost) result = true;
+        }
+    }
+    _obsoleteCache[name] = result;
+    return result;
+}
+
+let _recRoleTick = -1;
+let _recRoleCache = {};
+function recyclingRoles() {
+    if (_recRoleTick !== Game.time) {
+        _recRoleTick = Game.time;
+        _recRoleCache = {};
+        // Count creeps already mid obsolete-recycle (flagged on a previous tick,
+        // still walking to the spawn) so the one-per-role limit holds across ticks.
+        for (const name in Game.creeps) {
+            const c = Game.creeps[name];
+            if (memory.getObsoleteRecycling(c)) _recRoleCache[memory.getRole(c)] = true;
+        }
+    }
+    return _recRoleCache;
+}
+
+function shouldRecycleObsolete(creep) {
+    if (!obsoleteRecycleEnabled()) return false;
+    if (!isObsolete(creep)) return false;
+    if (creep.ticksToLive >= renewThresholdFor(creep)) return false;
+    const used = creep.store.getUsedCapacity(RESOURCE_ENERGY);
+    if (used > 0 && memory.getRole(creep) !== 'miner') return false; // don't waste a full load
+    if (recyclingRoles()[memory.getRole(creep)]) return false;       // one per role at a time
+    return true;
+}
+
 function shouldRenew(creep) {
+    if (obsoleteRecycleEnabled() && isObsolete(creep)) {
+        // Obsolete creeps are replaced, not kept alive. Clear any in-progress
+        // renew so the creep goes back to work until its end-of-life recycle.
+        memory.clearRenewing(creep);
+        return false;
+    }
     const isRenewing = memory.getRenewing(creep);
     if (isRenewing) {
         // Once a creep has committed to renewing, keep it at the spawn until it
@@ -250,6 +307,41 @@ function renewOrRecycle(creep) {
             return true;
         }
         return true;
+    }
+    // Drive an already-committed obsolete recycle to completion (the creep was
+    // flagged on a previous tick and is still walking to the spawn).
+    if (memory.getObsoleteRecycling(creep)) {
+        if (obsoleteRecycleEnabled() && isObsolete(creep)) {
+            const spawn = spawnUtil.nearestSpawn(creep);
+            if (spawn) {
+                if (spawn.recycleCreep(creep) === ERR_NOT_IN_RANGE) {
+                    move.moveCreep(creep, spawn, { visualizePathStyle: { stroke: '#ff8800' }, reusePath: 10 });
+                }
+                return true;
+            }
+        } else {
+            // Flag disabled or creep no longer obsolete; abandon the recycle.
+            memory.clearObsoleteRecycling(creep);
+        }
+    }
+    // Flag a new obsolete recycle (rate-limited one per role at a time).
+    if (shouldRecycleObsolete(creep)) {
+        const spawn = spawnUtil.nearestSpawn(creep);
+        if (spawn) {
+            // Free the mining slot / task so the replacement can claim it.
+            if (memory.getSourceId(creep)) {
+                sourceRegistry.releaseClaim(creep.name);
+                memory.clearSourceId(creep);
+            }
+            memory.clearTaskId(creep);
+            memory.setObsoleteRecycling(creep, Game.time);
+            recyclingRoles()[memory.getRole(creep)] = true; // keep rate limit consistent this tick
+            logger.event('recycle', '[' + Game.time + '] [obsolete-recycle] ' + creep.name);
+            if (spawn.recycleCreep(creep) === ERR_NOT_IN_RANGE) {
+                move.moveCreep(creep, spawn, { visualizePathStyle: { stroke: '#ff8800' }, reusePath: 10 });
+            }
+            return true;
+        }
     }
     if (shouldRenew(creep)) {
         const renewSpawn = spawnUtil.nearestSpawn(creep);

@@ -17,6 +17,17 @@ function bodyCost(body) {
     return total;
 }
 
+// `creep.body` is an array of {type, ...} objects, unlike the string-constant
+// arrays in the BODIES tables, so bodyCost(creep.body) would return 0.
+function bodyCostOfCreep(creep) {
+    let total = 0;
+    const body = creep.body;
+    for (let i = 0; i < body.length; i++) {
+        total += PART_COST[body[i].type] || 0;
+    }
+    return total;
+}
+
 const MINER_BODIES = {
     200:  [WORK, CARRY, MOVE],
     300:  [WORK, WORK, CARRY, MOVE],
@@ -129,6 +140,7 @@ function bodySummary() {
 module.exports = {
     bestBodyForAvailable: bestBodyForAvailable,
     bodyCost: bodyCost,
+    bodyCostOfCreep: bodyCostOfCreep,
     bodySummary: bodySummary,
     BODIES: BODIES,
 };

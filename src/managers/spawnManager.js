@@ -21,6 +21,9 @@ function creepCountByRole(roomName) {
     for (const name in Game.creeps) {
         const c = Game.creeps[name];
         if (roomName && c.pos.roomName !== roomName) continue;
+        // Being recycled (stuck or obsolete); don't count toward quota so the
+        // replacement can spawn while the old creep walks to the spawn.
+        if (memory.getRecycling(c) || memory.getObsoleteRecycling(c)) continue;
         const r = memory.getRole(c);
         if (!r) continue;
         counts[r] = (counts[r] || 0) + 1;

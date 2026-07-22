@@ -131,6 +131,20 @@ function clearRecycling(creep) {
     delete ensureCreepMemory(creep)._recycling;
 }
 
+// Distinct from _recycling (used by the stuck-recycle path) so the obsolete
+// recycle driver in creepRunner doesn't interfere with stuckRecycleService.
+function getObsoleteRecycling(creep) {
+    return ensureCreepMemory(creep)._obsoleteRecycling || false;
+}
+
+function setObsoleteRecycling(creep, tick) {
+    ensureCreepMemory(creep)._obsoleteRecycling = tick;
+}
+
+function clearObsoleteRecycling(creep) {
+    delete ensureCreepMemory(creep)._obsoleteRecycling;
+}
+
 function getRenewComplete(creep) {
     return ensureCreepMemory(creep)._renewComplete || 0;
 }
@@ -201,6 +215,9 @@ module.exports = {
     getRecycling: getRecycling,
     setRecycling: setRecycling,
     clearRecycling: clearRecycling,
+    getObsoleteRecycling: getObsoleteRecycling,
+    setObsoleteRecycling: setObsoleteRecycling,
+    clearObsoleteRecycling: clearObsoleteRecycling,
     getRenewComplete: getRenewComplete,
     setRenewComplete: setRenewComplete,
     getRenewing: getRenewing,
