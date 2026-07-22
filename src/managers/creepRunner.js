@@ -58,6 +58,10 @@ function forceTargetFor(creep, room) {
     // foreign room would latch onto a foreign source, fill up with no
     // way to deposit, and get stranded there.
     if (!room.controller || !room.controller.my) return null;
+    // Only creeps with WORK parts can actually harvest. A CARRY-only
+    // hauler sent to a source just parks on a source-adjacent tile and
+    // blocks miner slots while harvesting nothing.
+    if (creep.getActiveBodyparts(WORK) === 0) return null;
     const sources = room.find(FIND_SOURCES_ACTIVE);
     if (sources.length > 0) {
         return creep.pos.findClosestByPath(sources);
