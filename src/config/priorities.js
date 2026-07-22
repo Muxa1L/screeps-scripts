@@ -11,5 +11,6 @@ module.exports = {
     UPGRADE: 70,
     MINE: 80,
     HARVEST: 90,
+    REMOTE_HARVEST: 95,
     IDLE: 100,
 };

@@ -17,6 +17,19 @@ function recordCpu() {
 module.exports.loop = function () {
     assert.safeTick('globals',    function () { require('./utils/globals').tick(); });
     assert.safeTick('roomManager', function () { require('./managers/roomManager').tick(); });
+    // Register sources in visible whitelisted foreign rooms so the
+    // remoteHarvest dispatcher has target positions to dispatch to.
+    assert.safeTick('remoteSources', function () {
+        const roomFlags = require('./utils/roomFlags');
+        const sourceRegistry = require('./economy/sourceRegistry');
+        const allowed = roomFlags.getAllowedRooms();
+        for (const name in Game.rooms) {
+            if (!allowed[name]) continue;
+            const room = Game.rooms[name];
+            if (room.controller && room.controller.my) continue;
+            sourceRegistry.ensureRegistry(room);
+        }
+    });
 
     if (Game.cpu.bucket > 1000 || Game.shard.name === 'sim') {
         assert.safeTick('creepManager', function () { require('./managers/creepManager').tick(); });

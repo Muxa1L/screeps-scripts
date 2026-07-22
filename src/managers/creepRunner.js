@@ -122,7 +122,7 @@ function bestTaskFor(creep, taskList, snap, claimCounts, capCache) {
         if (!target || !target.pos) continue;
         const cap = capForType(t.type, creep.room, snap, capCache);
         if (cap < 99 && (claimCounts[t.id] || 0) >= cap) continue;
-        if (isFull && (t.type === 'harvest' || t.type === 'mine')) continue;
+        if (isFull && (t.type === 'harvest' || t.type === 'mine' || t.type === 'remoteHarvest')) continue;
         if (isFull && t.type === 'haul') {
             const excludeId = (memory.getHauledFrom(creep) === target.id) ? target.id : null;
             if (!depositAvailable(snap, excludeId)) continue;

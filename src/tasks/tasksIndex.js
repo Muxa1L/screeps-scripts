@@ -11,6 +11,7 @@ const repairSpec = require('./types/taskRepair');
 const upgradeSpec = require('./types/taskUpgrade');
 const defendSpec = require('./types/taskDefend');
 const healSpec = require('./types/taskHeal');
+const remoteHarvestSpec = require('./types/taskRemoteHarvest');
 
 const registry = {
     harvest: new TaskType(harvestSpec),
@@ -23,6 +24,7 @@ const registry = {
     upgrade: new TaskType(upgradeSpec),
     defend: new TaskType(defendSpec),
     heal: new TaskType(healSpec),
+    remoteHarvest: new TaskType(remoteHarvestSpec),
 };
 
 function get(type) {

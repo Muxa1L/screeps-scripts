@@ -2,9 +2,10 @@
 
 A task-queued Screeps AI with a snapshot-driven room model, role-restricted creep
 dispatcher, and a per-tick cap-aware scheduler. Single-room focused; a `room_allow:`
-flag whitelist permits non-combat creeps to harvest in adjacent unowned rooms (see
-[In-game flags](#in-game-flags)). Full remote mining is designed but not yet
-implemented (see `plans/remote-mining.md`).
+flag whitelist permits surplus harvesters to commute to sources in adjacent unowned rooms
+(see [In-game flags](#in-game-flags) and [Remote harvest dispatch](#remote-harvest-dispatch)).
+A full remote-mining pipeline (scout / reserve / build / mine / haul / defend) is designed
+but not yet implemented (see `plans/remote-mining.md`).
 
 ## Architecture
 
@@ -120,6 +121,7 @@ Defined in `src/config/priorities.js` (re-exported via `taskBase.PRIORITY`). Low
 | UPGRADE            | 70    | taskUpgrade        |
 | MINE               | 80    | taskMine           |
 | HARVEST            | 90    | taskHarvest        |
+| REMOTE_HARVEST     | 95    | taskRemoteHarvest  |
 | IDLE               | 100   | (fallback)         |
 
 `taskUpgrade.priorityFor` escalates: emergency (ttd<500) -> DEFEND, urgent
@@ -169,8 +171,26 @@ the flag name (case-insensitive).
 |                 | from the flag name (e.g. `room_allow:E42S26`), so the flag's position is irrelevant. |
 |                 | A creep in a whitelisted room is not sent home and may take tasks there (e.g.        |
 |                 | harvest an unowned source). A full creep still walks home to deposit, since there    |
-|                 | is no owned deposit in a foreign room. No active dispatch yet — creeps only harvest  |
-|                 | there if already in the room.                                                        |
+|                 | is no owned deposit in a foreign room. Surplus harvesters are also dispatched there  |
+|                 | from home via the `remoteHarvest` task — see [Remote harvest dispatch](#remote-harvest-dispatch). |
+
+### Remote harvest dispatch
+
+With a `room_allow:<room>` flag in place, surplus harvesters commute to the whitelisted
+room's sources via the `remoteHarvest` task. An empty harvester in the home room with no
+local work it can take is assigned `remoteHarvest@<remoteSource>`; it walks cross-room to
+the target and releases on arrival, handing off to the per-room `harvest` task (the remote
+room's snapshot lists its sources). When full it walks home to deposit — `forceTargetFor`
+returns null for unowned rooms so the idle fallback paths to the nearest spawn — then empty
+again at home it is re-dispatched.
+
+`remoteHarvest` priority (95) sits just above `HARVEST` (90) and below every other in-room
+task, so it is a **surplus-labor** fallback: a harvester commutes only when there is no
+local work (local harvest slots capped, no sweep/haul/build available). The priority is
+tunable in `src/config/priorities.js`. Sources in a whitelisted room are discovered the first
+time a creep enters it: the main loop registers them into `Memory.sources` via
+`sourceRegistry.ensureRegistry`. Until then a synthetic scout target at the room center
+dispatches a creep there to bootstrap discovery.
 
 Example flag names: `haul:controller`, `haul:spawn`, `haul:extensions`, `room_allow:E42S26`.
 
