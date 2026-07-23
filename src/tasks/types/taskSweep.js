@@ -71,7 +71,9 @@ module.exports = {
         }
         if (!amount || amount <= 0) return false;
 
-        if (creep.pos.isNearTo(t)) {
+        const isDropped = !t.store;
+        const inRange = isDropped ? creep.pos.isEqualTo(t) : creep.pos.isNearTo(t);
+        if (inRange) {
             let res;
             if (t.store) {
                 res = creep.withdraw(t, pick);
@@ -83,7 +85,7 @@ module.exports = {
             return res === OK;
         }
         move.action(creep, 'moving->sweep@' + t.id);
-        move.moveCreep(creep, t, { visualizePathStyle: { stroke: '#ffff00' } });
+        move.moveCreep(creep, t, { visualizePathStyle: { stroke: '#ffff00' }, exactTile: isDropped });
         return true;
     },
 };

@@ -100,7 +100,7 @@ function acquireEnergy(creep, source) {
         move.action(creep, 'pickup@' + source.id);
         const res = creep.pickup(source);
         if (res === ERR_NOT_IN_RANGE) {
-            move.moveCreep(creep, source, { visualizePathStyle: { stroke: '#ffff00' } });
+            move.moveCreep(creep, source, { visualizePathStyle: { stroke: '#ffff00' }, exactTile: true });
         }
         return res;
     }
