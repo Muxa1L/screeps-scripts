@@ -2,11 +2,12 @@ const taskBase = require('../taskBase');
 const move = require('../../utils/moveUtil');
 const memory = require('../../utils/memorySchema');
 const energyService = require('../../services/energyService');
+const roomFlags = require('../../utils/roomFlags');
 
 module.exports = {
     type: 'build',
     priority: taskBase.PRIORITY.BUILD,
-    cap: 2,
+    cap: 6,
     requirements: { work: 1, carry: 1 },
     canDo: function (creep) {
         return creep.getActiveBodyparts(WORK) > 0 && creep.getActiveBodyparts(CARRY) > 0;
@@ -18,7 +19,13 @@ module.exports = {
         const base = taskBase.pathScore(creep, target);
         // Strongly prefer close construction sites so creeps work on nearby
         // roads and extensions instead of crossing the room to a distant site.
-        return Math.floor(base / 2);
+        let score = Math.floor(base / 2);
+        // A `build:` flag on the site makes builders prefer it over all other
+        // sites. The -1000 bonus easily beats any distance difference (bounded
+        // < 25), while distance still breaks ties among multiple priority sites.
+        const priorityIds = roomFlags.getPrioritySiteIds(creep.pos.roomName);
+        if (priorityIds[target.id]) score -= 1000;
+        return score;
     },
     run: function (creep, task, snap) {
         const site = task.target;

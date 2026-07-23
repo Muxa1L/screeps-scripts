@@ -2,9 +2,14 @@
 
 const HAUL_FLAG_PREFIX = 'haul:';
 const ROOM_ALLOW_PREFIX = 'room_allow:';
+const BUILD_FLAG_PREFIX = 'build:';
 
 function isHaulFlag(name) {
     return name && name.toLowerCase().startsWith(HAUL_FLAG_PREFIX);
+}
+
+function isBuildFlag(name) {
+    return name && name.toLowerCase().startsWith(BUILD_FLAG_PREFIX);
 }
 
 let _allowedCache = {};
@@ -55,8 +60,35 @@ function getPriorityContainerIds(roomName) {
     return ids;
 }
 
+let _buildSiteTick = -1;
+let _buildSiteCache = {};
+// Returns a set of construction-site IDs at `build:<x>` flag positions in the
+// given room. Place a `build:` flag on a construction site to make builders
+// prefer it over other sites. Cached per tick per room since taskBuild.score
+// calls this for every build candidate.
+function getPrioritySiteIds(roomName) {
+    if (_buildSiteTick !== Game.time) {
+        _buildSiteTick = Game.time;
+        _buildSiteCache = {};
+    }
+    if (_buildSiteCache[roomName] !== undefined) return _buildSiteCache[roomName];
+    const ids = {};
+    for (const name in Game.flags) {
+        const flag = Game.flags[name];
+        if (!isBuildFlag(flag.name)) continue;
+        if (roomName && flag.pos.roomName !== roomName) continue;
+        const sites = flag.pos.lookFor(LOOK_CONSTRUCTION_SITES);
+        for (let i = 0; i < sites.length; i++) {
+            ids[sites[i].id] = true;
+        }
+    }
+    _buildSiteCache[roomName] = ids;
+    return ids;
+}
+
 module.exports = {
     getPriorityContainers: getPriorityContainers,
     getPriorityContainerIds: getPriorityContainerIds,
+    getPrioritySiteIds: getPrioritySiteIds,
     getAllowedRooms: getAllowedRooms,
 };

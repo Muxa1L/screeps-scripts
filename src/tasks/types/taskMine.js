@@ -25,10 +25,14 @@ module.exports = {
     score: function (creep, target) {
         const dist = taskBase.approxDistance(creep, target);
         const source = Game.getObjectById(target.id);
-        // Strongly prefer active sources so miners harvest when energy is available,
-        // but still consider empty ones so they position on their slot while
-        // regenerating instead of bunching at spawn with no task.
-        return dist + (source && source.energy > 0 ? 0 : 100);
+        // Spread miners evenly across sources. Each already-claimed slot adds
+        // a penalty larger than max in-room distance (49) so a miner prefers a
+        // less-crowded source even across the room. Exclude the creep's own
+        // claim so a miner already on a source isn't penalized for its own
+        // presence and stays put once sources are balanced.
+        let claims = sourceRegistry.countClaims(target.id);
+        if (memory.getSourceId(creep) === target.id) claims = Math.max(0, claims - 1);
+        return dist + claims * 50 + (source && source.energy > 0 ? 0 : 100);
     },
     run: function (creep, task, snap) {
         const sourceId = task.target.id;

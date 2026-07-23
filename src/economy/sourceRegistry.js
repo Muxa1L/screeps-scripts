@@ -126,10 +126,21 @@ function slotPos(sourceId, creepName) {
     return null;
 }
 
+function countClaims(sourceId) {
+    if (!Memory.sources || !Memory.sources[sourceId]) return 0;
+    const slots = Memory.sources[sourceId].slots;
+    let count = 0;
+    for (let i = 0; i < slots.length; i++) {
+        if (slots[i].claimedBy && Game.creeps[slots[i].claimedBy]) count++;
+    }
+    return count;
+}
+
 module.exports = {
     ensureRegistry: ensureRegistry,
     freeSlot: freeSlot,
     claimSlot: claimSlot,
     releaseClaim: releaseClaim,
     slotPos: slotPos,
+    countClaims: countClaims,
 };

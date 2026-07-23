@@ -108,6 +108,11 @@ their store is full (or the source is depleted), so energy doesn't decay on the
 floor. If no adjacent deposit exists or it's full, they `drop` so haulers'
 `sweep` still collects it.
 
+Miners spread evenly across sources: `taskMine.score` adds a 50-point penalty
+per already-claimed slot on a source (larger than max in-room distance), so a
+new miner prefers a less-crowded source even across the room. A miner's own
+claim is excluded from the count so it stays put once sources are balanced.
+
 ### Task priorities
 
 Defined in `src/config/priorities.js` (re-exported via `taskBase.PRIORITY`). Lower number = higher priority.
@@ -164,14 +169,19 @@ task to be released cleanly instead of throwing. Applied to: `taskDefend`,
 ## In-game flags
 
 Screeps flags can influence behavior. `haul:` flags are placed on containers;
-`room_allow:` flags may be placed anywhere. Flags are matched by **prefix** in
-the flag name (case-insensitive).
+`build:` flags are placed on construction sites; `room_allow:` flags may be
+placed anywhere. Flags are matched by **prefix** in the flag name
+(case-insensitive).
 
 | Prefix          | Effect                                                                              |
 |-----------------|-------------------------------------------------------------------------------------|
 | `haul:`         | Marks the container as a priority haul cache. Haulers will deliver here first, and   |
 |                 | non-haulers will withdraw from it before normal containers. Useful for staging      |
 |                 | energy near a controller, spawn cluster, or construction site.                      |
+| `build:`        | Marks the construction site as a priority build target. Builders prefer it over all  |
+|                 | other construction sites regardless of distance, and up to 6 builders may work on   |
+|                 | the same site simultaneously. Remove the flag (or let the site complete) to release |
+|                 | the priority.                                                                       |
 | `room_allow:`   | Whitelists a foreign room for non-combat creeps. The allowed room name is parsed     |
 |                 | from the flag name (e.g. `room_allow:E42S26`), so the flag's position is irrelevant. |
 |                 | A creep in a whitelisted room is not sent home and may take tasks there (e.g.        |
@@ -197,7 +207,7 @@ time a creep enters it: the main loop registers them into `Memory.sources` via
 `sourceRegistry.ensureRegistry`. Until then a synthetic scout target at the room center
 dispatches a creep there to bootstrap discovery.
 
-Example flag names: `haul:controller`, `haul:spawn`, `haul:extensions`, `room_allow:E42S26`.
+Example flag names: `haul:controller`, `haul:spawn`, `haul:extensions`, `build:tower`, `room_allow:E42S26`.
 
 ## Feature flags
 
