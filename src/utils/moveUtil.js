@@ -32,7 +32,13 @@ function moveCreep(creep, target, opts) {
     if (!target) return;
     const pos = target.pos || target;
     if (!pos || pos.x === undefined || pos.y === undefined) return;
-    if (creep.pos.isNearTo(pos)) {
+    const exactTile = !!(opts && opts.exactTile);
+    if (exactTile) {
+        if (creep.pos.isEqualTo(pos)) {
+            memorySchema.setMoveFailures(creep, 0);
+            return;
+        }
+    } else if (creep.pos.isNearTo(pos)) {
         memorySchema.setMoveFailures(creep, 0);
         return;
     }

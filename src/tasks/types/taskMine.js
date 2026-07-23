@@ -58,7 +58,7 @@ module.exports = {
             // Not on our assigned slot; move there instead of harvesting from
             // a tile that may belong to another miner.
             move.action(creep, 'moving->mine@' + sourceId);
-            move.moveCreep(creep, slot, { visualizePathStyle: { stroke: '#ffaa00' } });
+            move.moveCreep(creep, slot, { visualizePathStyle: { stroke: '#ffaa00' }, exactTile: true });
             return true;
         }
 
