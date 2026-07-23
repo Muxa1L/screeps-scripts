@@ -26,6 +26,12 @@ function creepCountByRole(roomName) {
         if (memory.getRecycling(c) || memory.getObsoleteRecycling(c)) continue;
         const r = memory.getRole(c);
         if (!r) continue;
+        // Pre-spawn miner replacements: exclude miners near end-of-life so the
+        // replacement spawns ~PRE_SPAWN_TTL before the old miner dies. The
+        // replacement walks to the source while the old miner keeps mining,
+        // closing the gap to near-zero. c.ticksToLive is undefined while
+        // spawning, so the guard avoids excluding a brand-new miner.
+        if (r === 'miner' && c.ticksToLive && c.ticksToLive < constants.PRE_SPAWN_TTL) continue;
         counts[r] = (counts[r] || 0) + 1;
     }
     _countsCache[roomName] = counts;

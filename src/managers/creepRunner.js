@@ -76,6 +76,14 @@ function shouldRecycleObsolete(creep) {
 }
 
 function shouldRenew(creep) {
+    if (memory.getRole(creep) === 'miner') {
+        // Miners work at fixed positions far from spawn. The renew round-trip
+        // (walk + renew + walk back) costs far more mining time than letting
+        // the miner die at the source and pre-spawning a replacement. See
+        // PRE_SPAWN_TTL in spawnManager.creepCountByRole.
+        memory.clearRenewing(creep);
+        return false;
+    }
     if (obsoleteRecycleEnabled() && isObsolete(creep)) {
         // Obsolete creeps are replaced, not kept alive. Clear any in-progress
         // renew so the creep goes back to work until its end-of-life recycle.

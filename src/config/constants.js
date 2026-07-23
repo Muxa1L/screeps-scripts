@@ -7,6 +7,7 @@ module.exports = {
     // Renew / recycle / stuck handling
     RENEW_THRESHOLD_SMALL: 100,
     RENEW_THRESHOLD_LARGE: 250,
+    PRE_SPAWN_TTL: 100,
     STUCK_THRESHOLD: 200,
     MAX_RECYCLES_PER_TICK: 3,
     TASK_SWITCH_COOLDOWN: 5,
