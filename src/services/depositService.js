@@ -19,8 +19,10 @@ function structureNeedsEnergy(s) {
 function scoreDeposit(creep, s, priorityIds) {
     const dist = taskBase.approxDistance(creep, s);
     const priority = DEPOSIT_PRIORITY[s.structureType] || 10;
-    const free = (s.store.getCapacity(RESOURCE_ENERGY) || 0) - (s.store[RESOURCE_ENERGY] || 0);
-    let score = priority * 1000 - free * 10 + dist;
+    const cap = s.store.getCapacity(RESOURCE_ENERGY) || 1;
+    const free = cap - (s.store[RESOURCE_ENERGY] || 0);
+    const freeRatio = free > 0 ? Math.min(1, free / cap) : 0;
+    let score = priority * 1000 - Math.round(freeRatio * 400) + dist;
     if (priorityIds && priorityIds[s.id]) score -= 500;
     return score;
 }

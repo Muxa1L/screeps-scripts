@@ -58,6 +58,17 @@ test('findDeposit prefers flagged priority containers over closer ordinary conta
     assert.equal(chosen, flagged);
 });
 
+test('findDeposit fills storage before priority container (overflow buffer)', function () {
+    mocks.resetGame();
+    const creep = mocks.mockCreep({ pos: pos(25, 25), capacity: 100, store: { [RESOURCE_ENERGY]: 100 } });
+    const storage = mocks.mockStructure(STRUCTURE_STORAGE, { id: 'storage', pos: pos(26, 25), energy: 0, capacity: 5000 });
+    const flagged = mocks.mockStructure(STRUCTURE_CONTAINER, { id: 'flagged', pos: pos(40, 25), energy: 0, capacity: 1000 });
+    Game.flags['haul:cache'] = mocks.mockFlag('haul:cache', flagged.pos, [flagged]);
+    const snapshot = { energyStructures: [], storage: storage, containers: [flagged] };
+    const chosen = depositService.findDeposit(creep, snapshot, {});
+    assert.equal(chosen, storage);
+});
+
 test('findDeposit returns storage for non-energy resources', function () {
     mocks.resetGame();
     const creep = mocks.mockCreep({ pos: pos(25, 25), capacity: 100, store: { [RESOURCE_UTRIUM]: 50 } });
