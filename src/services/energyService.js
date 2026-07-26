@@ -27,6 +27,35 @@ function closestSafeSource(creep, snapshot) {
     return creep.pos.findClosestByPath(safe);
 }
 
+function findSourceInSnapshot(id, snapshot) {
+    if (!id || !snapshot) return null;
+    if (snapshot.storage && snapshot.storage.id === id) return snapshot.storage;
+    if (snapshot.droppedEnergy) {
+        for (let i = 0; i < snapshot.droppedEnergy.length; i++) {
+            if (snapshot.droppedEnergy[i].id === id) return snapshot.droppedEnergy[i];
+        }
+    }
+    if (snapshot.containers) {
+        for (let i = 0; i < snapshot.containers.length; i++) {
+            if (snapshot.containers[i].id === id) return snapshot.containers[i];
+        }
+    }
+    if (snapshot.sources) {
+        for (let i = 0; i < snapshot.sources.length; i++) {
+            if (snapshot.sources[i].id === id) return snapshot.sources[i];
+        }
+    }
+    return null;
+}
+
+function sourceHasEnergy(source) {
+    if (!source) return false;
+    if (source.amount !== undefined) return source.amount > 0;
+    if (source.store) return (source.store[RESOURCE_ENERGY] || 0) > 0;
+    if (source.energy !== undefined) return source.energy > 0;
+    return false;
+}
+
 function findEnergySource(creep, snapshot, options) {
     options = options || {};
     const role = memory.getRole(creep);
@@ -34,6 +63,21 @@ function findEnergySource(creep, snapshot, options) {
     // Harvesters harvest from sources; don't drain storage/containers.
     if (role === 'harvester') {
         return closestSafeSource(creep, snapshot);
+    }
+
+    // Sticky lock: keep refueling from the same source until it's gone/empty.
+    // Without this a creep between two dropped piles re-selects each tick
+    // (chebyshev distance flips as it moves) and ping-pongs without reaching
+    // either. The lock is cleared by clearRefueling (when the creep fills up)
+    // or here when the source is no longer valid.
+    const lockedId = memory.getRefuelSource(creep);
+    if (lockedId) {
+        const locked = findSourceInSnapshot(lockedId, snapshot);
+        if (locked && sourceHasEnergy(locked) &&
+            !(options.excludeContainerId && locked.id === options.excludeContainerId)) {
+            return locked;
+        }
+        memory.clearRefuelSource(creep);
     }
 
     let best = null;
@@ -63,8 +107,12 @@ function findEnergySource(creep, snapshot, options) {
         }
     }
 
-    // Flagged priority containers act as local caches and are preferred over
-    // ordinary source containers.
+    // Flagged priority containers act as local caches. Non-haulers (builders,
+    // upgraders, repairers) withdraw from them; haulers deliver to them
+    // instead (excluded here). The 4.0 weight puts priority containers above
+    // dropped energy (3.0) and storage/ordinary containers (1.0), so a
+    // `haul:`-flagged container near a workshop (e.g. controller-side cache
+    // for upgraders) is the preferred refuel source, not just a tie-breaker.
     const priorityIds = roomFlags.getPriorityContainerIds(creep.pos.roomName);
     if (snapshot.containers) {
         for (let i = 0; i < snapshot.containers.length; i++) {
@@ -75,15 +123,20 @@ function findEnergySource(creep, snapshot, options) {
             if (isPriority && role === 'hauler') continue;
             if (!isPriority && energy < constants.CONTAINER_WITHDRAW_MIN) continue;
             if (isPriority && energy === 0) continue;
-            consider(c, isPriority ? 1.5 : 1.0);
+            consider(c, isPriority ? 4.0 : 1.0);
         }
     }
 
-    if (!best && options.allowHarvest) {
-        return closestSafeSource(creep, snapshot);
+    if (best) {
+        memory.setRefuelSource(creep, best.id);
+        return best;
     }
-
-    return best;
+    if (options.allowHarvest) {
+        const harvested = closestSafeSource(creep, snapshot);
+        if (harvested) memory.setRefuelSource(creep, harvested.id);
+        return harvested;
+    }
+    return null;
 }
 
 function acquireEnergy(creep, source) {

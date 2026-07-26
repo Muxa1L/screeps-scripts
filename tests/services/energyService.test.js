@@ -69,6 +69,22 @@ test('findEnergySource prefers flagged priority containers over regular containe
     assert.equal(chosen, priority);
 });
 
+test('findEnergySource prefers flagged priority containers over dropped energy for non-haulers', function () {
+    mocks.resetMemory();
+    mocks.resetGame();
+    const creep = mocks.mockCreep({ pos: pos(25, 25), capacity: 100, store: {} });
+    const priority = mocks.mockStructure(STRUCTURE_CONTAINER, { id: 'priority', pos: pos(26, 25), energy: 200, capacity: 2000 });
+    const dropped = mocks.mockDroppedResource(200, pos(27, 25));
+    Game.flags['haul:controller-cache'] = mocks.mockFlag('haul:controller-cache', priority.pos, [priority]);
+    const snapshot = {
+        containers: [priority],
+        droppedEnergy: [dropped],
+        sources: [],
+    };
+    const chosen = energyService.findEnergySource(creep, snapshot, { allowHarvest: false });
+    assert.equal(chosen, priority);
+});
+
 test('findEnergySource excludes a specific container', function () {
     mocks.resetMemory();
     mocks.resetGame();

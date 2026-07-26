@@ -104,7 +104,21 @@ function setRefueling(creep, value) {
 }
 
 function clearRefueling(creep) {
-    ensureCreepMemory(creep)._refueling = false;
+    const mem = ensureCreepMemory(creep);
+    mem._refueling = false;
+    mem._refuelSourceId = null;
+}
+
+function getRefuelSource(creep) {
+    return ensureCreepMemory(creep)._refuelSourceId || null;
+}
+
+function setRefuelSource(creep, id) {
+    ensureCreepMemory(creep)._refuelSourceId = id;
+}
+
+function clearRefuelSource(creep) {
+    ensureCreepMemory(creep)._refuelSourceId = null;
 }
 
 function getSourceId(creep) {
@@ -209,6 +223,9 @@ module.exports = {
     getRefueling: getRefueling,
     setRefueling: setRefueling,
     clearRefueling: clearRefueling,
+    getRefuelSource: getRefuelSource,
+    setRefuelSource: setRefuelSource,
+    clearRefuelSource: clearRefuelSource,
     getSourceId: getSourceId,
     setSourceId: setSourceId,
     clearSourceId: clearSourceId,
