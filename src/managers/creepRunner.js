@@ -262,7 +262,14 @@ function findCurrentTask(taskList, taskId) {
 }
 
 function selectTask(creep, taskList, snap, currentTask, claimCounts, capCache) {
-    const currentApprox = currentTask ? taskBase.approxDistance(creep, currentTask.target) : null;
+    // Score the current task with the same metric bestTaskFor uses for
+    // candidates (tasks.score, not raw approxDistance). For mine this
+    // includes the per-source claims penalty, so a miner already on a
+    // crowded source can fairly compare switching to an empty one.
+    // Without this, currentApprox was raw chebyshev distance while
+    // best.approx was the scored value, so shouldSwitch never let the
+    // spread penalty take effect — miners stacked on one source.
+    const currentApprox = currentTask ? tasks.score(currentTask.type, creep, currentTask.target) : null;
     const best = bestTaskFor(creep, taskList, snap, claimCounts, capCache);
     let assigned = currentTask;
     if (best) {
