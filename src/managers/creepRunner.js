@@ -182,7 +182,15 @@ function bestTaskFor(creep, taskList, snap, claimCounts, capCache) {
     const capacity = creep.store.getCapacity(RESOURCE_ENERGY) || 0;
     const energy = creep.store[RESOURCE_ENERGY] || 0;
     const isFull = capacity > 0 && energy >= capacity;
-    const isEmpty = energy === 0;
+    // A creep with no CARRY (capacity 0) is never "empty" — it has no carry
+    // to be empty. Without this guard, fighters/healers (no CARRY parts) are
+    // permanently isEmpty=true, which skips `defend`/`heal` tasks via the
+    // filter below (they aren't in the self-refueling/harvest/sweep/haul/mine/
+    // supply exclusion list). The fighters then fall through to
+    // combatIdleFallback, which calls move.moveCreep toward the hostile but
+    // never creep.attack() — so they spawn, walk up to the attacker, and
+    // never swing. Mirrors the isFull guard on the previous line.
+    const isEmpty = capacity > 0 && energy === 0;
     const candidates = [];
     for (let i = 0; i < taskList.length; i++) {
         const t = taskList[i];
