@@ -1,6 +1,6 @@
 # Multi-Room — Per-Room Management & Expansion
 
-Status: **Planned**. v1 scope: per-room generalization + GCL-aware expansion
+Status: **Implemented** (commit 291de12). v1 scope: per-room generalization + GCL-aware expansion
 planner + claim-and-settle flow.
 
 ## Goal
