@@ -269,7 +269,25 @@ function makePos(p, lookForResults) {
         },
         findClosestByPath: function (items) { return (items && Array.isArray(items) && items.length) ? items[0] : null; },
         findClosestByRange: function (items) { return (items && Array.isArray(items) && items.length) ? items[0] : null; },
-        lookFor: function (type) { return (lookForResults && lookForResults[type]) || []; },
+        lookFor: function (type) {
+            if (lookForResults && lookForResults[type]) return lookForResults[type];
+            // Fall back to the global per-room maps so `hasStructureOrSiteAt`
+            // and `tileIsWalkable` work uniformly on makePos and RoomPosition.
+            const key = this.x + ',' + this.y;
+            if (type === LOOK_TERRAIN) {
+                const m = global._terrainMap[this.roomName];
+                return (m && m[key]) ? [m[key]] : ['plain'];
+            }
+            if (type === LOOK_STRUCTURES) {
+                const m = global._structureMap[this.roomName];
+                return (m && m[key]) || [];
+            }
+            if (type === LOOK_CONSTRUCTION_SITES) {
+                const m = global._siteMap[this.roomName];
+                return (m && m[key]) || [];
+            }
+            return [];
+        },
     };
 }
 

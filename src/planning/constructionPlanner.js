@@ -6,16 +6,17 @@ const containerStrategy = require('./strategies/containerStrategy');
 const storageStrategy = require('./strategies/storageStrategy');
 const linkStrategy = require('./strategies/linkStrategy');
 const towerStrategy = require('./strategies/towerStrategy');
+const rampartStrategy = require('./strategies/rampartStrategy');
 
 const STRUCTURE_LIMITS = {
-    1: { extension: 0, container: 0, tower: 0, storage: 0, link: 0 },
-    2: { extension: 5, container: 0, tower: 0, storage: 0, link: 0 },
-    3: { extension: 10, container: 5, tower: 1, storage: 0, link: 0 },
-    4: { extension: 20, container: 5, tower: 1, storage: 1, link: 0 },
-    5: { extension: 30, container: 5, tower: 2, storage: 1, link: 2 },
-    6: { extension: 40, container: 5, tower: 2, storage: 1, link: 3 },
-    7: { extension: 50, container: 5, tower: 3, storage: 1, link: 4 },
-    8: { extension: 60, container: 5, tower: 6, storage: 1, link: 6 },
+    1: { extension: 0, container: 0, tower: 0, storage: 0, link: 0, rampart: 0 },
+    2: { extension: 5, container: 0, tower: 0, storage: 0, link: 0, rampart: 0 },
+    3: { extension: 10, container: 5, tower: 1, storage: 0, link: 0, rampart: 15 },
+    4: { extension: 20, container: 5, tower: 1, storage: 1, link: 0, rampart: 16 },
+    5: { extension: 30, container: 5, tower: 2, storage: 1, link: 2, rampart: 35 },
+    6: { extension: 40, container: 5, tower: 2, storage: 1, link: 3, rampart: 45 },
+    7: { extension: 50, container: 5, tower: 3, storage: 1, link: 4, rampart: 56 },
+    8: { extension: 60, container: 5, tower: 6, storage: 1, link: 6, rampart: 68 },
 };
 
 const MAX_SITES_PER_TICK = constants.MAX_SITES_PER_TICK;
@@ -40,6 +41,7 @@ function planRoom(room) {
     used += storageStrategy.planStorage(room, anchor, counts, limits, MAX_SITES_PER_TICK - used);
     used += linkStrategy.planLinks(room, anchor, counts, limits, MAX_SITES_PER_TICK - used);
     used += towerStrategy.planTowers(room, anchor, counts, limits, MAX_SITES_PER_TICK - used);
+    used += rampartStrategy.planRamparts(room, counts, limits, MAX_SITES_PER_TICK - used);
     return used;
 }
 
