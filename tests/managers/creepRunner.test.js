@@ -181,3 +181,35 @@ test('findCurrentTask falls back to linear scan when index is null', function ()
     assert.equal(creepRunner.findCurrentTask(taskList, 'haul:W1N1:c1', null), taskB);
     assert.equal(creepRunner.findCurrentTask(taskList, 'missing', null), null);
 });
+
+// --- combatIdleFallback squad-leader following ---
+
+test('combatIdleFallback: healer with a live squad leader paths toward the leader', function () {
+    mocks.resetGame();
+    const leader = mocks.mockCreep({
+        name: 'Fighter1', pos: { x: 30, y: 25, roomName: 'W1N1' }, parts: { attack: 3, move: 3 },
+    });
+    leader.id = 'fighter1';
+    Game._registerObject(leader);
+    const healer = mocks.mockCreep({
+        name: 'Healer1', pos: { x: 10, y: 25, roomName: 'W1N1' }, parts: { heal: 2, move: 2 },
+    });
+    healer.id = 'healer1';
+    healer.memory.squadLeader = 'fighter1';
+    let movedTo = null;
+    healer.moveTo = function (t) { movedTo = t; return OK; };
+    creepRunner.combatIdleFallback(healer);
+    assert.equal(movedTo, leader);
+});
+
+test('combatIdleFallback: healer with a dead squad leader clears the link and falls through', function () {
+    mocks.resetGame();
+    const healer = mocks.mockCreep({
+        name: 'Healer1', pos: { x: 10, y: 25, roomName: 'W1N1' }, parts: { heal: 2, move: 2 },
+    });
+    healer.id = 'healer1';
+    healer.memory.squadLeader = 'gone';
+    // No hostiles and no spawns → falls through to the idle branch.
+    creepRunner.combatIdleFallback(healer);
+    assert.equal(healer.memory.squadLeader, undefined);
+});

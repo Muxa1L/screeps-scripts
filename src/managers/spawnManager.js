@@ -59,6 +59,35 @@ function hostilesInRoom(room) {
     return room.find(FIND_HOSTILE_CREEPS);
 }
 
+// Find the most recently spawned fighter that no healer is currently paired
+// with (no live healer has memory.squadLeader == fighter.id). Used to assign
+// a new healer a squad leader at spawn time. Returns the fighter creep or
+// null. No reverse link is stored on the fighter, so pairing is deduped by
+// scanning healer memory.squadLeader values each time a healer is about to
+// spawn — cheap because it runs only at spawn time, not per tick.
+function findUnpairedFighter() {
+    const pairedLeaderIds = {};
+    for (const name in Game.creeps) {
+        const c = Game.creeps[name];
+        if (memory.getRole(c) !== 'healer') continue;
+        const leaderId = c.memory && c.memory.squadLeader;
+        if (leaderId) pairedLeaderIds[leaderId] = true;
+    }
+    let candidate = null;
+    let newestTickssToLive = -1;
+    for (const name in Game.creeps) {
+        const c = Game.creeps[name];
+        if (memory.getRole(c) !== 'fighter') continue;
+        if (pairedLeaderIds[c.id]) continue;
+        // Prefer the most recently spawned fighter (highest ticksToLive).
+        if (typeof c.ticksToLive === 'number' && c.ticksToLive > newestTickssToLive) {
+            newestTickssToLive = c.ticksToLive;
+            candidate = c;
+        }
+    }
+    return candidate;
+}
+
 function tryDefenders(spawn, hostiles) {
     if (hostiles.length === 0) return false;
     const roomName = spawn.room.name;
@@ -81,7 +110,13 @@ function tryDefenders(spawn, hostiles) {
     if (fighters >= desiredFighters && healers < desiredHealers) {
         const hpick = bodies.bestBodyForAvailable('healer', cap, available);
         if (hpick) {
-            return spawnBody(spawn, hpick.body, 'Healer' + Game.time + '-' + spawn.name, 'healer');
+            // Pair this healer with the newest unpaired fighter so the healer
+            // follows and preferentially heals its squad leader. If no
+            // unpaired fighter exists (e.g. healer spawned first), the healer
+            // operates independently and reverts to nearest-damaged-friendly.
+            const fighter = findUnpairedFighter();
+            const extraMem = fighter ? { squadLeader: fighter.id } : {};
+            return spawnBody(spawn, hpick.body, 'Healer' + Game.time + '-' + spawn.name, 'healer', extraMem);
         }
     }
     return false;
@@ -173,4 +208,5 @@ function summaryLog(spawn, counts, rcl) {
 module.exports = {
     tick: tick,
     hostilesInRoom: hostilesInRoom,
+    findUnpairedFighter: findUnpairedFighter,
 };

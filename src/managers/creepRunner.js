@@ -422,6 +422,25 @@ function handleMoveFailures(creep, claimCounts) {
 }
 
 function combatIdleFallback(creep) {
+    // Healer with a squad leader: stick with the leader even when no damaged
+    // friendly is visible, so the healer is in position to heal the moment
+    // the fighter takes damage. If the leader is dead/gone, clear the stale
+    // link and fall through to the default hostile/exit/idle logic.
+    const leaderId = creep.memory && creep.memory.squadLeader;
+    if (leaderId) {
+        const leader = Game.getObjectById(leaderId);
+        if (leader) {
+            if (!creep.pos.inRangeTo(leader, 3)) {
+                logger.setAction(creep, 'follow->leader@' + leader.id);
+                move.moveCreep(creep, leader, { visualizePathStyle: { stroke: '#00ff00' }, reusePath: 10 });
+            } else {
+                logger.setAction(creep, 'guard->leader@' + leader.id);
+            }
+            return;
+        }
+        delete creep.memory.squadLeader;
+    }
+
     // Move toward the nearest visible hostile, or any known hostile position from snapshots.
     const nearest = creep.pos.findClosestByRange(FIND_HOSTILE_CREEPS);
     if (nearest) {
@@ -646,4 +665,5 @@ module.exports = {
     inferRoleFromName: inferRoleFromName,
     collectCombatTasks: collectCombatTasks,
     findCurrentTask: findCurrentTask,
+    combatIdleFallback: combatIdleFallback,
 };
