@@ -44,9 +44,9 @@ function moveCreep(creep, target, opts) {
     }
     if (creep.fatigue > 0) return;
 
-    // If both the creep and the target are on roads, use a short path cache
-    // so the creep recalculates more often and avoids creating "passing" paths
-    // around slower traffic that is actually heading the same way.
+    // Stable hauler/miner loops benefit from a longer path cache on roads.
+    // Combat/follow paths override this with a caller-provided reusePath when
+    // targets change frequently.
     const selfOnRoad = creep.room && creep.room.lookForAt(LOOK_STRUCTURES, creep.pos.x, creep.pos.y).some(function (s) {
         return s.structureType === STRUCTURE_ROAD;
     });
@@ -54,7 +54,7 @@ function moveCreep(creep, target, opts) {
         creep.room && creep.room.lookForAt(LOOK_STRUCTURES, pos.x, pos.y).some(function (s) {
         return s.structureType === STRUCTURE_ROAD;
     });
-    const roadReuse = (selfOnRoad || targetOnRoad) ? 2 : null;
+    const roadReuse = (selfOnRoad || targetOnRoad) ? 5 : null;
 
     const targetId = target.id || (pos.x + ',' + pos.y + ',' + pos.roomName);
     if (memorySchema.getMoveTargetId(creep) !== targetId) {
@@ -85,7 +85,7 @@ function moveCreep(creep, target, opts) {
     // A caller-provided reusePath overrides the road-based default.
     const callerReuse = opts && opts.reusePath !== undefined ? opts.reusePath : null;
     const moveOpts = {
-        reusePath: callerReuse !== null ? callerReuse : (roadReuse !== null ? roadReuse : 5),
+        reusePath: callerReuse !== null ? callerReuse : (roadReuse !== null ? roadReuse : 10),
         maxOps: 2000,
         ignoreCreeps: false,
         costCallback: function (roomName, matrix) {

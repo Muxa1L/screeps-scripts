@@ -134,3 +134,31 @@ test('findDeposit skips source links via excludeTypes', function () {
     const chosen = depositService.findDeposit(creep, snapshot, { excludeTypes: { [STRUCTURE_LINK]: true } });
     assert.equal(chosen, null);
 });
+
+// Regression guard: findDeposit must use snapshot objects directly, not
+// re-fetch them via Game.getObjectById. Stage a container in the snapshot
+// that is NOT registered in Game.objectsById. The old code called
+// getObjectById(c.id) → null and filtered it out; the new code uses the
+// snapshot object directly and includes it.
+test('findDeposit uses snapshot objects directly without a getObjectById re-fetch', function () {
+    mocks.resetGame();
+    const creep = mocks.mockCreep({ pos: pos(25, 25), capacity: 100, store: { [RESOURCE_ENERGY]: 100 } });
+    // Build a container-shaped object NOT registered via Game._registerObject.
+    // Game.getObjectById('unregistered-cont') returns null, so the old code
+    // would skip it. The new code uses the snapshot reference directly.
+    const unregistered = {
+        id: 'unregistered-cont',
+        structureType: STRUCTURE_CONTAINER,
+        pos: mocks.makePos(pos(27, 25)),
+        store: {
+            [RESOURCE_ENERGY]: 0,
+            getCapacity: function () { return 2000; },
+            getFreeCapacity: function () { return 2000; },
+            getUsedCapacity: function () { return 0; },
+        },
+    };
+    assert.equal(Game.getObjectById('unregistered-cont'), null);
+    const snapshot = { energyStructures: [], storage: null, containers: [unregistered], links: [], sources: [] };
+    const chosen = depositService.findDeposit(creep, snapshot, {});
+    assert.equal(chosen, unregistered);
+});

@@ -300,3 +300,29 @@ test('runIdleFallback: a full hauler (no WORK) deposits to a container', functio
     });
     assert.equal(transferredTo, container);
 });
+
+// --- RCL 3 surplus-harvester task eligibility guards ---
+// At RCL 3 the quota drops `harvester`; 5 existing harvesters become surplus.
+// taskMine.canDo is role-locked to 'miner' (surplus harvesters can't steal
+// miner source slots), while taskHaul.canDo is body-based (CARRY > 0) so
+// surplus harvesters remain useful as haulers during the transition.
+
+test('surplus harvester canDo(mine) is false — taskMine is role-locked to miner', function () {
+    mocks.resetGame();
+    const harvester = mocks.mockCreep({
+        name: 'Harvester1-Spawn1', pos: { x: 25, y: 25, roomName: 'W1N1' },
+        parts: { work: 1, carry: 1, move: 1 },
+    });
+    memory.setRole(harvester, 'harvester');
+    assert.equal(tasks.canDo('mine', harvester), false);
+});
+
+test('surplus harvester canDo(haul) is true — taskHaul only checks CARRY parts', function () {
+    mocks.resetGame();
+    const harvester = mocks.mockCreep({
+        name: 'Harvester2-Spawn1', pos: { x: 25, y: 25, roomName: 'W1N1' },
+        parts: { work: 1, carry: 1, move: 1 },
+    });
+    memory.setRole(harvester, 'harvester');
+    assert.equal(tasks.canDo('haul', harvester), true);
+});

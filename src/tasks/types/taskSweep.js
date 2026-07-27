@@ -12,8 +12,11 @@ module.exports = {
     },
     tasks: function (room, snap) {
         const out = [];
+        const constants = require('../../config/constants');
         for (let i = 0; i < snap.droppedEnergy.length; i++) {
-            out.push({ target: snap.droppedEnergy[i] });
+            const drop = snap.droppedEnergy[i];
+            if ((drop.amount || 0) < constants.DROPPED_ENERGY_MIN) continue;
+            out.push({ target: drop });
         }
         for (let j = 0; j < snap.tombstones.length; j++) {
             const t = snap.tombstones[j];
@@ -26,7 +29,12 @@ module.exports = {
         return out;
     },
     score: function (creep, target) {
-        return taskBase.pathScore(creep, target);
+        const dist = taskBase.pathScore(creep, target);
+        const amount = target.store ? _.sum(target.store) : (target.amount || 0);
+        // Small amount bonus: a 1000-energy pile beats an equal-distance 100-energy
+        // pile by ~9 tiles. Drops are already thresholded, so this mainly helps
+        // prioritize big tombstones/ruins and occasional large drops.
+        return dist - Math.min(amount / 100, 10);
     },
     run: function (creep, task, snap) {
         const target = task.target;

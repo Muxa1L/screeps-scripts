@@ -4,12 +4,12 @@ const QUOTAS = {
     0: {},
     1: { harvester: 3, upgrader: 1 },
     2: { harvester: 5, upgrader: 2 },
-    3: { miner: 2, hauler: 4, upgrader: 4, builder: 1 },
-    4: { miner: 6, hauler: 3, upgrader: 3, builder: 2 },
-    5: { miner: 6, hauler: 4, upgrader: 3, builder: 2 },
-    6: { miner: 8, hauler: 5, upgrader: 3, builder: 2 },
-    7: { miner: 8, hauler: 6, upgrader: 3, builder: 2 },
-    8: { miner: 8, hauler: 8, upgrader: 3, builder: 2 },
+    3: { miner: 2, hauler: 4, upgrader: 3, builder: 1 },
+    4: { miner: 2, hauler: 3, upgrader: 3, builder: 2 },
+    5: { miner: 2, hauler: 4, upgrader: 3, builder: 2 },
+    6: { miner: 2, hauler: 5, upgrader: 3, builder: 2 },
+    7: { miner: 2, hauler: 6, upgrader: 3, builder: 2 },
+    8: { miner: 2, hauler: 8, upgrader: 3, builder: 2 },
 };
 
 const ROLE_PRIORITY = ['fighter', 'healer', 'miner', 'hauler', 'harvester', 'builder', 'upgrader'];
@@ -91,6 +91,14 @@ function contextualQuota(rcl, controller, storage, constructionSites) {
 }
 
 function nextRoleToSpawn(creepCounts, rcl, controller, storage, constructionSites) {
+    // Income-continuity guard: at RCL 3+, if no miner AND no harvester exist,
+    // spawn a harvester first — it can deposit to the spawn directly (via
+    // idle-deposit/supply), unlike a miner which needs haulers to move energy
+    // from containers. Prevents an income deadlock during the harvester→miner
+    // transition if all harvesters die before miners establish.
+    if (rcl >= 3 && (creepCounts.miner || 0) === 0 && (creepCounts.harvester || 0) === 0) {
+        return 'harvester';
+    }
     const q = controller
         ? contextualQuota(rcl, controller, storage, constructionSites)
         : quotasFor(rcl);

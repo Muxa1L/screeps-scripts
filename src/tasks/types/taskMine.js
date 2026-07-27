@@ -7,7 +7,7 @@ module.exports = {
     type: 'mine',
     priority: taskBase.PRIORITY.MINE,
     requirements: { work: 1 },
-    cap: 4,
+    cap: 2,
     canDo: function (creep) {
         return creep.getActiveBodyparts(WORK) > 0 && memory.getRole(creep) === 'miner';
     },
@@ -87,6 +87,30 @@ module.exports = {
                 creep.drop(RESOURCE_ENERGY);
                 move.action(creep, 'mine->drop@' + sourceId);
                 return true;
+            }
+
+            // Source depleted: pick up dropped energy on adjacent tiles rather
+            // than sitting idle. Self-contained — no role/priority change, slot
+            // claim persists. Kept within 2 tiles of the source so the miner can
+            // return to its slot quickly when the source regenerates.
+            if (source.energy === 0 && creep.store.getFreeCapacity(RESOURCE_ENERGY) > 0) {
+                const adjacent = source.room.find(FIND_DROPPED_RESOURCES, {
+                    filter: function (r) {
+                        return r.resourceType === RESOURCE_ENERGY &&
+                               r.pos.inRangeTo(creep.pos, 1) &&
+                               r.pos.getRangeTo(source) <= 2;
+                    },
+                });
+                if (adjacent.length > 0) {
+                    if (creep.pos.isEqualTo(adjacent[0])) {
+                        creep.pickup(adjacent[0]);
+                        move.action(creep, 'mine->pickup@' + adjacent[0].id);
+                        return true;
+                    }
+                    move.moveCreep(creep, adjacent[0], { exactTile: true });
+                    move.action(creep, 'mine->pickup@' + adjacent[0].id);
+                    return true;
+                }
             }
 
             const ret = creep.harvest(source);

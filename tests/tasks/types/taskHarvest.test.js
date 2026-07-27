@@ -89,3 +89,20 @@ test('harvestCounts ignores non-harvester creeps even if they hold a harvest: ta
     // No harvesters on srcA -> no penalty.
     assert.equal(taskHarvest.score(chooser, srcA), 5);
 });
+
+test('run holds the task when the source is depleted', function () {
+    mocks.resetGame();
+    const source = makeSource('srcA', pos(25, 25));
+    source.energy = 0;
+    Game._registerObject(source);
+    const creep = makeHarvester({ name: 'H1', pos: pos(25, 26) });
+    const result = taskHarvest.run(creep, { target: source }, null);
+    assert.equal(result, true, 'should keep the harvest task while the source regenerates');
+});
+
+test('run releases the task when the source has disappeared', function () {
+    mocks.resetGame();
+    const creep = makeHarvester({ name: 'H2', pos: pos(25, 26) });
+    const result = taskHarvest.run(creep, { target: { id: 'missing', pos: pos(25, 25) } }, null);
+    assert.equal(result, false, 'should release when the source is gone');
+});

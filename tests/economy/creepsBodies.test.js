@@ -83,9 +83,9 @@ test('bestBodyForCapacity returns null for an unknown role', function () {
 });
 
 test('bestBodyForCapacity for hauler at 550 returns the largest affordable body', function () {
-    // Hauler tier keys are capacity breakpoints, not costs: the 800-key body
-    // [C*6, M*3] costs 450 (≤ 550), and the 1300-key body costs 950 (> 550).
-    // So the largest affordable hauler at 550 is the 800-key body.
+    // Hauler tier keys are body costs: the 450-cost body [C*6, M*3] fits at
+    // cap 550, and the 950-cost body does not. So the largest affordable
+    // hauler at 550 is the 450-cost body.
     const result = bodies.bestBodyForCapacity('hauler', 550);
     assert.deepEqual(result.body, [CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE]);
     assert.equal(result.cost, 450);
@@ -114,9 +114,9 @@ test('bodySummary returns the tier cost keys per role', function () {
     const summary = bodies.bodySummary();
     assert.ok(summary.miner.indexOf(200) !== -1);
     assert.ok(summary.miner.indexOf(550) !== -1);
-    assert.ok(summary.hauler.indexOf(550) !== -1);
-    assert.ok(summary.fighter.indexOf(720) !== -1);
-    assert.ok(summary.healer.indexOf(720) !== -1);
+    assert.ok(summary.hauler.indexOf(400) !== -1);
+    assert.ok(summary.fighter.indexOf(570) !== -1);
+    assert.ok(summary.healer.indexOf(930) !== -1);
     assert.ok(summary.builder.indexOf(200) !== -1);
     assert.ok(summary.harvester.indexOf(200) !== -1);
     assert.ok(summary.upgrader.indexOf(200) !== -1);

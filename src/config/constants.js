@@ -50,6 +50,10 @@ module.exports = {
     CONTAINER_WITHDRAW_MIN: 50,
     DROPPED_ENERGY_MIN: 100,
     LINK_WITHDRAW_MIN: 50,
+    // Screeps link transfers lose 3% of the sent amount (LINK_LOSS_RATIO).
+    // runLink sends ceil(targetFree / (1 - LINK_LOSS_RATIO)) to deliver
+    // exactly targetFree after loss, preserving the source's remainder.
+    LINK_LOSS_RATIO: 0.03,
 
     // Construction planning
     MAX_SITES_PER_TICK: 3,

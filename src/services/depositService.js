@@ -38,27 +38,28 @@ function findDeposit(creep, snapshot, options) {
     if (resourceType === RESOURCE_ENERGY) {
         const candidates = [];
         const priorityIds = roomFlags.getPriorityContainerIds(creep.pos.roomName);
+        // Use snapshot objects directly — roomManager.snapshotFor stores live
+        // structure references from room.find, valid for the whole tick. The
+        // per-candidate Game.getObjectById re-fetches were redundant;
+        // transferTo re-validates the final selection via getObjectById.
         if (snapshot.energyStructures) {
             for (let i = 0; i < snapshot.energyStructures.length; i++) {
                 const s = snapshot.energyStructures[i];
                 if (excludeTypes[s.structureType]) continue;
-                const live = Game.getObjectById(s.id);
-                if (!live || !structureNeedsEnergy(live)) continue;
-                candidates.push(live);
+                if (!structureNeedsEnergy(s)) continue;
+                candidates.push(s);
             }
         }
         if (snapshot.storage && !excludeTypes[STRUCTURE_STORAGE]) {
-            const liveStorage = Game.getObjectById(snapshot.storage.id);
-            if (liveStorage && structureNeedsEnergy(liveStorage)) candidates.push(liveStorage);
+            if (structureNeedsEnergy(snapshot.storage)) candidates.push(snapshot.storage);
         }
         if (snapshot.containers) {
             for (let i = 0; i < snapshot.containers.length; i++) {
                 const c = snapshot.containers[i];
                 if (excludeId && c.id === excludeId) continue;
                 if (excludeTypes[STRUCTURE_CONTAINER]) continue;
-                const live = Game.getObjectById(c.id);
-                if (!live || !structureNeedsEnergy(live)) continue;
-                candidates.push(live);
+                if (!structureNeedsEnergy(c)) continue;
+                candidates.push(c);
             }
         }
         // Source links are a last-resort deposit (tier 6, below containers).
@@ -71,10 +72,9 @@ function findDeposit(creep, snapshot, options) {
             for (let i = 0; i < snapshot.links.length; i++) {
                 const l = snapshot.links[i];
                 if (excludeTypes[STRUCTURE_LINK]) continue;
-                const live = Game.getObjectById(l.id);
-                if (!live || !structureNeedsEnergy(live)) continue;
-                if (!linkService.isSourceLink(live, sources)) continue;
-                candidates.push(live);
+                if (!structureNeedsEnergy(l)) continue;
+                if (!linkService.isSourceLink(l, sources)) continue;
+                candidates.push(l);
             }
         }
         if (candidates.length === 0) return null;

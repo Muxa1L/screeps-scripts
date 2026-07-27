@@ -1,4 +1,7 @@
 const roomManager = require('../roomManager');
+const constants = require('../../config/constants');
+
+const LINK_LOSS_RATIO = constants.LINK_LOSS_RATIO;
 
 // A link is a "source link" if it sits within range 3 of any source. This
 // matches linkStrategy's findPositionNear(source.pos, 1, 3) placement. Shared
@@ -48,7 +51,14 @@ function runLink(link) {
     }
     if (!target) return;
 
-    link.transferEnergy(target);
+    // Account for the 3% link transfer loss: transferring `amount` delivers
+    // floor(amount * (1 - LINK_LOSS_RATIO)) to the target. Send just enough
+    // to fill the target after loss, capped by source energy, so we don't
+    // over-transfer and waste energy the source could keep for next tick.
+    const targetFree = target.store.getCapacity(RESOURCE_ENERGY) - (target.store[RESOURCE_ENERGY] || 0);
+    const sourceEnergy = link.store[RESOURCE_ENERGY] || 0;
+    const amount = Math.min(sourceEnergy, Math.ceil(targetFree / (1 - LINK_LOSS_RATIO)));
+    if (amount > 0) link.transferEnergy(target, amount);
 }
 
 module.exports = {

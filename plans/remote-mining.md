@@ -1,146 +1,227 @@
-# Remote Mining — Design Document
+# Remote Mining — Implementation Plan
 
-Status: **Deferred** (no implementation in the current overhaul). This document captures the design so future work can pick it up cleanly.
+Status: **Planned**. Refines the original design into a concrete, file-level
+implementation plan. v1 is manually triggered via in-game `RemoteTarget<n>`
+flags; auto-discovery is deferred to v2.
 
 ## Goal
 
-Extend the in-room task-queue system so that one or more remote rooms can be claimed, defended, and mined. All code should slot into the existing `tasks/` and `managers/` folders without structural changes.
+Extend the in-room task-queue system so that one or more remote rooms can be
+reserved, defended, and mined. All code slots into the existing `tasks/` and
+`managers/` folders without structural changes to the snapshot or scheduler.
 
 ## Prerequisites (gates)
 
-Before remote mining activates, the home room must satisfy **all** of the following:
+Before the remote-mining pipeline activates, the home room must satisfy
+**all** of the following:
 
 1. `room.controller.level >= 4` (extensions enough to support extra creeps).
-2. At least one `STRUCTURE_OBSERVER` in the home room (used for intel).
-3. At least 2 sources in the home room are claimed by miners with positive throughput (no point splitting energy if the home room is starved).
-4. `Memory.remoteRooms` is non-empty (set by a planner or manually).
+2. At least one `STRUCTURE_OBSERVER` in the home room (used for intel,
+   shared with `plans/defense.md`).
+3. At least 2 sources in the home room are claimed by miners with positive
+   throughput (no point splitting energy if the home room is starved).
+4. `Memory.remoteRooms` is non-empty (set by a planner or manually via a
+   `RemoteTarget<n>` flag).
+5. `Memory.flags.remoteMining === true` (feature flag, off by default).
 
-If any gate fails, the remote-mining pipeline is a no-op and existing behavior is preserved.
+If any gate fails, the remote-mining pipeline is a no-op and existing
+behavior is preserved.
 
-## High-level pipeline
+## Concrete file additions
+
+### New task handlers (under `src/tasks/types/`)
+
+| File | Role | Body (RCL 4) | Behavior summary |
+|---|---|---|---|
+| `taskScout.js` | scout | `[MOVE]` | path to target room, set `Memory.remoteRooms[name].scoutedTick = Game.time`, register sources via `sourceRegistry.registerRemoteSource`, recycle on arrival |
+| `taskReserve.js` | reserver | `[CLAIM, MOVE, MOVE]` | path to controller, `reserveController` until timer >= 1500, hold; release and re-task if enemy-reserved |
+| `taskRemoteMine.js` | remoteMiner | same as `taskMine` body | claim remote source slot, mine, drop into adjacent container (or `drop` on the ground if no container yet) |
+| `taskRemoteHaul.js` | remoteHauler | `[CARRY*16, MOVE*8]` (1600 energy) | withdraw from remote container, return to home, deposit via `depositService` |
+| `taskRemoteBuild.js` | remoteBuilder | `[WORK, CARRY, CARRY, MOVE, MOVE, MOVE]` | travel to remote room, build queued sites (container first, then road), recycle when done |
+| `taskRemoteDefend.js` | fighter / healer (existing roles) | existing combat bodies | spawned reactively on threat; uses squad coordination from `plans/defense.md` |
+
+### Registry / role changes
+
+| File | Change |
+|---|---|
+| `src/tasks/tasksIndex.js` | register `scout`, `reserve`, `remoteMine`, `remoteHaul`, `remoteBuild`, `remoteDefend` |
+| `src/config/roles.js` | add `scout`, `reserver`, `remoteMiner`, `remoteHauler`, `remoteBuilder` with `allowed` arrays |
+| `src/config/priorities.js` | add `SCOUT: 88`, `RESERVE: 87`, `REMOTE_MINE: 82`, `REMOTE_HAUL: 52`, `REMOTE_BUILD: 62`, `REMOTE_DEFEND: 12` |
+
+### Source registry extension (`src/economy/sourceRegistry.js`)
+
+- Add `reachable: true|false` to each slot, computed by checking a path from
+  the room exit to the slot tile. Cached, recomputed every 500 ticks alongside
+  the existing `recomputeSlots` pass.
+- Add `registerRemoteSource(room, source)` — called by `taskScout` when it
+  arrives in a remote room. Populates `Memory.sources[id]` with `roomName`,
+  `x`, `y`, `slots`, `reachable`.
+- Existing `claimSlot` / `releaseClaim` work unchanged for remote sources
+  (they already iterate all `Memory.sources`).
+
+### Spawn changes (`src/managers/spawnManager.js`)
+
+- Add `creepsBodies` templates for each remote role.
+- Extend `creepsQuotas.QUOTAS` with remote-role counts gated on
+  `Memory.remoteRooms` having an active entry:
+
+  ```js
+  // Added by dynamicQuota when remoteRooms active:
+  scout:         1   // per unscouted target
+  reserver:      1   // per reserved room
+  remoteMiner:   1   // per active remote source
+  remoteHauler:  2   // per active remote room (distance-dependent)
+  remoteBuilder: 1   // while constructionPlan active
+  ```
+
+- `nextRoleToSpawn` checks remote pipeline state and interleaves remote
+  roles with economy roles. Remote roles are spawned from the home room's
+  spawn only (single-home-room assumption for v1).
+
+### creepManager / creepRunner changes
+
+| File | Change |
+|---|---|
+| `src/managers/creepRunner.js` | creeps with `memory.remoteRoom` resolve their snapshot from `roomManager.get(memory.remoteRoom)` instead of `creep.room` when picking tasks; the "send non-combat creeps home from unowned rooms" guard is extended to also exempt `memory.remoteRoom`-tagged creeps (in addition to the existing `room_allow:` exemption) |
+| `src/managers/creepManager.js` | no structural change — `collectCombatTasks` already iterates all visible rooms |
+
+### Route caching
+
+| File | Change |
+|---|---|
+| `src/utils/routeCache.js` | **NEW** — `getRoute(from, to)` caches `Game.map.findRoute` result on `Memory.remoteRooms[to].route` with a 1000-tick TTL; `getNextStep(from, to, currentRoom)` returns the next exit toward the destination |
+| `src/tasks/types/taskRemoteHaul.js` | uses `routeCache.getNextStep` for cross-room movement instead of raw `moveCreep` to an absolute target — avoids recomputing the path on every tile |
+| `src/tasks/types/taskScout.js`, `taskRemoteBuild.js` | same `routeCache` usage for cross-room travel |
+
+### Pipeline state machine — `src/managers/remoteManager.js`
+
+**NEW.** Runs per tick (bucket > 1500), no-op when
+`Memory.flags.remoteMining` is falsy. Advances state per remote room:
 
 ```
-[Scout] -> [Reserve target room] -> [Build container + road] -> [Mine + Haul]
-                                          |
-                                          v
-                                  [Defend if hostile]
+flag placed -> scout dispatched       (status: "pending")
+  -> scout arrives                    (status: "scouted")
+  -> reserver dispatched              (status: "reserving")
+  -> reservation held                 (status: "reserved")
+  -> container site queued + remoteBuilder dispatched  (status: "building")
+  -> container built                  (status: "active")
+  -> remoteMiner + remoteHauler dispatched
+  -> (hostile detected)               (status: "contested" -> spawn remoteDefend)
+  -> (threat cleared for 100 ticks)   (status: "active")
+  -> (reservation lapses + no threat for 2000 ticks)   (status: "abandoned")
 ```
 
-Each stage is a separate `tasks/task.*.js` handler invoked by `creepManager` like any other task. The `taskRegistry` only emits remote tasks when the prerequisites are met.
+Transitions driven by reading `Memory.remoteRooms[name]` and the live
+snapshot:
 
-## New tasks
+- if `status === 'pending'` and a `RemoteTarget` flag exists for the room
+  -> spawn scout from home.
+- if `scouted` and not reserved -> spawn reserver.
+- if `reserved` and no container -> queue container site via
+  `constructionPlanner` and spawn remoteBuilder.
+- if container built -> spawn remoteMiner + remoteHauler.
+- if hostiles in snapshot and no defender -> spawn remoteDefend, set
+  `contested`.
+- if `contested` and no hostiles for 100 ticks -> `active`.
+- if `reserved`/`active` and reservation lapsed + no threats for 2000 ticks
+  -> `abandoned` (flag for cleanup; memory entry may be deleted).
 
-### `task.reserve`
+### Threat gating
 
-- Body: `[CLAIM, MOVE, MOVE]` (1 claim part, 2 move for 1-tile-per-tick travel).
-- Behavior: pathfind to the target room's controller; if the controller is unowned and not reserved by an ally, call `reserveController`. If already reserved by us and the timer is < 1500, hold position and renew. Release and re-task if reserved by ally/enemy.
-- Lifetime target: keep reserved continuously so the room does not become neutral.
+`taskRemoteDefend` is spawned only if:
 
-### `task.scout`
+- A non-owner creep is visible in the remote room, **or**
+- The last-known intel (`Memory.remoteRooms[name].lastIntel`) is older than
+  5000 ticks AND the room is reserved by us.
 
-- Body: `[MOVE]` (or `[MOVE, MOVE]`).
-- Behavior: move to the room, call `room.observe` is not a thing — instead, return the snapshot from `roomManager` (which already builds it via `Game.rooms[name]`). The scout's job is to **arrive** and mark the room as "scouted" in `Memory.remoteRooms[roomName].scouted = true`.
-- After scouting, the scout switches to defender duty and is recycled.
+If a threat is detected but the home room cannot afford a defender pair
+(`Game.cpu.bucket < 5000` or insufficient energy), the remote miners and
+haulers retreat. The reservation is allowed to lapse — losing a remote room
+is cheaper than losing the home room.
 
-### `task.remoteMine`
+### Economic thresholds
 
-- Body: same as in-room miner (`MINER_BODIES[capacity]`) — WORK-only, drop-mine into a container.
-- Pre-reqs: a `STRUCTURE_CONTAINER` must be built adjacent to the source. The build itself is a `task.build` issued by a builder.
-- Behavior: claim a source slot via `sourceRegistry`, mine until full, drop into container. No carry, no travel.
-
-### `task.remoteHaul`
-
-- Body: large CARRY/MOVE optimized for the route length. e.g. `[CARRY×16, MOVE×8]` (1600 energy).
-- Behavior: travel to the remote container, withdraw energy, return to home room, transfer to spawn/extension/tower. Drop-and-go is acceptable if home extensions are full (drop in a home-room container).
-
-### `task.remoteBuild`
-
-- Body: `[WORK, CARRY, CARRY, MOVE, MOVE, MOVE]`.
-- Pre-reqs: `Memory.remoteRooms[roomName].constructionPlan` set.
-- Behavior: travel to the room, build the queued construction sites (container first, then road), recycle when done.
-
-### `task.remoteDefend`
-
-- Body: same as in-room fighter + healer.
-- Trigger: any hostile in the remote room. Spawned in response, not pre-planned.
+- Only attempt to mine a remote room if the round-trip distance is **< 30
+  tiles** (1 CARRY pays for itself in ~15 tiles round trip).
+- Skip a remote source if the home room is below 50% storage capacity.
+- Cap at 2 active remote rooms per home room initially. Increase once
+  `controller.level >= 7` and GCL permits.
 
 ## Memory layout
 
 ```js
 Memory.remoteRooms = {
-    "W2N3": {
-        target: "W2N3",
-        status: "scouted" | "reserved" | "active" | "contested",
-        scouted: Game.time,
-        reservationExpires: Game.time,
-        containerSiteId: "...",          // optional, while being built
-        lastIntel: Game.time,
-        threats: [],                     // [{ creep, hits, type }]
-    },
-    "W3N4": { ... }
+  "E42S27": {
+    target: "E42S27",
+    status: "pending" | "scouted" | "reserving" | "reserved" | "building" | "active" | "contested" | "abandoned",
+    scoutedTick: 12345,
+    reservationExpires: 13000,
+    sourceIds: ["..."],
+    containerSiteIds: ["..."],
+    containerIds: ["..."],
+    route: [{ exit: "E42S26", dir: FIND_EXIT_RIGHT }, ...],
+    routeComputedTick: 12345,
+    lastIntel: 12500,
+    threats: [],   // [{ creepId, hits, type, detectedTick }]
+  }
 };
 ```
 
-`Memory.remoteRooms` is keyed by room name. Status transitions:
+`Memory.remoteRooms` is keyed by room name. `Memory.flags.remoteMining`
+gates the whole pipeline.
 
-```
-empty -> scouted -> reserved -> active
-                              \-> contested -> active (after threat cleared)
-```
+## Migration
 
-## Source registry: extensions
+- Bump `Memory.migrated` to **4** in `globals.js`.
+- Initialize `Memory.remoteRooms = {}`.
+- Set `Memory.flags.remoteMining = false` if not already present.
+- No back-fill needed for live creeps — remote roles are new and only
+  spawned after the flag is on.
 
-Currently `sourceRegistry` only knows about in-room sources. Extend it so it can also register remote source slots:
+## Files to add / change summary
 
-- `Memory.sources[sourceId].roomName` already tells us the room. The miner task already uses it.
-- The only addition needed: ensure the slot is on a tile that is **walkable from the room exit**, otherwise the hauler can't reach the container. Compute this once at registration time and store `Memory.sources[sourceId].reachable = true|false`.
-
-## Hauler routing
-
-The single largest CPU cost in remote mining is hauler pathfinding. Mitigations:
-
-- Use `Game.map.findRoute(homeRoom, remoteRoom)` once and cache on `Memory.remoteRooms[roomName].route`. Recompute every 1000 ticks.
-- Reuse the existing `pathCache` for movement, keyed `roomName:startPos:goalId`.
-- Haulers always move toward the **next step** in the cached route, not the absolute target — this avoids recomputing on every tile.
-
-## Threat gating
-
-`task.remoteDefend` is spawned only if:
-
-- A non-owner creep is visible in the remote room, **or**
-- The last-known intel (`Memory.remoteRooms[name].lastIntel`) is older than 5000 ticks AND the room is reserved by us.
-
-If a threat is detected but the home room cannot afford a defender pair (`Game.cpu.bucket < 5000` or insufficient energy), the remote miners and haulers retreat. The reservation is allowed to lapse — losing a remote room is cheaper than losing the home room.
-
-## Economic thresholds
-
-- Only attempt to mine a remote room if the round-trip distance is **< 30 tiles** (rough rule of thumb: 1 CARRY pays for itself in ~15 tiles round trip).
-- Skip a remote source if the home room is below 50% storage capacity — it can wait.
-- Cap at 2 active remote rooms per home room initially. Increase once `controller.level >= 7` and GCL permits.
+| Path | Type |
+|---|---|
+| `src/tasks/types/taskScout.js` | new |
+| `src/tasks/types/taskReserve.js` | new |
+| `src/tasks/types/taskRemoteMine.js` | new |
+| `src/tasks/types/taskRemoteHaul.js` | new |
+| `src/tasks/types/taskRemoteBuild.js` | new |
+| `src/tasks/types/taskRemoteDefend.js` | new |
+| `src/managers/remoteManager.js` | new (pipeline state machine) |
+| `src/utils/routeCache.js` | new |
+| `src/tasks/tasksIndex.js` | register 6 new task types |
+| `src/config/roles.js` | add 5 new roles |
+| `src/config/priorities.js` | add 6 new priorities |
+| `src/config/constants.js` | remote thresholds (`REMOTE_MAX_DISTANCE: 30`, `REMOTE_MIN_STORAGE_RATIO: 0.5`, `REMOTE_MAX_ROOMS: 2`, `REMOTE_THREAT_STALE_TICKS: 5000`, `REMOTE_ABANDON_TICKS: 2000`) |
+| `src/economy/sourceRegistry.js` | `registerRemoteSource`, `reachable` flag on slots |
+| `src/economy/creepsBodies.js` | remote role body templates |
+| `src/economy/creepsQuotas.js` | remote role quotas (conditional on `Memory.remoteRooms`) |
+| `src/managers/spawnManager.js` | remote role spawning, gate on prerequisites |
+| `src/managers/creepRunner.js` | `memory.remoteRoom` snapshot resolution; exempt from send-home guard |
+| `src/managers/roomManager.js` | no change (already snapshots all visible rooms) |
+| `src/main.js` | call `remoteManager.tick()` (bucket > 1500) |
+| `src/utils/memorySchema.js` | accessors for `Memory.remoteRooms`, `creep.memory.remoteRoom` |
 
 ## Failure modes & recovery
 
-| Symptom                              | Likely cause             | Action |
-|--------------------------------------|--------------------------|--------|
-| Reservation timer keeps resetting    | No respawned reserver    | Spawn a reserver from `spawnManager` priority queue |
-| Hauler idle at exit                  | Route cache stale        | Recompute route, clear hauler memory |
-| Container never fills                | No miner or wrong slot   | Verify `Memory.sources[id]` and miner `memory.sourceId` |
-| Defender keeps dying                 | Insufficient heals       | Healer body must be paired with each fighter |
-
-## Migration path
-
-1. Add `Memory.remoteRooms = {}` initialization in `globals.js` (next to the `migrated` flag).
-2. Add new task handlers under `tasks/task.reserve.js`, `task.scout.js`, `task.remoteMine.js`, `task.remoteHaul.js`, `task.remoteBuild.js`, `task.remoteDefend.js`.
-3. Extend `taskRegistry` with a `remoteList(room)` that returns remote-room tasks for creeps flagged with `creep.memory.remoteRoom`.
-4. Extend `creepManager` so creeps with `memory.remoteRoom` resolve tasks against that room's snapshot, not `creep.room`.
-5. Extend `sourceRegistry` with the `reachable` flag and the per-room slot pool.
-6. Add a `remoteHaulBody` and `remoteMinerBody` selector to `spawnManager.js` and gate on the prerequisites.
-
-No changes are needed to `main.js`, `roomManager`, or `pathCache`.
+| Symptom | Likely cause | Action |
+|---|---|---|
+| Reservation timer keeps resetting | No respawned reserver | Spawn a reserver from `spawnManager` priority queue |
+| Hauler idle at exit | Route cache stale | Recompute route (`routeCache.getRoute(... , { force: true })`), clear hauler memory |
+| Container never fills | No miner or wrong slot | Verify `Memory.sources[id]` and miner `memory.sourceId` |
+| Defender keeps dying | Insufficient heals | Healer body must be paired with each fighter (squad from `plans/defense.md`) |
+| Status stuck at `pending` | No `RemoteTarget` flag placed | Player places flag, or planner (v2) auto-picks |
 
 ## Open questions
 
-- **Scout policy:** manual (player drops a flag) vs. automatic (AI picks the closest unowned/neutral room). Recommend manual flag `RemoteTarget1` for v1; auto-discovery in v2.
-- **Observer-driven intel vs. room-visibility:** observability vs. cost. For v1, rely on the hauler naturally seeing the room every trip. Add observer polling in v2.
-- **Multiple home rooms:** out of scope; assumes single home room for v1.
-- **Reserving vs. claiming:** claim requires 1 claim part + 1500 energy at the controller. Reserve is cheaper and sufficient for non-owned rooms we just want to mine. v1 uses reserve.
+- **Scout policy.** v1: manual flag (`RemoteTarget1`, `RemoteTarget2`, ...).
+  v2: auto-discovery of the closest unowned/neutral room.
+- **Observer-driven intel vs. room-visibility.** v1 relies on the hauler
+  naturally seeing the room every trip plus the `intelService` from
+  `plans/defense.md`. Observer polling of remote rooms is added in v2.
+- **Multiple home rooms.** Out of scope for v1; assumes single home room.
+  See `plans/multi-room.md` for the multi-home-room generalization.
+- **Reserving vs. claiming.** v1 uses reserve (cheaper, sufficient for
+  non-owned rooms we just want to mine). Claim is part of the multi-room
+  expansion pipeline, not remote mining.

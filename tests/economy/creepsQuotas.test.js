@@ -18,9 +18,9 @@ test('quotasFor returns the base quota table for each RCL 0-8', function () {
     assert.deepEqual(quotas.quotasFor(0), {});
     assert.deepEqual(quotas.quotasFor(1), { harvester: 3, upgrader: 1 });
     assert.deepEqual(quotas.quotasFor(2), { harvester: 5, upgrader: 2 });
-    assert.deepEqual(quotas.quotasFor(3), { miner: 2, hauler: 4, upgrader: 4, builder: 1 });
-    assert.deepEqual(quotas.quotasFor(4), { miner: 6, hauler: 3, upgrader: 3, builder: 2 });
-    assert.deepEqual(quotas.quotasFor(8), { miner: 8, hauler: 8, upgrader: 3, builder: 2 });
+    assert.deepEqual(quotas.quotasFor(3), { miner: 2, hauler: 4, upgrader: 3, builder: 1 });
+    assert.deepEqual(quotas.quotasFor(4), { miner: 2, hauler: 3, upgrader: 3, builder: 2 });
+    assert.deepEqual(quotas.quotasFor(8), { miner: 2, hauler: 8, upgrader: 3, builder: 2 });
 });
 
 test('quotasFor unknown RCL returns the empty RCL 0 table', function () {
@@ -42,7 +42,7 @@ test('RCL 3 switches to miners+haulers and drops harvesters', function () {
     const q = quotas.quotasFor(3);
     assert.equal(q.miner, 2);
     assert.equal(q.hauler, 4);
-    assert.equal(q.upgrader, 4);
+    assert.equal(q.upgrader, 3);
     assert.equal(q.builder, 1);
     assert.equal(q.harvester, undefined);
 });
@@ -79,7 +79,7 @@ test('dynamicQuota URGENT (<1000) boosts upgrader and ensures hauler>=1', functi
 });
 
 test('dynamicQuota URGENT at RCL 4 boosts upgrader to 4', function () {
-    // RCL 4: base upgrader 3, total 14, maxUpgraders 7 → min(4,7)=4, max(3,4)=4
+    // RCL 4: base upgrader 3, total 12, maxUpgraders 6 → min(4,6)=4, max(3,4)=4
     const q = quotas.dynamicQuota(4, { ticksToDowngrade: 500 });
     assert.equal(q.upgrader, 4);
 });
@@ -94,26 +94,26 @@ test('contextualQuota with null storage returns the base (pre-RCL 4 safe)', func
 test('contextualQuota with full storage (ratio>=0.8) adds 2 upgraders capped at 6', function () {
     const storage = makeStorage(9000, 10000); // ratio 0.9
     const q = quotas.contextualQuota(3, { ticksToDowngrade: 20000 }, storage, []);
-    assert.equal(q.upgrader, 6); // base 4 + 2 = 6, capped at 6
+    assert.equal(q.upgrader, 5); // base 3 + 2 = 5, capped at 6
 });
 
 test('contextualQuota with low storage (ratio<=0.2) halves upgraders unless urgent', function () {
     const storage = makeStorage(1000, 10000); // ratio 0.1
     const q = quotas.contextualQuota(3, { ticksToDowngrade: 20000 }, storage, []);
-    assert.equal(q.upgrader, 2); // max(1, floor(4/2)) = max(1,2) = 2
+    assert.equal(q.upgrader, 1); // max(1, floor(3/2)) = max(1,1) = 1
 });
 
 test('contextualQuota with low storage but urgent keeps upgraders', function () {
     const storage = makeStorage(1000, 10000); // ratio 0.1
     const q = quotas.contextualQuota(3, { ticksToDowngrade: 500 }, storage, []);
     // Urgent path already set upgrader; the low-storage halve is skipped when urgent
-    assert.equal(q.upgrader, 4); // URGENT at RCL 3: max(4, min(4, floor(11/2)=5)) = 4
+    assert.equal(q.upgrader, 4); // URGENT at RCL 3: max(3, min(4, floor(10/2)=5)) = 4
 });
 
 test('contextualQuota with mid storage leaves upgraders unchanged', function () {
     const storage = makeStorage(5000, 10000); // ratio 0.5
     const q = quotas.contextualQuota(3, { ticksToDowngrade: 20000 }, storage, []);
-    assert.equal(q.upgrader, 4); // base RCL 3
+    assert.equal(q.upgrader, 3); // base RCL 3
 });
 
 // --- contextualQuota construction backlog ---
@@ -138,11 +138,6 @@ test('contextualQuota with empty sites array leaves builders unchanged', functio
 
 // --- nextRoleToSpawn ---
 
-test('nextRoleToSpawn at RCL 3 with empty counts returns miner (first in priority)', function () {
-    const role = quotas.nextRoleToSpawn({}, 3, { ticksToDowngrade: 20000 }, null, []);
-    assert.equal(role, 'miner');
-});
-
 test('nextRoleToSpawn at RCL 3 with miners satisfied returns hauler', function () {
     const role = quotas.nextRoleToSpawn({ miner: 2 }, 3, { ticksToDowngrade: 20000 }, null, []);
     assert.equal(role, 'hauler');
@@ -160,8 +155,54 @@ test('nextRoleToSpawn returns null when all quotas are met', function () {
 });
 
 test('nextRoleToSpawn without a controller uses the base quota', function () {
-    const role = quotas.nextRoleToSpawn({}, 3, null, null, []);
+    // Counts include a harvester so the RCL 3+ income-continuity guard stays
+    // inactive and this test exercises the no-controller (quotasFor) path.
+    const role = quotas.nextRoleToSpawn({ harvester: 1 }, 3, null, null, []);
     assert.equal(role, 'miner');
+});
+
+// --- Income-continuity transition guard (RCL 3+ emergency) ---
+// If all income producers die at RCL 3+ before miners establish, spawn a
+// harvester first — it can deposit to the spawn directly, unlike a miner
+// which needs haulers to move energy from containers. Prevents an income
+// deadlock during the harvester→miner transition.
+
+test('nextRoleToSpawn at RCL 3 with no miners and no harvesters returns harvester (transition guard)', function () {
+    const role = quotas.nextRoleToSpawn({}, 3, { ticksToDowngrade: 20000 }, null, []);
+    assert.equal(role, 'harvester');
+});
+
+test('nextRoleToSpawn at RCL 3 with a live miner returns miner (guard inactive)', function () {
+    const role = quotas.nextRoleToSpawn({ miner: 1 }, 3, { ticksToDowngrade: 20000 }, null, []);
+    assert.equal(role, 'miner');
+});
+
+test('nextRoleToSpawn at RCL 3 with a live harvester returns miner (guard inactive)', function () {
+    const role = quotas.nextRoleToSpawn({ harvester: 1 }, 3, { ticksToDowngrade: 20000 }, null, []);
+    assert.equal(role, 'miner');
+});
+
+test('nextRoleToSpawn at RCL 2 with no harvesters returns harvester (base quota, not guard)', function () {
+    // RCL 2 has no miner quota; guard is RCL 3+ only. Base quota path returns harvester.
+    const role = quotas.nextRoleToSpawn({}, 2, { ticksToDowngrade: 20000 }, null, []);
+    assert.equal(role, 'harvester');
+});
+
+// --- RCL 3 surplus-harvester guards ---
+// At RCL 3 the quota table drops `harvester` entirely. 5 existing harvesters
+// become surplus but remain alive. nextRoleToSpawn must ignore them — they
+// don't block miner/hauler spawning (harvester has no quota target so
+// `!target` skips it) and don't trigger a re-spawn to "match" the surplus.
+
+test('nextRoleToSpawn at RCL 3 with surplus harvesters alive still returns miner', function () {
+    const role = quotas.nextRoleToSpawn({ harvester: 5 }, 3, { ticksToDowngrade: 20000 }, null, []);
+    assert.equal(role, 'miner');
+});
+
+test('nextRoleToSpawn at RCL 3 with all quotas met plus surplus harvesters returns null', function () {
+    const counts = { miner: 2, hauler: 4, upgrader: 4, builder: 1, harvester: 5 };
+    const role = quotas.nextRoleToSpawn(counts, 3, { ticksToDowngrade: 20000 }, null, []);
+    assert.equal(role, null);
 });
 
 // --- spawnPriority ---

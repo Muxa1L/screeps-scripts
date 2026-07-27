@@ -12,7 +12,7 @@ function makeMockRoom() {
     };
 }
 
-test('moveCreep passes a default reusePath=5 when not on a road and no caller override', function () {
+test('moveCreep passes a default reusePath=10 when not on a road and no caller override', function () {
     mocks.resetGame();
     const creep = mocks.mockCreep({
         name: 'Hauler1-Spawn1',
@@ -24,7 +24,7 @@ test('moveCreep passes a default reusePath=5 when not on a road and no caller ov
     // Target far enough that isNearTo is false so moveTo runs.
     const target = mocks.mockStructure(STRUCTURE_SPAWN, { pos: { x: 40, y: 25, roomName: 'W1N1' } });
     move.moveCreep(creep, target);
-    assert.equal(capturedOpts.reusePath, 5);
+    assert.equal(capturedOpts.reusePath, 10);
     assert.equal(capturedOpts.maxOps, 2000);
     assert.equal(capturedOpts.ignoreCreeps, false);
     assert.equal(capturedOpts.visualizePathStyle, undefined);
@@ -45,7 +45,7 @@ test('moveCreep passes caller reusePath override through to moveTo', function ()
     assert.deepEqual(capturedOpts.visualizePathStyle, { stroke: '#ff0000' });
 });
 
-test('moveCreep uses reusePath=2 when the target is on a road (no caller override)', function () {
+test('moveCreep uses reusePath=5 when the target is on a road (no caller override)', function () {
     mocks.resetGame();
     const creep = mocks.mockCreep({
         name: 'Hauler1-Spawn1',
@@ -63,5 +63,5 @@ test('moveCreep uses reusePath=2 when the target is on a road (no caller overrid
     creep.moveTo = function (_target, opts) { capturedOpts = opts; return OK; };
     const target = mocks.mockStructure(STRUCTURE_SPAWN, { pos: { x: 40, y: 25, roomName: 'W1N1' } });
     move.moveCreep(creep, target);
-    assert.equal(capturedOpts.reusePath, 2);
+    assert.equal(capturedOpts.reusePath, 5);
 });

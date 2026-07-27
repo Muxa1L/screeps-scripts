@@ -172,3 +172,50 @@ test('runLink skips a controller link on cooldown and falls back to the storage 
         assert.equal(sourceLink._lastTransferTarget, storageLink);
     });
 });
+
+// --- runLink loss-aware transfer amount ---
+
+test('runLink transfer amount accounts for the 3% link loss', function () {
+    mocks.resetGame();
+    // Source has more than enough: targetFree=800, needed=ceil(800/0.97)=825.
+    const sourceLink = makeLink({ id: 'slink', pos: pos(10, 10), energy: 1000, capacity: 1000 });
+    const controllerLink = makeLink({
+        id: 'clink', pos: pos(20, 21), energy: 0, capacity: 800,
+        controllerPos: pos(20, 20), storage: null,
+    });
+    const source = mocks.mockSource({ id: 'src1', pos: pos(11, 10) });
+    withSnap({ sources: [source], links: [sourceLink, controllerLink] }, function () {
+        linkService.runLink(sourceLink);
+        assert.equal(sourceLink._lastTransferAmount, 825);
+    });
+});
+
+test('runLink caps the transfer amount at the source link energy', function () {
+    mocks.resetGame();
+    // Source 500, targetFree=800, needed=825 → amount=min(500,825)=500.
+    const sourceLink = makeLink({ id: 'slink', pos: pos(10, 10), energy: 500, capacity: 1000 });
+    const controllerLink = makeLink({
+        id: 'clink', pos: pos(20, 21), energy: 0, capacity: 800,
+        controllerPos: pos(20, 20), storage: null,
+    });
+    const source = mocks.mockSource({ id: 'src1', pos: pos(11, 10) });
+    withSnap({ sources: [source], links: [sourceLink, controllerLink] }, function () {
+        linkService.runLink(sourceLink);
+        assert.equal(sourceLink._lastTransferAmount, 500);
+    });
+});
+
+test('runLink fills a partial target exactly after loss', function () {
+    mocks.resetGame();
+    // Source 1000, target 700/800 → targetFree=100, needed=ceil(100/0.97)=104.
+    const sourceLink = makeLink({ id: 'slink', pos: pos(10, 10), energy: 1000, capacity: 1000 });
+    const controllerLink = makeLink({
+        id: 'clink', pos: pos(20, 21), energy: 700, capacity: 800,
+        controllerPos: pos(20, 20), storage: null,
+    });
+    const source = mocks.mockSource({ id: 'src1', pos: pos(11, 10) });
+    withSnap({ sources: [source], links: [sourceLink, controllerLink] }, function () {
+        linkService.runLink(sourceLink);
+        assert.equal(sourceLink._lastTransferAmount, 104);
+    });
+});

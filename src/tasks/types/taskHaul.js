@@ -21,16 +21,17 @@ module.exports = {
         for (let i = 0; i < snap.containers.length; i++) {
             const c = snap.containers[i];
             if (priorityIds[c.id]) continue; // flagged containers are caches, not haul sources
-            if (c.store[RESOURCE_ENERGY] >= 20) out.push({ target: c });
+            if (c.store[RESOURCE_ENERGY] >= 100) out.push({ target: c });
         }
         return out;
     },
     score: function (creep, target) {
         const dist = taskBase.approxDistance(creep, target);
         const energy = target.store ? (target.store[RESOURCE_ENERGY] || 0) : 0;
-        // Prefer fuller containers over closer nearly-empty ones, but cap the
-        // energy bonus so distance still matters for extremely far sources.
-        return dist - Math.min(energy / 25, 20);
+        // Strongly prefer fuller containers. A full 2000-energy container can
+        // overcome ~40 tiles of distance, which keeps haulers on local sources
+        // but lets a very full cache win over a closer near-empty one.
+        return dist - Math.min(energy / 50, 40);
     },
     run: function (creep, task, snap) {
         const container = task.target ? Game.getObjectById(task.target.id) : null;
@@ -58,10 +59,11 @@ module.exports = {
             }
             const hadEnergy = energy;
             const stillCarrying = depositService.transferTo(creep, deposit, RESOURCE_ENERGY);
-            // Release the haul task once we have attempted delivery and no longer
-            // have a full load. This prevents endless withdraw/deposit loops on
-            // the same container.
-            if (hadEnergy > 0 && !stillCarrying) return false;
+            // Keep the haul task after a successful delivery so the creep can
+            // reselect a source container in the next tick without a full
+            // task-release/reassignment cycle. Release only when the creep is
+            // fully empty and standing on an empty or missing source container.
+            if (hadEnergy > 0 && !stillCarrying && (!container || !container.store || (container.store[RESOURCE_ENERGY] || 0) === 0)) return false;
             return true;
         }
 

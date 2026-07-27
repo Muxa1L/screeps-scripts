@@ -57,10 +57,14 @@ module.exports = {
         const source = task.target;
         if (!source) return false;
         const live = source.id ? Game.getObjectById(source.id) : null;
-        if (!live || live.energy === 0) return false;
+        if (!live) return false;
         if (creep.store[RESOURCE_ENERGY] >= creep.store.getCapacity(RESOURCE_ENERGY)) {
             return false;
         }
+        // Source depleted: hold the task and wait for regeneration. Releasing
+        // just forces a re-evaluation tick; the harvester will re-pick the same
+        // source anyway. Only release if the source has disappeared entirely.
+        if (live.energy === 0) return true;
         const ret = creep.harvest(live);
         if (ret === OK) {
             move.action(creep, 'harvesting@' + live.id);
