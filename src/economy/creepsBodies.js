@@ -139,6 +139,7 @@ function bodySummary() {
 
 module.exports = {
     bestBodyForAvailable: bestBodyForAvailable,
+    bestBodyForCapacity: bestBodyForCapacity,
     bodyCost: bodyCost,
     bodyCostOfCreep: bodyCostOfCreep,
     bodySummary: bodySummary,
