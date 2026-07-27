@@ -187,10 +187,16 @@ function resetMemory() {
     global.Memory = {};
 }
 
+let _resetCount = 0;
+
 function resetGame() {
     const objectsById = {};
+    // Bump Game.time on each reset so per-tick caches (e.g. roomFlags
+    // getPriorityContainerIds / getPrioritySiteIds) invalidate between
+    // tests. Tests that need a specific Game.time override it after reset.
+    _resetCount += 1;
     global.Game = {
-        time: 0,
+        time: _resetCount,
         rooms: {},
         creeps: {},
         spawns: {},

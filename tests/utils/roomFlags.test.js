@@ -25,3 +25,21 @@ test('getPriorityContainers filters by room name', function () {
     assert.equal(found.length, 1);
     assert.equal(found[0].id, 'local');
 });
+
+test('getPriorityContainerIds caches per tick per room and rebuilds on Game.time bump', function () {
+    mocks.resetGame();
+    Game.time = 100;
+    const container = mocks.mockStructure(STRUCTURE_CONTAINER, { id: 'priority', pos: { x: 30, y: 30, roomName: 'W1N1' } });
+    Game.flags['haul:cache'] = mocks.mockFlag('haul:cache', container.pos, [container]);
+    const first = roomFlags.getPriorityContainerIds('W1N1');
+    assert.equal(first.priority, true);
+    // Second call in the same tick returns the same cached object identity.
+    const second = roomFlags.getPriorityContainerIds('W1N1');
+    assert.equal(second, first);
+    // Remove the flag and bump Game.time — cache should rebuild to an empty set.
+    delete Game.flags['haul:cache'];
+    Game.time = 101;
+    const third = roomFlags.getPriorityContainerIds('W1N1');
+    assert.equal(third.priority, undefined);
+    assert.notEqual(third, first);
+});

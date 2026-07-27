@@ -51,12 +51,22 @@ function getPriorityContainers(roomName) {
     return out;
 }
 
+let _containerTick = -1;
+let _containerCache = {};
+// Cached per tick per room. Called per-creep from energyService/depositService/
+// taskHaul; mirrors the getPrioritySiteIds cache pattern below.
 function getPriorityContainerIds(roomName) {
+    if (_containerTick !== Game.time) {
+        _containerTick = Game.time;
+        _containerCache = {};
+    }
+    if (_containerCache[roomName] !== undefined) return _containerCache[roomName];
     const containers = getPriorityContainers(roomName);
     const ids = {};
     for (let i = 0; i < containers.length; i++) {
         ids[containers[i].id] = true;
     }
+    _containerCache[roomName] = ids;
     return ids;
 }
 
