@@ -41,7 +41,7 @@ module.exports = {
         if (creep.hits < creep.hitsMax * SQUAD_RETREAT_HP_RATIO) {
             const retreat = creep.pos.findClosestByRange(FIND_MY_SPAWNS);
             if (retreat) {
-                move.action(creep, 'retreating@' + (target.id || '?'));
+                move.action(creep, 'retreating@' + (live ? live.id : target.id || '?'));
                 move.moveCreep(creep, retreat, { visualizePathStyle: { stroke: '#ff0000' } });
             }
             return true;

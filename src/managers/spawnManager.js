@@ -40,7 +40,13 @@ function creepCountByRole(roomName) {
 
 function spawnBody(spawn, body, name, role, extraMem) {
     if (spawn.spawning) return false;
-    const mem = { role: role, homeRoom: spawn.room.name };
+    // Only tag remote/expansion creeps with homeRoom; economy creeps derive
+    // home from creep.pos.roomName and don't need the extra memory field.
+    const isRemoteRole = role === 'scout' || role === 'reserver' || role === 'remoteMiner' ||
+        role === 'remoteHauler' || role === 'remoteBuilder' || role === 'claimer' ||
+        role === 'bootstrapper';
+    const mem = { role: role };
+    if (isRemoteRole) mem.homeRoom = spawn.room.name;
     if (extraMem) {
         for (const k in extraMem) mem[k] = extraMem[k];
     }
@@ -53,34 +59,9 @@ function spawnBody(spawn, body, name, role, extraMem) {
     return true;
 }
 
-function remoteMiningPrerequisitesMet(homeRoom) {
-    if (!Memory.flags || !Memory.flags.remoteMining) return false;
-    const rcl = homeRoom.controller ? homeRoom.controller.level : 0;
-    if (rcl < 4) return false;
-    let observer = false;
-    const structures = homeRoom.find(FIND_STRUCTURES);
-    for (let i = 0; i < structures.length; i++) {
-        if (structures[i].structureType === STRUCTURE_OBSERVER) { observer = true; break; }
-    }
-    if (!observer) return false;
-    // At least 2 home sources claimed by live miners.
-    let claimedSources = 0;
-    if (Memory.sources) {
-        for (const id in Memory.sources) {
-            const src = Memory.sources[id];
-            if (src.roomName !== homeRoom.name) continue;
-            let liveClaims = 0;
-            for (let j = 0; j < src.slots.length; j++) {
-                if (src.slots[j].claimedBy && Game.creeps[src.slots[j].claimedBy]) liveClaims++;
-            }
-            if (liveClaims > 0) claimedSources++;
-        }
-    }
-    if (claimedSources < 2) return false;
-    const rr = memory.getRemoteRooms();
-    if (!rr || Object.keys(rr).length === 0) return false;
-    return true;
-}
+// Remote-mining prerequisite gate lives in quotas.remotePrerequisitesMet
+// so it applies to every quota lookup. spawnManager consults it indirectly
+// via quotas.dynamicQuota / quotas.nextRoleToSpawn.
 
 function hostilesInRoom(room) {
     const snap = roomManager.get(room.name);
@@ -141,7 +122,8 @@ function tryDefenders(spawn, hostiles) {
     if (Memory.flags && Memory.flags.squads) {
         desiredSquads = activeRaidCount() > 0 ? constants.DESIRED_SQUADS_RAID : constants.DESIRED_SQUADS_BASE;
     } else {
-        desiredSquads = 1; // legacy: one implicit squad (2 fighters + 1 healer)
+        // Legacy: fixed counts (2 fighters + 1 healer) regardless of squads.
+        desiredSquads = 1;
     }
     const desiredFighters = Memory.flags && Memory.flags.squads ? desiredSquads : 2;
     const desiredHealers = Memory.flags && Memory.flags.squads ? desiredSquads : 1;
@@ -247,19 +229,10 @@ function tryRunForSpawn(spawn) {
         level: room.controller.level,
     };
     const snap = roomManager.get(room.name);
-    let role = quotas.nextRoleToSpawn(counts, rcl, controllerState, snap && snap.storage, snap && snap.constructionSites);
+    const role = quotas.nextRoleToSpawn(counts, rcl, controllerState, snap && snap.storage, snap && snap.constructionSites);
 
-    // Remote / expansion roles are spawned from the home room. When no local
-    // economy role is needed, try the conditional remote/expansion queue.
-    if (!role && remoteMiningPrerequisitesMet(room)) {
-        const q = quotas.dynamicQuota(rcl, room.controller);
-        for (let i = 0; i < quotas.ROLE_PRIORITY.length; i++) {
-            const r = quotas.ROLE_PRIORITY[i];
-            if (!q[r]) continue;
-            const have = counts[r] || 0;
-            if (have < q[r]) { role = r; break; }
-        }
-    }
+    // Remote / expansion roles are gated inside quotas.dynamicQuota via
+    // quotas.remotePrerequisitesMet, so no separate secondary pass is needed.
 
     summaryLog(spawn, counts, rcl);
     if (!role) return;

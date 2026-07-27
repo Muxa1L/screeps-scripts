@@ -2,6 +2,8 @@ const taskBase = require('../taskBase');
 const move = require('../../utils/moveUtil');
 const sourceRegistry = require('../../economy/sourceRegistry');
 const memory = require('../../utils/memorySchema');
+const remoteManager = require('../../managers/remoteManager');
+const spawnUtil = require('../../utils/spawnUtil');
 
 module.exports = {
     type: 'scout',
@@ -17,6 +19,10 @@ module.exports = {
         for (const name in rr) {
             const entry = rr[name];
             if (entry.status !== 'pending') continue;
+            // Only dispatch a scout when the remote-mining prerequisites for
+            // this room are met (distance, RCL, storage, cap). The
+            // remoteManager has already created the entry from the flag.
+            if (!remoteManager.canActivate(name)) continue;
             out.push({ target: { id: name, pos: { x: 25, y: 25, roomName: name } } });
         }
         return out;
@@ -44,8 +50,10 @@ module.exports = {
                 const controller = room.controller;
                 if (controller) rr[roomName].controllerId = controller.id;
             }
-            // Scout is done; recycle itself.
-            const spawn = Game.spawns[Object.keys(Game.spawns)[0]];
+            // Scout is done; recycle at the nearest spawn in the home room,
+            // not an arbitrary spawn in iteration order.
+            const homeRoom = memory.getHomeRoom(creep) || creep.memory.homeRoom;
+            const spawn = homeRoom ? spawnUtil.nearestSpawnInRoom(creep, homeRoom) : null;
             if (spawn && !creep.pos.isNearTo(spawn)) {
                 move.moveCreep(creep, spawn, { visualizePathStyle: { stroke: '#888888' } });
             } else if (spawn) {

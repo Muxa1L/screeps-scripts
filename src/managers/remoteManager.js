@@ -85,13 +85,27 @@ function updateThreats(entry) {
     const room = Game.rooms[entry.target];
     if (!room) return;
     const hostiles = room.find(FIND_HOSTILE_CREEPS);
+    // Dedupe by creep id and cap the threat list to avoid unbounded growth
+    // (one entry per hostile detected in the last REMOTE_THREAT_STALE_TICKS).
+    const existingById = {};
+    for (let i = 0; i < (entry.threats || []).length; i++) {
+        existingById[entry.threats[i].creepId] = entry.threats[i];
+    }
     for (let i = 0; i < hostiles.length; i++) {
-        entry.threats.push({
-            creepId: hostiles[i].id,
-            hits: hostiles[i].hits,
-            type: 'hostile',
-            detectedTick: Game.time,
-        });
+        const h = hostiles[i];
+        if (existingById[h.id]) {
+            // Refresh detection tick and hits for an ongoing threat.
+            existingById[h.id].detectedTick = Game.time;
+            existingById[h.id].hits = h.hits;
+        } else {
+            entry.threats.push({
+                creepId: h.id,
+                hits: h.hits,
+                type: 'hostile',
+                detectedTick: Game.time,
+            });
+            existingById[h.id] = entry.threats[entry.threats.length - 1];
+        }
     }
     if (hostiles.length > 0) {
         entry.status = 'contested';
@@ -105,8 +119,8 @@ function updateThreats(entry) {
 function queueConstruction(entry) {
     const room = Game.rooms[entry.target];
     if (!room) return;
-    const rr = memory.ensureRemoteRooms();
-    // Queue a container near each source.
+    // Queue a container near each source. Store real construction-site ids so
+    // downstream code can look them up instead of parsing "x,y" strings.
     for (let i = 0; i < (entry.sourceIds || []).length; i++) {
         const source = Game.getObjectById(entry.sourceIds[i]);
         if (!source) continue;
@@ -118,8 +132,22 @@ function queueConstruction(entry) {
             new RoomPosition(pos.x, pos.y - 1, room.name),
         ];
         for (let j = 0; j < candidates.length; j++) {
-            if (candidates[j].createConstructionSite(STRUCTURE_CONTAINER) === OK) {
-                entry.containerSiteIds.push(candidates[j].x + ',' + candidates[j].y);
+            const res = candidates[j].createConstructionSite(STRUCTURE_CONTAINER);
+            if (res === OK) {
+                // Look up the freshly-created site by position + structureType.
+                const sites = room.find(FIND_CONSTRUCTION_SITES, {
+                    filter: function (s) {
+                        return s.structureType === STRUCTURE_CONTAINER &&
+                            s.pos.x === candidates[j].x && s.pos.y === candidates[j].y;
+                    },
+                });
+                if (sites.length > 0) {
+                    entry.containerSiteIds.push(sites[0].id);
+                } else {
+                    // Site couldn't be found (RCL/hostile/already exists); record
+                    // a placeholder so we don't retry the same source next tick.
+                    entry.containerSiteIds.push(candidates[j].x + ',' + candidates[j].y);
+                }
                 break;
             }
         }
@@ -130,13 +158,14 @@ function tick() {
     if (!Memory.flags || !Memory.flags.remoteMining) return;
     const rr = memory.ensureRemoteRooms();
 
-    // Pull in manual flags for v1.
+    // Pull in manual flags for v1. A RemoteTarget<n> flag creates (but does
+    // not activate) the remote-room entry; canActivate still gates whether
+    // the scout is dispatched.
     if (Game.flags) {
         for (const name in Game.flags) {
             if (name.indexOf('RemoteTarget') !== 0) continue;
             const roomName = Game.flags[name].pos.roomName;
-            const entry = ensureRemoteRoom(roomName);
-            if (entry.status === 'pending' && !canActivate(roomName)) continue;
+            ensureRemoteRoom(roomName);
         }
     }
 
@@ -144,10 +173,12 @@ function tick() {
         const entry = rr[name];
         pruneThreats(entry);
         updateThreats(entry);
+        if (entry.status === 'abandoned') continue;
 
-        if (entry.status === 'pending' && canActivate(name)) {
-            entry.status = 'pending'; // scout task will transition to scouted.
-        }
+        // `pending` rooms stay pending until the prerequisites are met; the
+        // scout task picks them up when canActivate returns true. The flag
+        // loop above already created the entry, so there's nothing to do
+        // here besides leaving the status alone.
 
         if (entry.status === 'scouted') {
             entry.status = 'reserving';

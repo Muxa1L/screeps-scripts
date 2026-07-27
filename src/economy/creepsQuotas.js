@@ -12,6 +12,9 @@ const QUOTAS = {
     8: { miner: 2, hauler: 8, upgrader: 3, builder: 2 },
 };
 
+// Order in which roles are evaluated for spawning. `claimer` and
+// `bootstrapper` are gated by the `Memory.flags.expansion` flag (see
+// expansionRoleQuotas / dynamicQuota) and stay inert until that flag is on.
 const ROLE_PRIORITY = ['fighter', 'healer', 'scout', 'reserver', 'claimer', 'bootstrapper', 'miner', 'hauler', 'remoteMiner', 'remoteHauler', 'remoteBuilder', 'harvester', 'builder', 'upgrader'];
 
 const URGENT_TTD = constants.URGENT_TTD;
@@ -60,6 +63,45 @@ function remoteRoleQuotas() {
     return q;
 }
 
+// Returns true if the home room satisfies all remote-mining prerequisite
+// gates from plans/remote-mining.md (RCL>=4, observer present, >=2 home
+// sources claimed by live miners, remoteRooms non-empty, flag on). Used by
+// dynamicQuota to gate remote-role quotas at the source so the gate is
+// enforced regardless of which caller asks for a quota.
+function remotePrerequisitesMet() {
+    if (!Memory.flags || !Memory.flags.remoteMining) return false;
+    const rr = Memory.remoteRooms;
+    if (!rr || Object.keys(rr).length === 0) return false;
+    // Find any owned room that satisfies the per-room gates. v1 assumes a
+    // single home room; if multiple owned rooms qualify, the first one wins.
+    for (const name in Game.rooms) {
+        const room = Game.rooms[name];
+        if (!room.controller || !room.controller.my) continue;
+        if (room.controller.level < 4) continue;
+        let observer = false;
+        const structures = room.find(FIND_STRUCTURES);
+        for (let i = 0; i < structures.length; i++) {
+            if (structures[i].structureType === STRUCTURE_OBSERVER) { observer = true; break; }
+        }
+        if (!observer) continue;
+        let claimedSources = 0;
+        if (Memory.sources) {
+            for (const id in Memory.sources) {
+                const src = Memory.sources[id];
+                if (src.roomName !== room.name) continue;
+                let liveClaims = 0;
+                for (let j = 0; j < src.slots.length; j++) {
+                    if (src.slots[j].claimedBy && Game.creeps[src.slots[j].claimedBy]) liveClaims++;
+                }
+                if (liveClaims > 0) claimedSources++;
+            }
+        }
+        if (claimedSources < 2) continue;
+        return true;
+    }
+    return false;
+}
+
 function expansionRoleQuotas() {
     const q = {};
     const exp = Memory.expansion;
@@ -78,7 +120,7 @@ function dynamicQuota(rcl, controller) {
         q[keys[i]] = base[keys[i]];
     }
 
-    if (Memory.flags && Memory.flags.remoteMining) {
+    if (Memory.flags && Memory.flags.remoteMining && remotePrerequisitesMet()) {
         const remote = remoteRoleQuotas();
         for (const k in remote) q[k] = (q[k] || 0) + remote[k];
     }
@@ -180,5 +222,6 @@ module.exports = {
     spawnPriority: spawnPriority,
     ROLE_PRIORITY: ROLE_PRIORITY,
     QUOTAS: QUOTAS,
+    remotePrerequisitesMet: remotePrerequisitesMet,
 };
 

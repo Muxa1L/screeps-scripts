@@ -136,7 +136,9 @@ function tick() {
         squads[sid].medicId = entry.medic ? entry.medic.id : squads[sid].medicId;
         squads[sid].status = status;
 
-        // Re-pair medic if its fighter died.
+        // Re-pair medic if its fighter died. The new leader's target/formation
+        // pass for this tick was already skipped (runSquad ran with the old,
+        // null leader); the medic will pick up the new leader next tick.
         if (!entry.leader && entry.medic) {
             const spawnManager = require('./spawnManager');
             const newLeader = spawnManager.findUnpairedFighter();

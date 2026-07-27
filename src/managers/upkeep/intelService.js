@@ -34,11 +34,10 @@ function buildQueue() {
     }
     // Also include any existing intel rooms that have gone stale so they stay observed.
     const intel = memory.getIntel();
-    if (intel) {
+    if (intel && intel.rooms) {
         const entries = [];
-        for (const rn in intel) {
-            if (rn === 'queue' || rn === 'scanCursor' || rn === 'raids') continue;
-            entries.push({ name: rn, lastSeen: intel[rn].lastSeen || 0 });
+        for (const rn in intel.rooms) {
+            entries.push({ name: rn, lastSeen: intel.rooms[rn].lastSeen || 0 });
         }
         entries.sort(function (a, b) { return a.lastSeen - b.lastSeen; });
         for (let i = 0; i < entries.length; i++) {
@@ -68,9 +67,10 @@ function findObserver(room) {
 
 function recordIntel(roomName, snap) {
     const intel = memory.getIntel();
+    const rooms = memory.ensureIntelRooms();
     const room = Game.rooms[roomName];
     const controller = room ? room.controller : null;
-    intel[roomName] = {
+    rooms[roomName] = {
         lastSeen: Game.time,
         owner: controller && controller.owner ? controller.owner.username : null,
         reservation: controller && controller.reservation ? controller.reservation.username : null,
@@ -102,7 +102,7 @@ function decayRaids(intel) {
     const now = Game.time;
     for (const rn in intel.raids) {
         const raid = intel.raids[rn];
-        const entry = intel[rn];
+        const entry = intel.rooms && intel.rooms[rn];
         const lastSeen = entry ? entry.lastSeen : 0;
         if (now - Math.max(raid.detectedTick, lastSeen) > INTEL_RAID_DECAY_TICKS) {
             delete intel.raids[rn];
@@ -118,37 +118,45 @@ function tick() {
 
     if (!intel.queue || intel.queue.length === 0) return;
 
-    let attempts = 0;
-    const maxAttempts = Math.min(intel.queue.length, 3);
-    while (attempts < maxAttempts) {
+    // Collect every observer across all owned rooms so each observer can
+    // scan one target per tick (Screeps limit is one observation per observer).
+    const observers = [];
+    for (const name in Game.rooms) {
+        if (!isOwnedRoom(name)) continue;
+        const obs = findObserver(Game.rooms[name]);
+        if (obs) observers.push(obs);
+    }
+    if (observers.length === 0) return;
+
+    const pendingScans = [];
+    for (let i = 0; i < observers.length; i++) {
+        if (intel.scanCursor === undefined || intel.scanCursor === null) intel.scanCursor = 0;
         const cursor = intel.scanCursor % intel.queue.length;
         const targetName = intel.queue[cursor];
         intel.scanCursor = cursor + 1;
-        attempts++;
-
-        // Find an available observer in an owned room.
-        let observer = null;
-        for (const name in Game.rooms) {
-            if (!isOwnedRoom(name)) continue;
-            const obs = findObserver(Game.rooms[name]);
-            if (obs) { observer = obs; break; }
-        }
-        if (!observer) break;
-
-        const res = observer.observeRoom(targetName);
+        const res = observers[i].observeRoom(targetName);
         if (res === OK) {
             // Intel will be recorded next tick when the room becomes visible.
-            intel._pendingScan = targetName;
-            break;
+            pendingScans.push(targetName);
         }
     }
+    if (pendingScans.length > 0) {
+        intel._pendingScans = (intel._pendingScans || []).concat(pendingScans);
+    }
 
-    // If a previously scanned room is now visible, record its intel.
-    if (intel._pendingScan && Game.rooms[intel._pendingScan]) {
-        const roomName = intel._pendingScan;
-        const snap = roomManager.get(roomName);
-        recordIntel(roomName, snap);
-        intel._pendingScan = null;
+    // If any previously scanned rooms are now visible, record their intel.
+    if (intel._pendingScans && intel._pendingScans.length > 0) {
+        const stillPending = [];
+        for (let i = 0; i < intel._pendingScans.length; i++) {
+            const roomName = intel._pendingScans[i];
+            if (Game.rooms[roomName]) {
+                const snap = roomManager.get(roomName);
+                recordIntel(roomName, snap);
+            } else {
+                stillPending.push(roomName);
+            }
+        }
+        intel._pendingScans = stillPending;
     }
 }
 

@@ -6,7 +6,20 @@ function init() {
     delete Memory.knownSources;
     delete Memory.sourceToSource;
     delete Memory.pathCache;
-    if (!Memory.intel) Memory.intel = { queue: [], scanCursor: 0, raids: {} };
+    // Migrate any legacy per-room intel entries from Memory.intel[roomName]
+    // into Memory.intel.rooms[roomName] (separating them from the meta keys).
+    if (Memory.intel && !Memory.intel.rooms) {
+        const moved = {};
+        const metaKeys = { queue: true, scanCursor: true, raids: true, _pendingScan: true };
+        for (const k in Memory.intel) {
+            if (metaKeys[k]) continue;
+            moved[k] = Memory.intel[k];
+            delete Memory.intel[k];
+        }
+        Memory.intel.rooms = moved;
+    }
+    if (!Memory.intel) Memory.intel = { queue: [], scanCursor: 0, raids: {}, rooms: {} };
+    if (!Memory.intel.rooms) Memory.intel.rooms = {};
     if (!Memory.squads) Memory.squads = {};
     if (!Memory.remoteRooms) Memory.remoteRooms = {};
     if (!Memory.expansion) Memory.expansion = { history: [] };

@@ -72,10 +72,7 @@ module.exports = {
             return true;
         }
 
-        // Energy loaded and not home: path home.
-        if (creep.pos.roomName === homeRoom) {
-            return true; // should deposit above
-        }
+        // Energy loaded and not home: path home via cached route.
         const step = routeCache.getNextStep(roomName, homeRoom, creep.pos.roomName);
         if (step) {
             const exitPos = creep.pos.findClosestByPath(step.exit);

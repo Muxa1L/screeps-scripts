@@ -37,27 +37,27 @@ module.exports = {
         // keeps the healer in formation with its fighter. If the leader is
         // dead/gone, clear the stale link and fall through to the task target.
         if (leaderId) {
-            const leader = Game.getObjectById(leaderId);
-            if (leader && leader.hits !== undefined && leader.hits < leader.hitsMax) {
+            const squadLeader = Game.getObjectById(leaderId);
+            if (squadLeader && squadLeader.hits !== undefined && squadLeader.hits < squadLeader.hitsMax) {
                 const selfMissing = creep.hitsMax - creep.hits;
-                const leaderMissing = leader.hitsMax - leader.hits;
+                const leaderMissing = squadLeader.hitsMax - squadLeader.hits;
                 if (selfMissing > 0 && (selfMissing > leaderMissing || creep.hits < creep.hitsMax * 0.5)) {
                     move.action(creep, 'self-heal');
                     creep.heal(creep);
                     return true;
                 }
-                move.action(creep, 'healing@leader:' + leader.id);
-                const res = creep.heal(leader);
+                move.action(creep, 'healing@leader:' + squadLeader.id);
+                const res = creep.heal(squadLeader);
                 if (res === ERR_NOT_IN_RANGE) {
-                    if (creep.pos.inRangeTo(leader, 3)) {
-                        creep.rangedHeal(leader);
+                    if (creep.pos.inRangeTo(squadLeader, 3)) {
+                        creep.rangedHeal(squadLeader);
                     } else {
-                        move.moveCreep(creep, leader, { visualizePathStyle: { stroke: '#00ff00' } });
+                        move.moveCreep(creep, squadLeader, { visualizePathStyle: { stroke: '#00ff00' } });
                     }
                 }
                 return true;
             }
-            if (!leader) {
+            if (!squadLeader) {
                 delete creep.memory.squadLeader;
             }
         }

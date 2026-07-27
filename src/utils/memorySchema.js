@@ -244,13 +244,18 @@ function getSquadTargetTick(creep) {
 // Intel / squads / expansion / remote room memory accessors
 function ensureIntel() {
     if (!Memory.intel) {
-        Memory.intel = { queue: [], scanCursor: 0, raids: {} };
+        Memory.intel = { queue: [], scanCursor: 0, raids: {}, rooms: {} };
     }
+    if (!Memory.intel.rooms) Memory.intel.rooms = {};
     return Memory.intel;
 }
 
 function getIntel() {
     return ensureIntel();
+}
+
+function ensureIntelRooms() {
+    return ensureIntel().rooms;
 }
 
 function ensureSquads() {
@@ -353,6 +358,7 @@ module.exports = {
     getSquadTargetTick: getSquadTargetTick,
     ensureIntel: ensureIntel,
     getIntel: getIntel,
+    ensureIntelRooms: ensureIntelRooms,
     ensureSquads: ensureSquads,
     getSquads: getSquads,
     getExpansion: getExpansion,

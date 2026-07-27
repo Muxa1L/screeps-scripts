@@ -4,11 +4,10 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const mocks = require('../mocks/screeps');
 const routeCache = require('../../src/utils/routeCache');
-const memory = require('../../src/utils/memorySchema');
 
 test('getRoute caches Game.map.findRoute result', function () {
     mocks.resetGame();
-    Memory.remoteRooms = { E2N1: { route: null, routeComputedTick: 0 } };
+    Memory.remoteRooms = { E2N1: { routes: {} } };
     let calls = 0;
     Game.map.findRoute = function () { calls++; return [{ exit: FIND_EXIT_RIGHT, room: 'E2N1' }]; };
 
@@ -22,7 +21,7 @@ test('getRoute caches Game.map.findRoute result', function () {
 
 test('getRoute recomputes when force is true', function () {
     mocks.resetGame();
-    Memory.remoteRooms = { E2N1: { route: [{ exit: FIND_EXIT_RIGHT, room: 'E2N1' }], routeComputedTick: Game.time } };
+    Memory.remoteRooms = { E2N2: { routes: { 'E1N1': { route: [{ exit: FIND_EXIT_RIGHT, room: 'E2N1' }], tick: Game.time } } } };
     let calls = 0;
     Game.map.findRoute = function () { calls++; return [{ exit: FIND_EXIT_BOTTOM, room: 'E1N2' }, { exit: FIND_EXIT_RIGHT, room: 'E2N2' }]; };
 
@@ -33,7 +32,7 @@ test('getRoute recomputes when force is true', function () {
 
 test('getNextStep returns the correct next exit', function () {
     mocks.resetGame();
-    Memory.remoteRooms = { E2N1: { route: [{ exit: FIND_EXIT_RIGHT, room: 'E2N1' }], routeComputedTick: Game.time } };
+    Memory.remoteRooms = { E2N1: { routes: { 'E1N1': { route: [{ exit: FIND_EXIT_RIGHT, room: 'E2N1' }], tick: Game.time } } } };
     Game.map.findRoute = function () { return [{ exit: FIND_EXIT_RIGHT, room: 'E2N1' }]; };
 
     const step = routeCache.getNextStep('E1N1', 'E2N1', 'E1N1');
@@ -43,7 +42,7 @@ test('getNextStep returns the correct next exit', function () {
 
 test('getNextStep returns null when already at destination', function () {
     mocks.resetGame();
-    Memory.remoteRooms = { E2N1: { route: [{ exit: FIND_EXIT_RIGHT, room: 'E2N1' }], routeComputedTick: Game.time } };
+    Memory.remoteRooms = { E2N1: { routes: { 'E1N1': { route: [{ exit: FIND_EXIT_RIGHT, room: 'E2N1' }], tick: Game.time } } } };
     Game.map.findRoute = function () { return [{ exit: FIND_EXIT_RIGHT, room: 'E2N1' }]; };
 
     const step = routeCache.getNextStep('E1N1', 'E2N1', 'E2N1');

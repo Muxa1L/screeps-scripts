@@ -63,7 +63,7 @@ test('recordIntel populates Memory.intel for a scanned room', function () {
 
     intelService.recordIntel('E2N1', snap);
 
-    const entry = memory.getIntel()['E2N1'];
+    const entry = memory.ensureIntelRooms()['E2N1'];
     assert.equal(entry.lastSeen, Game.time);
     assert.equal(entry.hostiles, 1);
     assert.equal(entry.owner, 'someone');
@@ -93,6 +93,7 @@ test('decayRaids clears stale raid entries', function () {
     mocks.resetGame();
     Memory.intel = {
         raids: { old: { detectedTick: 0, threatLevel: 3 } },
+        rooms: {},
     };
     Game.time = 2000;
     intelService.decayRaids(memory.getIntel());
@@ -102,7 +103,7 @@ test('decayRaids clears stale raid entries', function () {
 test('intelService no-op when intel flag is off', function () {
     mocks.resetGame();
     Memory.flags = { intel: false };
-    Memory.intel = { queue: [], scanCursor: 0, raids: {} };
+    Memory.intel = { queue: [], scanCursor: 0, raids: {}, rooms: {} };
     makeRoom('E1N1', { structures: [makeObserver('obs1')] });
     intelService.tick();
     assert.deepEqual(memory.getIntel().queue, []);
