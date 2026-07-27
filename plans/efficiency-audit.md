@@ -1,6 +1,7 @@
 # Efficiency Audit — Harvesting / Mining / Hauling
 
-Observations from a code review of the harvest/mine/haul pipeline. Each item
+Status: **Implemented** (commit ada4bbe; most items were applied in earlier
+commits, the remaining #6 in ada4bbe). Observations from a code review of the harvest/mine/haul pipeline. Each item
 includes file:line references for navigation and a recommended fix sketch.
 
 ## Significant inefficiencies
