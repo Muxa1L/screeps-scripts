@@ -10,8 +10,8 @@ const towerStrategy = require('./strategies/towerStrategy');
 const STRUCTURE_LIMITS = {
     1: { extension: 0, container: 0, tower: 0, storage: 0, link: 0 },
     2: { extension: 5, container: 0, tower: 0, storage: 0, link: 0 },
-    3: { extension: 10, container: 5, tower: 0, storage: 0, link: 0 },
-    4: { extension: 20, container: 5, tower: 0, storage: 1, link: 0 },
+    3: { extension: 10, container: 5, tower: 1, storage: 0, link: 0 },
+    4: { extension: 20, container: 5, tower: 1, storage: 1, link: 0 },
     5: { extension: 30, container: 5, tower: 2, storage: 1, link: 2 },
     6: { extension: 40, container: 5, tower: 2, storage: 1, link: 3 },
     7: { extension: 50, container: 5, tower: 3, storage: 1, link: 4 },

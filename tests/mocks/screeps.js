@@ -138,6 +138,36 @@ LOOK.forEach(function (l) {
     global[l] = l;
 });
 
+// RoomPosition constructor for strategies/sourceRegistry that call
+// `new RoomPosition(x, y, roomName)` then `pos.lookFor(type)`. Tests populate
+// `global._terrainMap[roomName]` as `{ "x,y": 'wall'|'plain' }` and
+// `global._structureMap[roomName]` as `{ "x,y": [{structureType}, ...] }`.
+// Unset tiles default to 'plain' terrain and empty structure list.
+global._terrainMap = {};
+global._structureMap = {};
+global.RoomPosition = function (x, y, roomName) {
+    this.x = x;
+    this.y = y;
+    this.roomName = roomName;
+};
+global.RoomPosition.prototype.lookFor = function (type) {
+    const key = this.x + ',' + this.y;
+    if (type === LOOK_TERRAIN) {
+        const map = global._terrainMap[this.roomName];
+        if (map && map[key]) return [map[key]];
+        return ['plain'];
+    }
+    if (type === LOOK_STRUCTURES) {
+        const map = global._structureMap[this.roomName];
+        return (map && map[key]) || [];
+    }
+    if (type === LOOK_CONSTRUCTION_SITES) {
+        const map = global._siteMap && global._siteMap[this.roomName];
+        return (map && map[key]) || [];
+    }
+    return [];
+};
+
 const RETURN_CODES = {
     OK: 0,
     ERR_NOT_OWNER: -1,
@@ -209,6 +239,10 @@ function resetGame() {
         getObjectById: function (id) { return objectsById[id] || null; },
         _registerObject: function (obj) { if (obj && obj.id) objectsById[obj.id] = obj; },
     };
+    // Clear RoomPosition lookup maps so tests start from a clean terrain state.
+    global._terrainMap = {};
+    global._structureMap = {};
+    global._siteMap = {};
 }
 
 function makePos(p, lookForResults) {
