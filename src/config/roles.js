@@ -15,13 +15,24 @@ function isAllowed(role, taskType) {
     return cfg.allowed.indexOf(taskType) !== -1;
 }
 
+const _allowedSetCache = {};
+// ROLES is a module-level constant, so the built set per role never changes
+// at runtime. Cache it permanently (no tick reset) to avoid rebuilding the
+// { [taskType]: true } object on every call. Used by creepRunner.filterByRole
+// for combat creeps.
 function allowedSet(role) {
+    if (_allowedSetCache[role] !== undefined) return _allowedSetCache[role];
     const cfg = ROLES[role];
-    if (!cfg || cfg.allowed.length === 0) return null;
-    const set = {};
-    for (let i = 0; i < cfg.allowed.length; i++) {
-        set[cfg.allowed[i]] = true;
+    let set;
+    if (!cfg || cfg.allowed.length === 0) {
+        set = null;
+    } else {
+        set = {};
+        for (let i = 0; i < cfg.allowed.length; i++) {
+            set[cfg.allowed[i]] = true;
+        }
     }
+    _allowedSetCache[role] = set;
     return set;
 }
 
