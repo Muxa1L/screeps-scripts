@@ -262,7 +262,12 @@ function shouldSwitch(creep, current, currentApprox, best) {
     return best.approx < currentApprox;
 }
 
-function findCurrentTask(taskList, taskId) {
+function findCurrentTask(taskList, taskId, taskIndex) {
+    if (taskIndex) {
+        return taskIndex[taskId] || null;
+    }
+    // Linear-scan fallback for task lists without an index (e.g. the small
+    // combat task list, which bypasses the room taskListCache).
     for (let i = 0; i < taskList.length; i++) {
         if (taskList[i].id === taskId) return taskList[i];
     }
@@ -534,6 +539,13 @@ function runCreep(creep, context) {
     if (!taskList) {
         taskList = taskRegistry.list(room);
         context.taskListCache[room.name] = taskList;
+        // Build an id->task index alongside the task list so findCurrentTask
+        // is O(1) instead of a linear scan per creep per tick.
+        const idx = {};
+        for (let i = 0; i < taskList.length; i++) {
+            idx[taskList[i].id] = taskList[i];
+        }
+        context.taskIndexCache[room.name] = idx;
     }
 
     // Combat roles (fighter/healer) can take tasks from any visible room,
@@ -591,7 +603,12 @@ function runCreep(creep, context) {
     const currentTaskId = memory.getTaskId(creep);
     let currentTask = null;
     if (currentTaskId) {
-        currentTask = findCurrentTask(taskList, currentTaskId);
+        // When taskList was reassigned to combatTasks above, the room task
+        // index doesn't apply (it was built from the non-combat list). Pass
+        // null so findCurrentTask falls back to a linear scan of the small
+        // combat list.
+        const taskIndex = combatTasks && combatTasks.length > 0 ? null : context.taskIndexCache[room.name];
+        currentTask = findCurrentTask(taskList, currentTaskId, taskIndex);
         if (!currentTask) {
             releaseTask(creep, context.claimCounts);
         }
@@ -628,4 +645,5 @@ module.exports = {
     releaseTask: releaseTask,
     inferRoleFromName: inferRoleFromName,
     collectCombatTasks: collectCombatTasks,
+    findCurrentTask: findCurrentTask,
 };

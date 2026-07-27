@@ -8,6 +8,7 @@ let _taskListCache = {};
 let _capCache = {};
 let _roleTaskCache = {};
 let _combatTaskCache = {};
+let _taskIndexCache = {};
 
 function refreshClaimCounts() {
     _claimCounts = {};
@@ -73,6 +74,7 @@ function runCreep(creep) {
         capCache: _capCache,
         roleTaskCache: _roleTaskCache,
         combatTaskCache: _combatTaskCache,
+        taskIndexCache: _taskIndexCache,
     };
     creepRunner.runCreep(creep, context);
 }
@@ -84,6 +86,7 @@ module.exports = {
         _capCache = {};
         _roleTaskCache = {};
         _combatTaskCache = {};
+        _taskIndexCache = {};
 
         logger.periodic('summary', 50, 'tick', buildSummary());
 

@@ -157,3 +157,27 @@ test('runCreep combat task cache: collectCombatTasks runs once per role per tick
         restore();
     }
 });
+
+// --- findCurrentTask hash lookup ---
+
+test('findCurrentTask returns the task with the matching id from the index', function () {
+    const taskA = { id: 'mine:W1N1:s1', type: 'mine' };
+    const taskB = { id: 'haul:W1N1:c1', type: 'haul' };
+    const taskList = [taskA, taskB];
+    const index = { 'mine:W1N1:s1': taskA, 'haul:W1N1:c1': taskB };
+    assert.equal(creepRunner.findCurrentTask(taskList, 'haul:W1N1:c1', index), taskB);
+});
+
+test('findCurrentTask returns null for an unknown id via the index', function () {
+    const taskA = { id: 'mine:W1N1:s1', type: 'mine' };
+    const index = { 'mine:W1N1:s1': taskA };
+    assert.equal(creepRunner.findCurrentTask([taskA], 'nope', index), null);
+});
+
+test('findCurrentTask falls back to linear scan when index is null', function () {
+    const taskA = { id: 'mine:W1N1:s1', type: 'mine' };
+    const taskB = { id: 'haul:W1N1:c1', type: 'haul' };
+    const taskList = [taskA, taskB];
+    assert.equal(creepRunner.findCurrentTask(taskList, 'haul:W1N1:c1', null), taskB);
+    assert.equal(creepRunner.findCurrentTask(taskList, 'missing', null), null);
+});
