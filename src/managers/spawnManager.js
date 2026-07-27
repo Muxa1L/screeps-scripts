@@ -54,6 +54,8 @@ function spawnBody(spawn, body, name, role, extraMem) {
 }
 
 function hostilesInRoom(room) {
+    const snap = roomManager.get(room.name);
+    if (snap && snap.hostiles) return snap.hostiles;
     return room.find(FIND_HOSTILE_CREEPS);
 }
 
@@ -170,4 +172,5 @@ function summaryLog(spawn, counts, rcl) {
 
 module.exports = {
     tick: tick,
+    hostilesInRoom: hostilesInRoom,
 };
