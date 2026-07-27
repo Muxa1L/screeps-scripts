@@ -349,6 +349,7 @@ function mockStructure(type, options) {
         energyCapacity: capacity,
         hits: hits,
         hitsMax: hitsMax,
+        cooldown: options.cooldown || 0,
         room: options.room || { name: (options.pos && options.pos.roomName) || 'W1N1', controller: { level: options.rcl || 0 } },
         store: {
             [RESOURCE_ENERGY]: energy,
@@ -359,6 +360,11 @@ function mockStructure(type, options) {
         attack: function () { return OK; },
         heal: function () { return OK; },
         repair: function () { return OK; },
+        transferEnergy: options.transferEnergy || function (target, amount) {
+            obj._lastTransferTarget = target;
+            obj._lastTransferAmount = amount;
+            return OK;
+        },
     };
     if (Game && Game._registerObject) Game._registerObject(obj);
     return obj;
