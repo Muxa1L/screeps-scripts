@@ -18,6 +18,8 @@ const remoteMineSpec = require('./types/taskRemoteMine');
 const remoteHaulSpec = require('./types/taskRemoteHaul');
 const remoteBuildSpec = require('./types/taskRemoteBuild');
 const remoteDefendSpec = require('./types/taskRemoteDefend');
+const claimSpec = require('./types/taskClaim');
+const bootstrapSpec = require('./types/taskBootstrap');
 
 const registry = {
     harvest: new TaskType(harvestSpec),
@@ -37,6 +39,8 @@ const registry = {
     remoteHaul: new TaskType(remoteHaulSpec),
     remoteBuild: new TaskType(remoteBuildSpec),
     remoteDefend: new TaskType(remoteDefendSpec),
+    claim: new TaskType(claimSpec),
+    bootstrap: new TaskType(bootstrapSpec),
 };
 
 function get(type) {

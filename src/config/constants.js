@@ -102,6 +102,14 @@ module.exports = {
     REMOTE_THREAT_STALE_TICKS: 5000,
     REMOTE_ABANDON_TICKS: 2000,
     REMOTE_ROUTE_TTL: 1000,
+
+    // Expansion / multi-room
+    EXPANSION_PLANNING_INTERVAL: 1000,
+    EXPANSION_VETO_TICKS: 1000,
+    EXPANSION_MIN_GCL: 2,
+    EXPANSION_MIN_HOME_RCL: 4,
+    EXPANSION_SEARCH_DEPTH: 2,
+    EXPANSION_MAX_CANDIDATES: 12,
 };
 
 // Returns the rampart/wall hits target for a given RCL. Unknown RCLs

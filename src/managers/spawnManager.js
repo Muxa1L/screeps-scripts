@@ -20,7 +20,13 @@ function creepCountByRole(roomName) {
     const counts = {};
     for (const name in Game.creeps) {
         const c = Game.creeps[name];
-        if (roomName && c.pos.roomName !== roomName) continue;
+        // A creep counts against its owning home room's spawn quota, even
+        // when commuting to a remote or off fighting. Use memory.homeRoom
+        // when set (multi-room); fall back to pos.roomName for legacy creeps
+        // that haven't been re-spawned since the homeRoom field was added.
+        const homeRoom = c.memory && c.memory.homeRoom;
+        const belongsTo = homeRoom || c.pos.roomName;
+        if (roomName && belongsTo !== roomName) continue;
         // Being recycled (stuck or obsolete); don't count toward quota so the
         // replacement can spawn while the old creep walks to the spawn.
         if (memory.getRecycling(c) || memory.getObsoleteRecycling(c)) continue;
@@ -40,13 +46,10 @@ function creepCountByRole(roomName) {
 
 function spawnBody(spawn, body, name, role, extraMem) {
     if (spawn.spawning) return false;
-    // Only tag remote/expansion creeps with homeRoom; economy creeps derive
-    // home from creep.pos.roomName and don't need the extra memory field.
-    const isRemoteRole = role === 'scout' || role === 'reserver' || role === 'remoteMiner' ||
-        role === 'remoteHauler' || role === 'remoteBuilder' || role === 'claimer' ||
-        role === 'bootstrapper';
-    const mem = { role: role };
-    if (isRemoteRole) mem.homeRoom = spawn.room.name;
+    // Tag every creep with homeRoom so multi-room accounting (creepCountByRole
+    // by homeRoom, creepRunner send-home) works across N owned rooms. A creep
+    // belongs to the room whose spawn queue it was spawned from.
+    const mem = { role: role, homeRoom: spawn.room.name };
     if (extraMem) {
         for (const k in extraMem) mem[k] = extraMem[k];
     }
@@ -175,16 +178,30 @@ function tryRoleSpawn(spawn, role) {
     // underperforms for its whole lifespan.
     const target = bodies.bestBodyForAvailable(role, cap, cap);
     if (target && available >= target.cost) {
-        return spawnBody(spawn, target.body, name, role);
+        return spawnBody(spawn, target.body, name, role, extraMemFor(role, spawn));
     }
     // Not enough energy for the full body. If no harvester/miner is alive,
     // income has stopped and waiting would deadlock — spawn whatever we
     // can afford now to restart income (bootstrap escape).
     if (noIncomeProducer(spawn.room)) {
         const fallback = bodies.bestBodyForAvailable(role, cap, available);
-        if (fallback) return spawnBody(spawn, fallback.body, name, role);
+        if (fallback) return spawnBody(spawn, fallback.body, name, role, extraMemFor(role, spawn));
     }
     return false;
+}
+
+// Expansion roles carry extra memory so the bootstrap/claim pipeline can
+// route them and the send-home guard can exempt them.
+function extraMemFor(role, spawn) {
+    if (role === 'bootstrapper') {
+        const exp = memory.getExpansion();
+        const targetRoom = exp && exp.target ? exp.target.roomName : null;
+        return targetRoom ? { bootstrapRoom: targetRoom } : {};
+    }
+    if (role === 'claimer') {
+        return {};
+    }
+    return undefined;
 }
 
 function noIncomeProducer(room) {

@@ -272,6 +272,46 @@ function getExpansion() {
     return Memory.expansion;
 }
 
+function ensureExpansion() {
+    if (!Memory.expansion) Memory.expansion = { history: [] };
+    if (!Memory.expansion.history) Memory.expansion.history = [];
+    return Memory.expansion;
+}
+
+// Per-room memory accessors for expansion fields. Memory.rooms[name] is
+// initialized lazily; callers pass the room name (not a Room object) so
+// these work for rooms that are not currently visible.
+function ensureRoomMem(roomName) {
+    if (!Memory.rooms) Memory.rooms = {};
+    if (!Memory.rooms[roomName]) Memory.rooms[roomName] = {};
+    return Memory.rooms[roomName];
+}
+
+function getRoomBootstrapping(roomName) {
+    const mem = Memory.rooms && Memory.rooms[roomName];
+    return !!(mem && mem.bootstrapping);
+}
+
+function setRoomBootstrapping(roomName, homeRoom) {
+    const mem = ensureRoomMem(roomName);
+    mem.bootstrapping = true;
+    if (homeRoom) mem.homeRoom = homeRoom;
+}
+
+function clearRoomBootstrapping(roomName) {
+    const mem = ensureRoomMem(roomName);
+    mem.bootstrapping = false;
+}
+
+function getRoomHomeRoom(roomName) {
+    const mem = Memory.rooms && Memory.rooms[roomName];
+    return (mem && mem.homeRoom) || null;
+}
+
+function setRoomHomeRoom(roomName, homeRoom) {
+    ensureRoomMem(roomName).homeRoom = homeRoom;
+}
+
 function ensureRemoteRooms() {
     if (!Memory.remoteRooms) Memory.remoteRooms = {};
     return Memory.remoteRooms;
@@ -362,6 +402,12 @@ module.exports = {
     ensureSquads: ensureSquads,
     getSquads: getSquads,
     getExpansion: getExpansion,
+    ensureExpansion: ensureExpansion,
+    getRoomBootstrapping: getRoomBootstrapping,
+    setRoomBootstrapping: setRoomBootstrapping,
+    clearRoomBootstrapping: clearRoomBootstrapping,
+    getRoomHomeRoom: getRoomHomeRoom,
+    setRoomHomeRoom: setRoomHomeRoom,
     ensureRemoteRooms: ensureRemoteRooms,
     getRemoteRooms: getRemoteRooms,
     getHomeRoom: getHomeRoom,

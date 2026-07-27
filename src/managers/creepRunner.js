@@ -606,10 +606,20 @@ function runCreep(creep, context) {
     // case the creep may stay and harvest there. A full creep still walks
     // home to deposit (no owned deposit exists in a foreign room); that
     // is handled by forceTargetFor returning null for unowned rooms.
-    if (role !== 'fighter' && role !== 'healer' && (!room.controller || !room.controller.my) &&
+    // Bootstrappers are exempt: they belong to a new room that has no
+    // spawn yet, so "send home" would route them back to the spawning room
+    // instead of letting them build the new room's spawn.
+    const bootstrapRoom = memory.getBootstrapRoom(creep);
+    const isBootstrapper = role === 'bootstrapper' || !!bootstrapRoom;
+    if (role !== 'fighter' && role !== 'healer' && !isBootstrapper &&
+        (!room.controller || !room.controller.my) &&
         !roomFlags.getAllowedRooms()[room.name]) {
         if (memory.getTaskId(creep)) releaseTask(creep, context.claimCounts);
-        const idleSpawn = spawnUtil.nearestSpawn(creep);
+        // Send the creep to its owning home room (memory.homeRoom), not just
+        // the nearest spawn. With multiple owned rooms, nearestSpawn might
+        // route a creep to a foreign-owned spawn that can't accept its deposit.
+        const homeRoomName = memory.getHomeRoom(creep);
+        const idleSpawn = homeRoomName ? spawnUtil.nearestSpawnInRoom(creep, homeRoomName) : spawnUtil.nearestSpawn(creep);
         if (idleSpawn && !creep.pos.isNearTo(idleSpawn)) {
             logger.setAction(creep, 'return->home');
             move.moveCreep(creep, idleSpawn, { visualizePathStyle: { stroke: '#888888' }, reusePath: 20 });

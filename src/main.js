@@ -46,6 +46,12 @@ module.exports.loop = function () {
     if (Game.cpu.bucket > 1500 || Game.shard.name === 'sim') {
         assert.safeTick('remoteManager', function () { require('./managers/remoteManager').tick(); });
     }
+    if (Game.cpu.bucket > 1000 || Game.shard.name === 'sim') {
+        assert.safeTick('bootstrapManager', function () { require('./managers/bootstrapManager').tick(); });
+    }
+    if (Game.cpu.bucket > 5000 || Game.shard.name === 'sim') {
+        assert.safeTick('expansionPlanner', function () { require('./managers/expansionPlanner').tick(); });
+    }
 
     recordCpu();
 
