@@ -79,8 +79,13 @@ function moveCreep(creep, target, opts) {
     creep.memory._lastMoveX = creep.pos.x;
     creep.memory._lastMoveY = creep.pos.y;
 
-    const mvr = creep.moveTo(target, Object.assign({
-        reusePath: roadReuse !== null ? roadReuse : 5,
+    // Build the moveTo options directly instead of Object.assign per call.
+    // Callers only ever pass `visualizePathStyle` and/or `reusePath` (and
+    // `exactTile`, which is consumed inside moveCreep above, not forwarded).
+    // A caller-provided reusePath overrides the road-based default.
+    const callerReuse = opts && opts.reusePath !== undefined ? opts.reusePath : null;
+    const moveOpts = {
+        reusePath: callerReuse !== null ? callerReuse : (roadReuse !== null ? roadReuse : 5),
         maxOps: 2000,
         ignoreCreeps: false,
         costCallback: function (roomName, matrix) {
@@ -113,7 +118,10 @@ function moveCreep(creep, target, opts) {
             }
             return matrix;
         },
-    }, opts || {}));
+    };
+    if (opts && opts.visualizePathStyle) moveOpts.visualizePathStyle = opts.visualizePathStyle;
+
+    const mvr = creep.moveTo(target, moveOpts);
 
     memorySchema.setLastMoveResult(creep, mvr);
     // Note: do not reset moveFailures on OK — Screeps returns OK for queued
