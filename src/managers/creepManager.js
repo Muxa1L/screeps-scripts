@@ -68,6 +68,24 @@ function logTaskLists() {
 }
 
 function runCreep(creep) {
+    // Wrap creep.getActiveBodyparts with a per-tick per-part memoizing shim.
+    // A live creep's body never changes within a tick, but getActiveBodyparts
+    // is called many times per creep per tick (taskDefend, taskHeal, taskBuild,
+    // taskRepair, taskUpgrade, creepRunner, taskRenew, stuckRecycleService).
+    // The shim delegates to the original bound method on a cache miss. Reset
+    // each tick via creep._bpCacheTick. No-op for creeps without the native
+    // method (e.g. test stubs).
+    if (typeof creep.getActiveBodyparts === 'function' && creep._bpCacheTick !== Game.time) {
+        creep._bpCacheTick = Game.time;
+        creep._bpCache = {};
+        const orig = creep.getActiveBodyparts.bind(creep);
+        creep.getActiveBodyparts = function (part) {
+            if (creep._bpCache[part] !== undefined) return creep._bpCache[part];
+            const v = orig(part);
+            creep._bpCache[part] = v;
+            return v;
+        };
+    }
     const context = {
         claimCounts: _claimCounts,
         taskListCache: _taskListCache,
