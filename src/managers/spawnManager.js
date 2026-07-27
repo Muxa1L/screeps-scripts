@@ -126,8 +126,13 @@ function tick() {
 function tryRunForSpawn(spawn) {
     const room = spawn.room;
     const hostiles = hostilesInRoom(room);
-    tryDefenders(spawn, hostiles);
-    if (hostiles.length > 0) {
+    // Safe mode neutralizes hostiles in the room (they can't act) while our
+    // own creeps can still hit them, so spawning defenders is wasted energy.
+    // Skip defender spawning AND the early-return that prioritizes defenders
+    // over the economy so normal role spawning continues during safe mode.
+    const safeModeActive = !!(room.controller && room.controller.safeMode);
+    if (hostiles.length > 0 && !safeModeActive) {
+        tryDefenders(spawn, hostiles);
         summaryLog(spawn, creepCountByRole(room.name), room.controller.level);
         return;
     }

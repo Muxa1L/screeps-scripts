@@ -3,7 +3,7 @@ const memory = require('../../utils/memorySchema');
 const spawnUtil = require('../../utils/spawnUtil');
 const roomManager = require('../roomManager');
 
-const SAFE_MODE_TRIGGER_HITS = constants.SAFE_MODE_TRIGGER_HITS;
+const SAFE_MODE_TRIGGER_RATIO = constants.SAFE_MODE_TRIGGER_RATIO;
 const SAFE_MODE_TTD_THRESHOLD = constants.SAFE_MODE_TTD_THRESHOLD;
 const SAFE_MODE_COOLDOWN_TICKS = constants.SAFE_MODE_COOLDOWN_TICKS;
 const SAFE_MODE_MEMORY_KEY = 'lastSafeModeActivate';
@@ -15,12 +15,20 @@ function runSafeMode() {
         if (!controller || !controller.my) continue;
         const spawnsHere = spawnUtil.spawnsInRoom(room);
         if (spawnsHere.length === 0) continue;
-        let lowHealth = false;
-        for (let i = 0; i < spawnsHere.length; i++) {
-            if (spawnsHere[i].hits < SAFE_MODE_TRIGGER_HITS) { lowHealth = true; break; }
-        }
         const snap = roomManager.get(rn);
         const hostileCount = snap ? snap.hostiles.length : room.find(FIND_HOSTILE_CREEPS).length;
+        // Only treat spawn damage as an emergency during an active attack.
+        // Without this gate a spawn scratched by a hostile that already left
+        // would burn a safe-mode charge for nothing. The ratio (not absolute
+        // hits) keeps safe mode from firing on the first scratch — towers /
+        // fighters get time to handle minor incursions first.
+        let lowHealth = false;
+        if (hostileCount > 0) {
+            for (let i = 0; i < spawnsHere.length; i++) {
+                const sp = spawnsHere[i];
+                if (sp.hits < sp.hitsMax * SAFE_MODE_TRIGGER_RATIO) { lowHealth = true; break; }
+            }
+        }
         const ttd = controller.ticksToDowngrade;
         const lowTtd = typeof ttd === 'number' && ttd < SAFE_MODE_TTD_THRESHOLD && hostileCount > 0;
 

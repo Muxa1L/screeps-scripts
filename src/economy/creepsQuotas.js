@@ -4,7 +4,7 @@ const QUOTAS = {
     0: {},
     1: { harvester: 3, upgrader: 1 },
     2: { harvester: 5, upgrader: 2 },
-    3: { miner: 4, hauler: 2, upgrader: 2, builder: 1 },
+    3: { miner: 2, hauler: 4, upgrader: 4, builder: 1 },
     4: { miner: 6, hauler: 3, upgrader: 3, builder: 2 },
     5: { miner: 6, hauler: 4, upgrader: 3, builder: 2 },
     6: { miner: 8, hauler: 5, upgrader: 3, builder: 2 },
@@ -74,9 +74,9 @@ function contextualQuota(rcl, controller, storage, constructionSites) {
     const baseUpgraders = q.upgrader || 0;
     const baseBuilders = q.builder || 0;
 
-    if (storage && ratio >= STORAGE_FULL_THRESHOLD) {
+    if (ratio >= STORAGE_FULL_THRESHOLD) {
         q.upgrader = Math.min(6, Math.max(baseUpgraders, baseUpgraders + 2));
-    } else if (storage && ratio <= STORAGE_LOW_THRESHOLD) {
+    } else if (ratio <= STORAGE_LOW_THRESHOLD) {
         const isUrgent = controller && controller.ticksToDowngrade < URGENT_TTD;
         if (!isUrgent) {
             q.upgrader = Math.max(1, Math.floor(baseUpgraders / 2));
