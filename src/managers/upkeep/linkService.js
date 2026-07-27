@@ -1,19 +1,24 @@
 const roomManager = require('../roomManager');
 
+// A link is a "source link" if it sits within range 3 of any source. This
+// matches linkStrategy's findPositionNear(source.pos, 1, 3) placement. Shared
+// with depositService so haulers only deposit into source links (not the
+// controller/storage links, which are filled by the link-to-link transfer).
+function isSourceLink(link, sources) {
+    if (!link || !link.pos || !sources) return false;
+    for (let i = 0; i < sources.length; i++) {
+        if (link.pos.inRangeTo(sources[i].pos, 3)) return true;
+    }
+    return false;
+}
+
 function runLink(link) {
     const room = link.room;
     if (!room) return;
     const snap = roomManager.get(room.name);
 
-    let isSourceLink = false;
     const sources = snap ? snap.sources : room.find(FIND_SOURCES);
-    for (let i = 0; i < sources.length; i++) {
-        if (link.pos.inRangeTo(sources[i].pos, 3)) {
-            isSourceLink = true;
-            break;
-        }
-    }
-    if (!isSourceLink) return;
+    if (!isSourceLink(link, sources)) return;
 
     if (link.store[RESOURCE_ENERGY] < 50) return;
     if (link.cooldown > 0) return;
@@ -28,7 +33,7 @@ function runLink(link) {
         if (room.storage && allLinks[j].pos.inRangeTo(room.storage.pos, 3)) {
             storageLink = allLinks[j];
         }
-        if (room.controller && room.controller.my && allLinks[j].pos.inRangeTo(room.controller.pos, 3)) {
+        if (room.controller && room.controller.my && allLinks[j].pos.inRangeTo(room.controller.pos, 4)) {
             controllerLink = allLinks[j];
         }
     }
@@ -48,4 +53,5 @@ function runLink(link) {
 
 module.exports = {
     runLink: runLink,
+    isSourceLink: isSourceLink,
 };

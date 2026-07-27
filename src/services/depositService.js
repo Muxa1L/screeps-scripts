@@ -1,6 +1,7 @@
 const taskBase = require('../tasks/taskBase');
 const move = require('../utils/moveUtil');
 const roomFlags = require('../utils/roomFlags');
+const linkService = require('../managers/upkeep/linkService');
 
 const DEPOSIT_PRIORITY = {
     [STRUCTURE_SPAWN]: 1,
@@ -8,6 +9,7 @@ const DEPOSIT_PRIORITY = {
     [STRUCTURE_TOWER]: 3,
     [STRUCTURE_STORAGE]: 4,
     [STRUCTURE_CONTAINER]: 5,
+    [STRUCTURE_LINK]: 6,
 };
 
 function structureNeedsEnergy(s) {
@@ -56,6 +58,22 @@ function findDeposit(creep, snapshot, options) {
                 if (excludeTypes[STRUCTURE_CONTAINER]) continue;
                 const live = Game.getObjectById(c.id);
                 if (!live || !structureNeedsEnergy(live)) continue;
+                candidates.push(live);
+            }
+        }
+        // Source links are a last-resort deposit (tier 6, below containers).
+        // Only source links qualify — controller/storage links are filled by
+        // the link-to-link transfer in linkService, not by haulers. Filling a
+        // source link beams the energy to the controller/storage link next
+        // tick, keeping the hauler loop moving when the room is saturated.
+        if (snapshot.links) {
+            const sources = snapshot.sources || [];
+            for (let i = 0; i < snapshot.links.length; i++) {
+                const l = snapshot.links[i];
+                if (excludeTypes[STRUCTURE_LINK]) continue;
+                const live = Game.getObjectById(l.id);
+                if (!live || !structureNeedsEnergy(live)) continue;
+                if (!linkService.isSourceLink(live, sources)) continue;
                 candidates.push(live);
             }
         }

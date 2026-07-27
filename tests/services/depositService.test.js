@@ -87,3 +87,50 @@ test('transferTo moves when out of range and returns true while carrying energy'
     const result = depositService.transferTo(creep, target, RESOURCE_ENERGY);
     assert.equal(result, true);
 });
+
+// --- source-link deposit (RCL 5 link network activation) ---
+
+test('findDeposit fills a source link when spawns/extensions/storage/containers are full', function () {
+    mocks.resetGame();
+    const creep = mocks.mockCreep({ pos: pos(25, 25), capacity: 100, store: { [RESOURCE_ENERGY]: 100 } });
+    const fullSpawn = mocks.mockStructure(STRUCTURE_SPAWN, { id: 'spawn', pos: pos(26, 25), energy: 300, capacity: 300 });
+    const fullContainer = mocks.mockStructure(STRUCTURE_CONTAINER, { id: 'cont', pos: pos(27, 25), energy: 1000, capacity: 1000 });
+    const sourceLink = mocks.mockStructure(STRUCTURE_LINK, { id: 'slink', pos: pos(10, 10), energy: 0, capacity: 800 });
+    const source = mocks.mockSource({ id: 'src1', pos: pos(11, 10) });
+    const snapshot = { energyStructures: [fullSpawn], storage: null, containers: [fullContainer], links: [sourceLink], sources: [source] };
+    const chosen = depositService.findDeposit(creep, snapshot, {});
+    assert.equal(chosen, sourceLink);
+});
+
+test('findDeposit does not fill a controller link (only source links qualify)', function () {
+    mocks.resetGame();
+    const creep = mocks.mockCreep({ pos: pos(25, 25), capacity: 100, store: { [RESOURCE_ENERGY]: 100 } });
+    const controllerLink = mocks.mockStructure(STRUCTURE_LINK, { id: 'clink', pos: pos(20, 20), energy: 0, capacity: 800 });
+    // No sources anywhere near the link → it's a controller link, not a source link.
+    const source = mocks.mockSource({ id: 'src1', pos: pos(45, 45) });
+    const snapshot = { energyStructures: [], storage: null, containers: [], links: [controllerLink], sources: [source] };
+    const chosen = depositService.findDeposit(creep, snapshot, {});
+    assert.equal(chosen, null);
+});
+
+test('findDeposit prefers a haul: container over a source link (regression guard)', function () {
+    mocks.resetGame();
+    const creep = mocks.mockCreep({ pos: pos(25, 25), capacity: 100, store: { [RESOURCE_ENERGY]: 100 } });
+    const flagged = mocks.mockStructure(STRUCTURE_CONTAINER, { id: 'flagged', pos: pos(40, 25), energy: 0, capacity: 1000 });
+    Game.flags['haul:cache'] = mocks.mockFlag('haul:cache', flagged.pos, [flagged]);
+    const sourceLink = mocks.mockStructure(STRUCTURE_LINK, { id: 'slink', pos: pos(10, 10), energy: 0, capacity: 800 });
+    const source = mocks.mockSource({ id: 'src1', pos: pos(11, 10) });
+    const snapshot = { energyStructures: [], storage: null, containers: [flagged], links: [sourceLink], sources: [source] };
+    const chosen = depositService.findDeposit(creep, snapshot, {});
+    assert.equal(chosen, flagged);
+});
+
+test('findDeposit skips source links via excludeTypes', function () {
+    mocks.resetGame();
+    const creep = mocks.mockCreep({ pos: pos(25, 25), capacity: 100, store: { [RESOURCE_ENERGY]: 100 } });
+    const sourceLink = mocks.mockStructure(STRUCTURE_LINK, { id: 'slink', pos: pos(10, 10), energy: 0, capacity: 800 });
+    const source = mocks.mockSource({ id: 'src1', pos: pos(11, 10) });
+    const snapshot = { energyStructures: [], storage: null, containers: [], links: [sourceLink], sources: [source] };
+    const chosen = depositService.findDeposit(creep, snapshot, { excludeTypes: { [STRUCTURE_LINK]: true } });
+    assert.equal(chosen, null);
+});
