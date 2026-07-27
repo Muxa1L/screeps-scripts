@@ -12,6 +12,12 @@ const upgradeSpec = require('./types/taskUpgrade');
 const defendSpec = require('./types/taskDefend');
 const healSpec = require('./types/taskHeal');
 const remoteHarvestSpec = require('./types/taskRemoteHarvest');
+const scoutSpec = require('./types/taskScout');
+const reserveSpec = require('./types/taskReserve');
+const remoteMineSpec = require('./types/taskRemoteMine');
+const remoteHaulSpec = require('./types/taskRemoteHaul');
+const remoteBuildSpec = require('./types/taskRemoteBuild');
+const remoteDefendSpec = require('./types/taskRemoteDefend');
 
 const registry = {
     harvest: new TaskType(harvestSpec),
@@ -25,6 +31,12 @@ const registry = {
     defend: new TaskType(defendSpec),
     heal: new TaskType(healSpec),
     remoteHarvest: new TaskType(remoteHarvestSpec),
+    scout: new TaskType(scoutSpec),
+    reserve: new TaskType(reserveSpec),
+    remoteMine: new TaskType(remoteMineSpec),
+    remoteHaul: new TaskType(remoteHaulSpec),
+    remoteBuild: new TaskType(remoteBuildSpec),
+    remoteDefend: new TaskType(remoteDefendSpec),
 };
 
 function get(type) {

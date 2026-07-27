@@ -210,11 +210,18 @@ test('nextRoleToSpawn at RCL 3 with all quotas met plus surplus harvesters retur
 test('spawnPriority returns the ROLE_PRIORITY index for each role', function () {
     assert.equal(quotas.spawnPriority('fighter'), 0);
     assert.equal(quotas.spawnPriority('healer'), 1);
-    assert.equal(quotas.spawnPriority('miner'), 2);
-    assert.equal(quotas.spawnPriority('hauler'), 3);
-    assert.equal(quotas.spawnPriority('harvester'), 4);
-    assert.equal(quotas.spawnPriority('builder'), 5);
-    assert.equal(quotas.spawnPriority('upgrader'), 6);
+    assert.equal(quotas.spawnPriority('scout'), 2);
+    assert.equal(quotas.spawnPriority('reserver'), 3);
+    assert.equal(quotas.spawnPriority('claimer'), 4);
+    assert.equal(quotas.spawnPriority('bootstrapper'), 5);
+    assert.equal(quotas.spawnPriority('miner'), 6);
+    assert.equal(quotas.spawnPriority('hauler'), 7);
+    assert.equal(quotas.spawnPriority('remoteMiner'), 8);
+    assert.equal(quotas.spawnPriority('remoteHauler'), 9);
+    assert.equal(quotas.spawnPriority('remoteBuilder'), 10);
+    assert.equal(quotas.spawnPriority('harvester'), 11);
+    assert.equal(quotas.spawnPriority('builder'), 12);
+    assert.equal(quotas.spawnPriority('upgrader'), 13);
 });
 
 test('spawnPriority returns 999 for an unknown role', function () {

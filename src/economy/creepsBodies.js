@@ -94,6 +94,40 @@ const BUILDER_BODIES = {
     2300: [WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE],
 };
 
+const SCOUT_BODIES = {
+    50: [MOVE],
+};
+
+const RESERVER_BODIES = {
+    650: [CLAIM, MOVE, MOVE],
+    1300: [CLAIM, CLAIM, MOVE, MOVE],
+};
+
+const REMOTE_MINER_BODIES = MINER_BODIES;
+
+const REMOTE_HAULER_BODIES = {
+    100:  [CARRY, MOVE],
+    200:  [CARRY, CARRY, MOVE, MOVE],
+    400:  [CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE],
+    800:  [CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE],
+    1200: [CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE],
+    1600: [CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE],
+};
+
+const REMOTE_BUILDER_BODIES = {
+    400: [WORK, CARRY, CARRY, MOVE, MOVE, MOVE],
+    800: [WORK, WORK, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE],
+};
+
+const CLAIMER_BODIES = {
+    650: [CLAIM, MOVE, MOVE],
+};
+
+const BOOTSTRAPPER_BODIES = {
+    300: [WORK, CARRY, MOVE, MOVE],
+    550: [WORK, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE],
+};
+
 const BODIES = {
     miner:    MINER_BODIES,
     hauler:   HAULER_BODIES,
@@ -102,6 +136,13 @@ const BODIES = {
     fighter:  FIGHTER_BODIES,
     healer:   HEALER_BODIES,
     builder:  BUILDER_BODIES,
+    scout:    SCOUT_BODIES,
+    reserver: RESERVER_BODIES,
+    remoteMiner: REMOTE_MINER_BODIES,
+    remoteHauler: REMOTE_HAULER_BODIES,
+    remoteBuilder: REMOTE_BUILDER_BODIES,
+    claimer:  CLAIMER_BODIES,
+    bootstrapper: BOOTSTRAPPER_BODIES,
 };
 
 function bestBodyForAvailable(role, capacity, available) {
@@ -134,6 +175,13 @@ function bodySummary() {
         fighter: Object.keys(FIGHTER_BODIES).map(Number),
         healer: Object.keys(HEALER_BODIES).map(Number),
         builder: Object.keys(BUILDER_BODIES).map(Number),
+        scout: Object.keys(SCOUT_BODIES).map(Number),
+        reserver: Object.keys(RESERVER_BODIES).map(Number),
+        remoteMiner: Object.keys(REMOTE_MINER_BODIES).map(Number),
+        remoteHauler: Object.keys(REMOTE_HAULER_BODIES).map(Number),
+        remoteBuilder: Object.keys(REMOTE_BUILDER_BODIES).map(Number),
+        claimer: Object.keys(CLAIMER_BODIES).map(Number),
+        bootstrapper: Object.keys(BOOTSTRAPPER_BODIES).map(Number),
     };
 }
 

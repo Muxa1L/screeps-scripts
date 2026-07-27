@@ -1,11 +1,18 @@
 const ROLES = {
     miner:    { allowed: ['mine'] },
     hauler:   { allowed: ['haul', 'sweep', 'supply'] },
-    fighter:  { allowed: ['defend'] },
+    fighter:  { allowed: ['defend', 'remoteDefend'] },
     healer:   { allowed: ['heal'] },
     builder:  { allowed: ['build', 'repair', 'upgrade'] },
     upgrader: { allowed: ['upgrade', 'harvest'] },
     harvester:{ allowed: [] }, // unrestricted
+    scout:    { allowed: ['scout'] },
+    reserver: { allowed: ['reserve'] },
+    remoteMiner: { allowed: ['remoteMine'] },
+    remoteHauler:{ allowed: ['remoteHaul', 'haul'] },
+    remoteBuilder:{ allowed: ['remoteBuild'] },
+    claimer:  { allowed: ['claim'] },
+    bootstrapper:{ allowed: ['bootstrap'] },
 };
 
 function isAllowed(role, taskType) {

@@ -45,8 +45,28 @@ function spawnsInRoom(room) {
     return out;
 }
 
+function nearestSpawnInRoom(creep, roomName) {
+    const spawns = [];
+    for (const sn in Game.spawns) {
+        if (Game.spawns[sn].room.name === roomName) spawns.push(Game.spawns[sn]);
+    }
+    if (spawns.length === 0) return null;
+    if (spawns.length === 1) return spawns[0];
+    let best = null;
+    let bestRange = Infinity;
+    for (let i = 0; i < spawns.length; i++) {
+        const r = creep.pos.getRangeTo(spawns[i]);
+        if (r < bestRange) {
+            bestRange = r;
+            best = spawns[i];
+        }
+    }
+    return best;
+}
+
 module.exports = {
     nearestSpawn: nearestSpawn,
     leastBusySpawn: leastBusySpawn,
     spawnsInRoom: spawnsInRoom,
+    nearestSpawnInRoom: nearestSpawnInRoom,
 };

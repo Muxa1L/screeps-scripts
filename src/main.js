@@ -43,6 +43,9 @@ module.exports.loop = function () {
     if (Game.cpu.bucket > 1000 || Game.shard.name === 'sim') {
         assert.safeTick('squadManager', function () { require('./managers/squadManager').tick(); });
     }
+    if (Game.cpu.bucket > 1500 || Game.shard.name === 'sim') {
+        assert.safeTick('remoteManager', function () { require('./managers/remoteManager').tick(); });
+    }
 
     recordCpu();
 

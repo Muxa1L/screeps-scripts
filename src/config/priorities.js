@@ -1,7 +1,10 @@
 module.exports = {
     DEFEND: 10,
+    REMOTE_DEFEND: 11,
     RENEW: 20,
     HEAL: 30,
+    CLAIM: 15,
+    BOOTSTRAP: 45,
     SUPPLY: 35,
     SWEEP: 40,
     HAUL: 50,
@@ -10,7 +13,12 @@ module.exports = {
     REPAIR: 65,
     UPGRADE: 70,
     MINE: 80,
+    REMOTE_MINE: 82,
+    REMOTE_HAUL: 52,
+    REMOTE_BUILD: 62,
     HARVEST: 90,
     REMOTE_HARVEST: 95,
+    RESERVE: 87,
+    SCOUT: 88,
     IDLE: 100,
 };

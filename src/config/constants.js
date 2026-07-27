@@ -94,6 +94,14 @@ module.exports = {
     INTEL_RAID_HOSTILE_THRESHOLD: 3,
     INTEL_RAID_NEARBY_DISTANCE: 2,
     INTEL_QUEUE_REFRESH_TICKS: 1000,
+
+    // Remote mining thresholds
+    REMOTE_MAX_DISTANCE: 30,
+    REMOTE_MIN_STORAGE_RATIO: 0.5,
+    REMOTE_MAX_ROOMS: 2,
+    REMOTE_THREAT_STALE_TICKS: 5000,
+    REMOTE_ABANDON_TICKS: 2000,
+    REMOTE_ROUTE_TTL: 1000,
 };
 
 // Returns the rampart/wall hits target for a given RCL. Unknown RCLs

@@ -15,6 +15,18 @@ function tileIsWalkable(pos) {
     return true;
 }
 
+function isSlotReachable(room, slot) {
+    const exitPos = room.find(FIND_EXIT);
+    if (!exitPos || exitPos.length === 0) return true;
+    // Fast path-reachability check: can we path from an arbitrary exit tile
+    // to the slot? Use ignoreCreeps to keep it cheap; any static obstacle still
+    // blocks it. Recomputed every 500 ticks alongside slot refresh.
+    const start = exitPos[0];
+    const end = new RoomPosition(slot.x, slot.y, room.name);
+    const path = room.findPath(start, end, { ignoreCreeps: true, maxOps: 200 });
+    return path.length > 0 && path[path.length - 1].x === end.x && path[path.length - 1].y === end.y;
+}
+
 function computeSlots(room, source) {
     const slots = [];
     for (let i = 0; i < SLOT_TILES.length; i++) {
@@ -27,7 +39,7 @@ function computeSlots(room, source) {
         const terrain = pos.lookFor(LOOK_TERRAIN);
         if (terrain[0] === 'wall') continue;
         if (!tileIsWalkable(pos)) continue;
-        slots.push({ x: x, y: y, claimedBy: null });
+        slots.push({ x: x, y: y, claimedBy: null, reachable: true });
     }
     return slots;
 }
@@ -50,6 +62,9 @@ function recomputeSlots(room, sourceId, src) {
         const match = src.slots.find(function (s) { return s.x === fresh[i].x && s.y === fresh[i].y; });
         if (match && match.claimedBy && Game.creeps[match.claimedBy]) {
             fresh[i].claimedBy = match.claimedBy;
+        }
+        if (room.controller && room.controller.my) {
+            fresh[i].reachable = isSlotReachable(room, fresh[i]);
         }
     }
     src.slots = fresh;
@@ -75,6 +90,19 @@ function ensureRegistry(room) {
         }
     }
     return Memory.sources;
+}
+
+function registerRemoteSource(room, source) {
+    if (!Memory.sources) Memory.sources = {};
+    if (Memory.sources[source.id]) return Memory.sources[source.id];
+    Memory.sources[source.id] = {
+        roomName: room.name,
+        x: source.pos.x,
+        y: source.pos.y,
+        slots: computeSlots(room, source),
+        remote: true,
+    };
+    return Memory.sources[source.id];
 }
 
 function freeSlot(sourceId) {
@@ -138,9 +166,11 @@ function countClaims(sourceId) {
 
 module.exports = {
     ensureRegistry: ensureRegistry,
+    registerRemoteSource: registerRemoteSource,
     freeSlot: freeSlot,
     claimSlot: claimSlot,
     releaseClaim: releaseClaim,
     slotPos: slotPos,
     countClaims: countClaims,
+    isSlotReachable: isSlotReachable,
 };

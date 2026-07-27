@@ -12,7 +12,7 @@ const QUOTAS = {
     8: { miner: 2, hauler: 8, upgrader: 3, builder: 2 },
 };
 
-const ROLE_PRIORITY = ['fighter', 'healer', 'miner', 'hauler', 'harvester', 'builder', 'upgrader'];
+const ROLE_PRIORITY = ['fighter', 'healer', 'scout', 'reserver', 'claimer', 'bootstrapper', 'miner', 'hauler', 'remoteMiner', 'remoteHauler', 'remoteBuilder', 'harvester', 'builder', 'upgrader'];
 
 const URGENT_TTD = constants.URGENT_TTD;
 const CRITICAL_TTD = constants.CRITICAL_TTD;
@@ -26,6 +26,50 @@ function quotasFor(rcl) {
     return QUOTAS[rcl] || QUOTAS[0];
 }
 
+function remoteRoleQuotas() {
+    const q = {};
+    const rr = Memory.remoteRooms;
+    if (!rr || Object.keys(rr).length === 0) return q;
+    let activeRooms = 0;
+    for (const name in rr) {
+        const entry = rr[name];
+        if (entry.status === 'abandoned') continue;
+        activeRooms++;
+        if (entry.status === 'pending' || entry.status === 'scouted') {
+            q.scout = (q.scout || 0) + 1;
+        }
+        if (entry.status === 'scouted' || entry.status === 'reserving' || entry.status === 'reserved' || entry.status === 'active' || entry.status === 'contested') {
+            q.reserver = (q.reserver || 0) + 1;
+        }
+        if ((entry.sourceIds || []).length > 0) {
+            q.remoteMiner = (q.remoteMiner || 0) + (entry.sourceIds || []).length;
+            q.remoteHauler = (q.remoteHauler || 0) + 2;
+        }
+        if ((entry.containerSiteIds || []).length > 0 || (entry.roadSiteIds || []).length > 0) {
+            q.remoteBuilder = (q.remoteBuilder || 0) + 1;
+        }
+        if (entry.status === 'contested') {
+            q.fighter = (q.fighter || 0) + 2;
+            q.healer = (q.healer || 0) + 1;
+        }
+    }
+    // Cap remote rooms overall.
+    if (activeRooms > 0) {
+        q.remoteHauler = Math.min(q.remoteHauler || 0, activeRooms * 2);
+    }
+    return q;
+}
+
+function expansionRoleQuotas() {
+    const q = {};
+    const exp = Memory.expansion;
+    if (!exp || !exp.target || !exp.target.roomName) return q;
+    q.claimer = 1;
+    const targetMem = Memory.rooms && Memory.rooms[exp.target.roomName];
+    if (targetMem && targetMem.bootstrapping) q.bootstrapper = 2;
+    return q;
+}
+
 function dynamicQuota(rcl, controller) {
     const q = {};
     const base = quotasFor(rcl);
@@ -33,6 +77,17 @@ function dynamicQuota(rcl, controller) {
     for (let i = 0; i < keys.length; i++) {
         q[keys[i]] = base[keys[i]];
     }
+
+    if (Memory.flags && Memory.flags.remoteMining) {
+        const remote = remoteRoleQuotas();
+        for (const k in remote) q[k] = (q[k] || 0) + remote[k];
+    }
+
+    if (Memory.flags && Memory.flags.expansion) {
+        const expand = expansionRoleQuotas();
+        for (const k in expand) q[k] = (q[k] || 0) + expand[k];
+    }
+
     if (controller && controller.ticksToDowngrade !== undefined && controller.ticksToDowngrade !== null) {
         const ttd = controller.ticksToDowngrade;
         const baseUpgraders = q.upgrader || 0;
