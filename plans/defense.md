@@ -1,6 +1,6 @@
 # Defense — Squad Tactics & Observer Intel
 
-Status: **Planned**. v1 scope: squad coordination + observer-based intel.
+Status: **Implemented** (commit a4cd98e, reviewed and fixed in 481e667). v1 scope: squad coordination + observer-based intel.
 Boosted creeps and nuke detection are deferred to v2.
 
 ## Goal

@@ -1,6 +1,6 @@
 # Remote Mining — Implementation Plan
 
-Status: **Planned**. Refines the original design into a concrete, file-level
+Status: **Implemented** (commit 59dafbb, reviewed and fixed in 481e667). Refines the original design into a concrete, file-level
 implementation plan. v1 is manually triggered via in-game `RemoteTarget<n>`
 flags; auto-discovery is deferred to v2.
 
