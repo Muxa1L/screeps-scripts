@@ -20,12 +20,41 @@ function closestByRangeFrom(pos, candidates) {
     return best;
 }
 
+// Threat tiers for hostile targeting: lower tier = higher priority.
+// Healers sustain the attack and must be removed first; ranged attackers
+// apply pressure from distance; melee attackers must close to threaten;
+// creeps with no combat parts (scouts) are lowest priority. Distance is
+// the tiebreaker within a tier.
+function hostileThreatTier(hostile) {
+    if (hostile.getActiveBodyparts(HEAL) > 0) return 0;
+    if (hostile.getActiveBodyparts(RANGED_ATTACK) > 0) return 1;
+    if (hostile.getActiveBodyparts(ATTACK) > 0) return 2;
+    return 3;
+}
+
+function pickHostileTarget(towerPos, hostiles) {
+    let best = null;
+    let bestTier = Infinity;
+    let bestRange = Infinity;
+    for (let i = 0; i < hostiles.length; i++) {
+        const h = hostiles[i];
+        const tier = hostileThreatTier(h);
+        const range = towerPos.getRangeTo(h);
+        if (tier < bestTier || (tier === bestTier && range < bestRange)) {
+            best = h;
+            bestTier = tier;
+            bestRange = range;
+        }
+    }
+    return best;
+}
+
 function runTower(tower) {
     const energy = tower.energy;
     const snap = roomManager.get(tower.room.name);
     let closestHostile = null;
     if (snap && snap.hostiles.length > 0) {
-        closestHostile = closestByRangeFrom(tower.pos, snap.hostiles);
+        closestHostile = pickHostileTarget(tower.pos, snap.hostiles);
     } else {
         closestHostile = tower.pos.findClosestByRange(FIND_HOSTILE_CREEPS);
     }
@@ -76,4 +105,6 @@ function runTower(tower) {
 
 module.exports = {
     runTower: runTower,
+    pickHostileTarget: pickHostileTarget,
+    hostileThreatTier: hostileThreatTier,
 };
