@@ -74,9 +74,9 @@ function contextualQuota(rcl, controller, storage, constructionSites) {
     const baseUpgraders = q.upgrader || 0;
     const baseBuilders = q.builder || 0;
 
-    if (ratio >= STORAGE_FULL_THRESHOLD) {
+    if (storage && ratio >= STORAGE_FULL_THRESHOLD) {
         q.upgrader = Math.min(6, Math.max(baseUpgraders, baseUpgraders + 2));
-    } else if (ratio <= STORAGE_LOW_THRESHOLD) {
+    } else if (storage && ratio <= STORAGE_LOW_THRESHOLD) {
         const isUrgent = controller && controller.ticksToDowngrade < URGENT_TTD;
         if (!isUrgent) {
             q.upgrader = Math.max(1, Math.floor(baseUpgraders / 2));
