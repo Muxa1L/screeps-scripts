@@ -40,6 +40,11 @@ function findSourceInSnapshot(id, snapshot) {
             if (snapshot.containers[i].id === id) return snapshot.containers[i];
         }
     }
+    if (snapshot.links) {
+        for (let i = 0; i < snapshot.links.length; i++) {
+            if (snapshot.links[i].id === id) return snapshot.links[i];
+        }
+    }
     if (snapshot.sources) {
         for (let i = 0; i < snapshot.sources.length; i++) {
             if (snapshot.sources[i].id === id) return snapshot.sources[i];
@@ -124,6 +129,21 @@ function findEnergySource(creep, snapshot, options) {
             if (!isPriority && energy < constants.CONTAINER_WITHDRAW_MIN) continue;
             if (isPriority && energy === 0) continue;
             consider(c, isPriority ? 4.0 : 1.0);
+        }
+    }
+
+    // Links (controller + storage) are withdraw sources. The controller link
+    // is range <=3-4 from the controller (the upgrader's anchor), so distance
+    // in scoreSource makes upgraders prefer it over everything. Supply creeps
+    // drain the storage link. Weight 2.5 sits between storage (1.0) and dropped
+    // energy (3.0), above ordinary containers (1.0) but below haul: containers
+    // (4.0).
+    if (snapshot.links) {
+        for (let i = 0; i < snapshot.links.length; i++) {
+            const l = snapshot.links[i];
+            const energy = l.store[RESOURCE_ENERGY] || 0;
+            if (energy < constants.LINK_WITHDRAW_MIN) continue;
+            consider(l, 2.5);
         }
     }
 

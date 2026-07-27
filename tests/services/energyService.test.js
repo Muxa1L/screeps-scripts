@@ -119,3 +119,71 @@ test('findEnergySource sends harvesters to sources regardless of other sources',
     const chosen = energyService.findEnergySource(creep, snapshot, {});
     assert.equal(chosen, source);
 });
+
+// --- link withdraw (RCL 5 link network activation) ---
+
+test('findEnergySource prefers the controller link over a container for an upgrader near the controller', function () {
+    mocks.resetMemory();
+    mocks.resetGame();
+    const controller = { pos: pos(20, 20) };
+    const creep = mocks.mockCreep({ pos: pos(21, 20), capacity: 100, store: {} });
+    const controllerLink = mocks.mockStructure(STRUCTURE_LINK, { id: 'clink', pos: pos(20, 21), energy: 500, capacity: 800 });
+    const farContainer = mocks.mockStructure(STRUCTURE_CONTAINER, { id: 'cont', pos: pos(40, 40), energy: 1000, capacity: 2000 });
+    const snapshot = {
+        containers: [farContainer],
+        links: [controllerLink],
+        droppedEnergy: [],
+        sources: [],
+    };
+    const chosen = energyService.findEnergySource(creep, snapshot, { anchor: controller, allowHarvest: false });
+    assert.equal(chosen, controllerLink);
+});
+
+test('findEnergySource drains a storage link when storage is absent', function () {
+    mocks.resetMemory();
+    mocks.resetGame();
+    const creep = mocks.mockCreep({ pos: pos(25, 25), capacity: 100, store: {} });
+    const storageLink = mocks.mockStructure(STRUCTURE_LINK, { id: 'slink', pos: pos(26, 25), energy: 600, capacity: 800 });
+    const snapshot = {
+        storage: null,
+        containers: [],
+        links: [storageLink],
+        droppedEnergy: [],
+        sources: [],
+    };
+    const chosen = energyService.findEnergySource(creep, snapshot, { allowHarvest: false });
+    assert.equal(chosen, storageLink);
+});
+
+test('findEnergySource sticky-locks onto a link across ticks', function () {
+    mocks.resetMemory();
+    mocks.resetGame();
+    const creep = mocks.mockCreep({ pos: pos(25, 25), capacity: 100, store: {} });
+    const link = mocks.mockStructure(STRUCTURE_LINK, { id: 'slink', pos: pos(26, 25), energy: 500, capacity: 800 });
+    memory.setRefuelSource(creep, 'slink');
+    const snapshot = {
+        storage: null,
+        containers: [],
+        links: [link],
+        droppedEnergy: [],
+        sources: [],
+    };
+    const chosen = energyService.findEnergySource(creep, snapshot, { allowHarvest: false });
+    assert.equal(chosen, link);
+});
+
+test('findEnergySource skips a link below LINK_WITHDRAW_MIN', function () {
+    mocks.resetMemory();
+    mocks.resetGame();
+    const creep = mocks.mockCreep({ pos: pos(25, 25), capacity: 100, store: {} });
+    const lowLink = mocks.mockStructure(STRUCTURE_LINK, { id: 'lowlink', pos: pos(26, 25), energy: 49, capacity: 800 });
+    const snapshot = {
+        storage: null,
+        containers: [],
+        links: [lowLink],
+        droppedEnergy: [],
+        sources: [],
+    };
+    const chosen = energyService.findEnergySource(creep, snapshot, { allowHarvest: false });
+    assert.equal(chosen, null);
+});

@@ -49,6 +49,7 @@ module.exports = {
     STORAGE_WITHDRAW_MIN: 200,
     CONTAINER_WITHDRAW_MIN: 50,
     DROPPED_ENERGY_MIN: 100,
+    LINK_WITHDRAW_MIN: 50,
 
     // Construction planning
     MAX_SITES_PER_TICK: 3,
