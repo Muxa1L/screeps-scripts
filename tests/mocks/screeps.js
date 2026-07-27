@@ -223,8 +223,12 @@ function makePos(p, lookForResults) {
             const t = target.pos || target;
             return Math.abs(this.x - t.x) <= range && Math.abs(this.y - t.y) <= range;
         },
-        findClosestByPath: function (items) { return items && items.length ? items[0] : null; },
-        findClosestByRange: function (items) { return items && items.length ? items[0] : null; },
+        getRangeTo: function (target) {
+            const t = target.pos || target;
+            return Math.max(Math.abs(this.x - t.x), Math.abs(this.y - t.y));
+        },
+        findClosestByPath: function (items) { return (items && Array.isArray(items) && items.length) ? items[0] : null; },
+        findClosestByRange: function (items) { return (items && Array.isArray(items) && items.length) ? items[0] : null; },
         lookFor: function (type) { return (lookForResults && lookForResults[type]) || []; },
     };
 }
@@ -275,16 +279,28 @@ function mockStructure(type, options) {
     const energy = options.energy || 0;
     const capacity = options.capacity !== undefined ? options.capacity : 100;
     const free = options.freeCapacity !== undefined ? options.freeCapacity : capacity - energy;
+    const hits = options.hits !== undefined ? options.hits : (options.hitsMax || 1000);
+    const hitsMax = options.hitsMax !== undefined ? options.hitsMax : 1000;
     const obj = {
         id: options.id || type + '_' + Math.random().toString(36).slice(2),
         structureType: type,
         pos: makePos(options.pos),
+        // Towers/spawns/extensions expose `energy`/`energyCapacity` directly
+        // (not via store). Mock both for callers that use either API.
+        energy: energy,
+        energyCapacity: capacity,
+        hits: hits,
+        hitsMax: hitsMax,
+        room: options.room || { name: (options.pos && options.pos.roomName) || 'W1N1', controller: { level: options.rcl || 0 } },
         store: {
             [RESOURCE_ENERGY]: energy,
             getCapacity: function (rtype) { return rtype === RESOURCE_ENERGY ? capacity : capacity; },
             getFreeCapacity: function (rtype) { return rtype === RESOURCE_ENERGY ? free : free; },
             getUsedCapacity: function (rtype) { return rtype === RESOURCE_ENERGY ? energy : 0; },
         },
+        attack: function () { return OK; },
+        heal: function () { return OK; },
+        repair: function () { return OK; },
     };
     if (Game && Game._registerObject) Game._registerObject(obj);
     return obj;

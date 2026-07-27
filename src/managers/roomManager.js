@@ -1,3 +1,7 @@
+const constants = require('../config/constants');
+
+const rampartTargetFor = constants.rampartTargetFor;
+
 let snapshots = {};
 let lastTick = -1;
 
@@ -21,9 +25,13 @@ function snapshotFor(room) {
     const energyStructures = [];
     const containers = [];
     const links = [];
+    const repairTargets = [];
     // Single FIND_STRUCTURES scan; categorize every structure in one pass to
     // avoid re-running the (expensive) find for energy structures, containers,
-    // and links.
+    // and links. `repairTargets` is the pre-filtered list the tower consults
+    // so each tower doesn't have to re-scan + re-filter every tick.
+    const rcl = room.controller ? room.controller.level : 0;
+    const rampartTarget = rampartTargetFor(rcl);
     const allStructures = room.find(FIND_STRUCTURES);
     for (let i = 0; i < allStructures.length; i++) {
         const s = allStructures[i];
@@ -31,15 +39,24 @@ function snapshotFor(room) {
         if (st === STRUCTURE_RAMPART || st === STRUCTURE_WALL) {
             if (s.hits < 10000) damagedCritical.push(s);
             else if (s.hits < s.hitsMax) damagedNonCritical.push(s);
+            if (s.hits < rampartTarget) repairTargets.push(s);
         } else if (st === STRUCTURE_CONTAINER) {
             containers.push(s);
-            if (s.hits < s.hitsMax) damagedNonCritical.push(s);
+            if (s.hits < s.hitsMax) {
+                damagedNonCritical.push(s);
+                repairTargets.push(s);
+            }
         } else if (st === STRUCTURE_ROAD) {
-            if (s.hits < s.hitsMax) damagedNonCritical.push(s);
+            if (s.hits < s.hitsMax) {
+                damagedNonCritical.push(s);
+                repairTargets.push(s);
+            }
         } else if (st === STRUCTURE_EXTENSION || st === STRUCTURE_SPAWN || st === STRUCTURE_TOWER) {
             if (s.energy < s.energyCapacity) energyStructures.push(s);
+            if (s.hits < s.hitsMax) repairTargets.push(s);
         } else if (st === STRUCTURE_LINK) {
             links.push(s);
+            if (s.hits < s.hitsMax) repairTargets.push(s);
         }
     }
     const sources = room.find(FIND_SOURCES);
@@ -71,6 +88,7 @@ function snapshotFor(room) {
         ruins: ruins,
         damagedCritical: damagedCritical,
         damagedNonCritical: damagedNonCritical,
+        repairTargets: repairTargets,
         sources: sources,
         energyStructures: energyStructures,
         containers: containers,

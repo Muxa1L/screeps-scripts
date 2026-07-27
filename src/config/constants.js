@@ -14,10 +14,22 @@ module.exports = {
     MOVE_FAIL_THRESHOLD: 5,
 
     // Safe mode and rampart thresholds
-    SAFE_MODE_TRIGGER_HITS: 5000,
+    SAFE_MODE_TRIGGER_RATIO: 0.5,
     SAFE_MODE_TTD_THRESHOLD: 3000,
     SAFE_MODE_COOLDOWN_TICKS: 5000,
     RAMPART_TARGET_HITS: 100000,
+    // Rampart/wall target hits, scaled by RCL. Towers repair walls/ramparts
+    // up to this hits value; above it they're considered "done". Lower RCLs
+    // keep thin ramparts (cheap to maintain); higher RCLs thicken them for
+    // defense as towers/storage come online.
+    RAMPART_TARGET_HITS_BY_RCL: {
+        3: 10000,
+        4: 50000,
+        5: 100000,
+        6: 250000,
+        7: 500000,
+        8: 1000000,
+    },
 
     // Tower energy minimums
     TOWER_MIN_ATTACK_ENERGY: 250,
@@ -64,3 +76,12 @@ module.exports = {
     GHOST_CRITICAL_AGE: 15,
     GHOST_GRACE_TICKS: 10,
 };
+
+// Returns the rampart/wall hits target for a given RCL. Unknown RCLs
+// clamp to the highest known value (RCL 8) so a higher-level controller
+// doesn't fall back to the legacy flat constant.
+function rampartTargetFor(rcl) {
+    return module.exports.RAMPART_TARGET_HITS_BY_RCL[rcl] ||
+           module.exports.RAMPART_TARGET_HITS_BY_RCL[8] || 1000000;
+}
+module.exports.rampartTargetFor = rampartTargetFor;

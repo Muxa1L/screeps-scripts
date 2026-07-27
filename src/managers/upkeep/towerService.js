@@ -1,7 +1,7 @@
 const constants = require('../../config/constants');
 const roomManager = require('../roomManager');
 
-const RAMPART_TARGET_HITS = constants.RAMPART_TARGET_HITS;
+const rampartTargetFor = constants.rampartTargetFor;
 const TOWER_MIN_ATTACK_ENERGY = constants.TOWER_MIN_ATTACK_ENERGY;
 const TOWER_MIN_HEAL_ENERGY = constants.TOWER_MIN_HEAL_ENERGY;
 const TOWER_MIN_REPAIR_ENERGY = constants.TOWER_MIN_REPAIR_ENERGY;
@@ -48,18 +48,26 @@ function runTower(tower) {
         }
     }
     if (energy >= TOWER_MIN_REPAIR_ENERGY) {
-        const damaged = tower.pos.findClosestByRange(FIND_STRUCTURES, {
-            filter: function (s) {
-                if (s.structureType === STRUCTURE_WALL || s.structureType === STRUCTURE_RAMPART) {
-                    return s.hits < RAMPART_TARGET_HITS;
-                }
-                if (s.hits >= s.hitsMax) return false;
-                return s.structureType === STRUCTURE_CONTAINER ||
-                       s.structureType === STRUCTURE_ROAD ||
-                       s.structureType === STRUCTURE_SPAWN ||
-                       s.structureType === STRUCTURE_EXTENSION;
-            },
-        });
+        let damaged = null;
+        if (snap && snap.repairTargets && snap.repairTargets.length > 0) {
+            damaged = closestByRangeFrom(tower.pos, snap.repairTargets);
+        } else {
+            // Defensive fallback (snap null in unowned rooms — shouldn't
+            // happen for an owned tower, but keeps the function safe).
+            const rampartTarget = rampartTargetFor(tower.room.controller ? tower.room.controller.level : 0);
+            damaged = tower.pos.findClosestByRange(FIND_STRUCTURES, {
+                filter: function (s) {
+                    if (s.structureType === STRUCTURE_WALL || s.structureType === STRUCTURE_RAMPART) {
+                        return s.hits < rampartTarget;
+                    }
+                    if (s.hits >= s.hitsMax) return false;
+                    return s.structureType === STRUCTURE_CONTAINER ||
+                           s.structureType === STRUCTURE_ROAD ||
+                           s.structureType === STRUCTURE_SPAWN ||
+                           s.structureType === STRUCTURE_EXTENSION;
+                },
+            });
+        }
         if (damaged) {
             tower.repair(damaged);
         }
