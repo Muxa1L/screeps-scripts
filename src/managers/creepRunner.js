@@ -562,7 +562,11 @@ function runCreep(creep, context) {
     }
     let combatTasks = null;
     if (role === 'fighter' || role === 'healer') {
-        combatTasks = collectCombatTasks(role);
+        combatTasks = context.combatTaskCache[role];
+        if (!combatTasks) {
+            combatTasks = collectCombatTasks(role);
+            context.combatTaskCache[role] = combatTasks;
+        }
         if (combatTasks.length > 0) {
             taskList = combatTasks;
         }
@@ -623,4 +627,5 @@ module.exports = {
     runCreep: runCreep,
     releaseTask: releaseTask,
     inferRoleFromName: inferRoleFromName,
+    collectCombatTasks: collectCombatTasks,
 };
