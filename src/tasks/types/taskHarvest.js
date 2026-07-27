@@ -1,6 +1,29 @@
 const taskBase = require('../taskBase');
 const move = require('../../utils/moveUtil');
 const roomManager = require('../../managers/roomManager');
+const memory = require('../../utils/memorySchema');
+
+let _harvestCountTick = -1;
+let _harvestCountCache = {};
+// Count harvesters currently assigned to each source's harvest task, built
+// once per tick. Harvesters don't use sourceRegistry claims (miners do), so
+// count assignments directly. Used by score() to spread harvesters across
+// sources, mirroring taskMine.score's claims penalty.
+function harvestCounts() {
+    if (_harvestCountTick !== Game.time) {
+        _harvestCountTick = Game.time;
+        _harvestCountCache = {};
+        for (const name in Game.creeps) {
+            const c = Game.creeps[name];
+            if (memory.getRole(c) !== 'harvester') continue;
+            const tid = memory.getTaskId(c);
+            if (!tid || tid.indexOf('harvest:') !== 0) continue;
+            const sourceId = tid.split(':')[2];
+            if (sourceId) _harvestCountCache[sourceId] = (_harvestCountCache[sourceId] || 0) + 1;
+        }
+    }
+    return _harvestCountCache;
+}
 
 module.exports = {
     type: 'harvest',
@@ -20,7 +43,15 @@ module.exports = {
         return out;
     },
     score: function (creep, target) {
-        return taskBase.pathScore(creep, target);
+        const dist = taskBase.approxDistance(creep, target);
+        let claims = harvestCounts()[target.id] || 0;
+        // Exclude the creep's own current harvest assignment so it isn't
+        // penalized for its own presence (mirrors taskMine.score line 34).
+        const own = memory.getTaskId(creep);
+        if (own && own.indexOf('harvest:') === 0 && own.split(':')[2] === target.id) {
+            claims = Math.max(0, claims - 1);
+        }
+        return dist + claims * 50;
     },
     run: function (creep, task, _snap) {
         const source = task.target;
