@@ -198,6 +198,105 @@ function getSourceMemory(id) {
     return Memory.sources[id];
 }
 
+// Squad accessors
+function getSquadId(creep) {
+    return ensureCreepMemory(creep).squadId || null;
+}
+
+function setSquadId(creep, id) {
+    ensureCreepMemory(creep).squadId = id;
+}
+
+function clearSquadId(creep) {
+    delete ensureCreepMemory(creep).squadId;
+}
+
+function getSquadRole(creep) {
+    return ensureCreepMemory(creep).squadRole || null;
+}
+
+function setSquadRole(creep, role) {
+    ensureCreepMemory(creep).squadRole = role;
+}
+
+function clearSquadRole(creep) {
+    delete ensureCreepMemory(creep).squadRole;
+}
+
+function getSquadTarget(creep) {
+    return ensureCreepMemory(creep).squadTarget || null;
+}
+
+function setSquadTarget(creep, targetId) {
+    ensureCreepMemory(creep).squadTarget = targetId;
+    ensureCreepMemory(creep).squadTargetTick = Game.time;
+}
+
+function clearSquadTarget(creep) {
+    delete ensureCreepMemory(creep).squadTarget;
+    delete ensureCreepMemory(creep).squadTargetTick;
+}
+
+function getSquadTargetTick(creep) {
+    return ensureCreepMemory(creep).squadTargetTick || 0;
+}
+
+// Intel / squads / expansion / remote room memory accessors
+function ensureIntel() {
+    if (!Memory.intel) {
+        Memory.intel = { queue: [], scanCursor: 0, raids: {} };
+    }
+    return Memory.intel;
+}
+
+function getIntel() {
+    return ensureIntel();
+}
+
+function ensureSquads() {
+    if (!Memory.squads) Memory.squads = {};
+    return Memory.squads;
+}
+
+function getSquads() {
+    return ensureSquads();
+}
+
+function getExpansion() {
+    if (!Memory.expansion) Memory.expansion = { history: [] };
+    return Memory.expansion;
+}
+
+function ensureRemoteRooms() {
+    if (!Memory.remoteRooms) Memory.remoteRooms = {};
+    return Memory.remoteRooms;
+}
+
+function getRemoteRooms() {
+    return ensureRemoteRooms();
+}
+
+// Bootstrap / homeRoom accessors
+function getHomeRoom(creep) {
+    return ensureCreepMemory(creep).homeRoom || null;
+}
+
+function setHomeRoom(creep, roomName) {
+    ensureCreepMemory(creep).homeRoom = roomName;
+}
+
+function getBootstrapRoom(creep) {
+    return ensureCreepMemory(creep).bootstrapRoom || null;
+}
+
+function setBootstrapRoom(creep, roomName) {
+    ensureCreepMemory(creep).bootstrapRoom = roomName;
+}
+
+function clearBootstrapRoom(creep) {
+    delete ensureCreepMemory(creep).bootstrapRoom;
+}
+
 module.exports = {
     getRole: getRole,
     setRole: setRole,
@@ -242,4 +341,26 @@ module.exports = {
     clearRenewing: clearRenewing,
     getRoomMemory: getRoomMemory,
     getSourceMemory: getSourceMemory,
+    getSquadId: getSquadId,
+    setSquadId: setSquadId,
+    clearSquadId: clearSquadId,
+    getSquadRole: getSquadRole,
+    setSquadRole: setSquadRole,
+    clearSquadRole: clearSquadRole,
+    getSquadTarget: getSquadTarget,
+    setSquadTarget: setSquadTarget,
+    clearSquadTarget: clearSquadTarget,
+    getSquadTargetTick: getSquadTargetTick,
+    ensureIntel: ensureIntel,
+    getIntel: getIntel,
+    ensureSquads: ensureSquads,
+    getSquads: getSquads,
+    getExpansion: getExpansion,
+    ensureRemoteRooms: ensureRemoteRooms,
+    getRemoteRooms: getRemoteRooms,
+    getHomeRoom: getHomeRoom,
+    setHomeRoom: setHomeRoom,
+    getBootstrapRoom: getBootstrapRoom,
+    setBootstrapRoom: setBootstrapRoom,
+    clearBootstrapRoom: clearBootstrapRoom,
 };

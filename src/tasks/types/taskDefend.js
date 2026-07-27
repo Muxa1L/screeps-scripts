@@ -1,5 +1,10 @@
 const taskBase = require('../taskBase');
 const move = require('../../utils/moveUtil');
+const memory = require('../../utils/memorySchema');
+const constants = require('../../config/constants');
+
+const SQUAD_RETREAT_HP_RATIO = constants.SQUAD_RETREAT_HP_RATIO;
+const SQUAD_TARGET_LATCH_TICKS = constants.SQUAD_TARGET_LATCH_TICKS;
 
 module.exports = {
     type: 'defend',
@@ -27,19 +32,26 @@ module.exports = {
         const rangedParts = creep.getActiveBodyparts(RANGED_ATTACK);
         if (attackParts === 0 && rangedParts === 0) return false;
 
-        // Always look for the closest live hostile in this room; if a nearer
-        // enemy exists, switch to it immediately rather than chasing a stale target.
-        const nearest = creep.pos.findClosestByRange(FIND_HOSTILE_CREEPS);
-        const enemy = (nearest && nearest.hits > 0) ? nearest : live;
+        // Honor mutual squad retreat: if the squad manager flagged retreat
+        // via squadTarget or the creep is below threshold, run to spawn.
+        const latchedId = memory.getSquadTarget(creep);
+        const latchedTick = memory.getSquadTargetTick(creep);
+        const latchValid = latchedId && Game.time - latchedTick < SQUAD_TARGET_LATCH_TICKS;
 
-        if (creep.hits < creep.hitsMax * 0.4) {
+        if (creep.hits < creep.hitsMax * SQUAD_RETREAT_HP_RATIO) {
             const retreat = creep.pos.findClosestByRange(FIND_MY_SPAWNS);
             if (retreat) {
-                move.action(creep, 'retreating@' + enemy.id);
+                move.action(creep, 'retreating@' + (target.id || '?'));
                 move.moveCreep(creep, retreat, { visualizePathStyle: { stroke: '#ff0000' } });
             }
             return true;
         }
+
+        // Prefer the squad-shared target if latched; otherwise nearest live hostile.
+        const enemy = (latchValid && Game.getObjectById(latchedId)) ||
+            creep.pos.findClosestByRange(FIND_HOSTILE_CREEPS) ||
+            live;
+        if (!enemy || enemy.hits <= 0) return false;
 
         const inRange1 = creep.pos.inRangeTo(enemy, 1);
         if (inRange1 && rangedParts > 0 && attackParts === 0) {

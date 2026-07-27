@@ -40,6 +40,9 @@ module.exports.loop = function () {
     if (Game.cpu.bucket > 500 || Game.shard.name === 'sim') {
         assert.safeTick('upkeepManager',  function () { require('./managers/upkeepManager').run(); });
     }
+    if (Game.cpu.bucket > 1000 || Game.shard.name === 'sim') {
+        assert.safeTick('squadManager', function () { require('./managers/squadManager').tick(); });
+    }
 
     recordCpu();
 

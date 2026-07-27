@@ -2,11 +2,16 @@ const assert = require('./assert');
 
 function init() {
     assert.init();
-    if (Memory.migrated === 2) return;
+    if (Memory.migrated === 3) return;
     delete Memory.knownSources;
     delete Memory.sourceToSource;
     delete Memory.pathCache;
-    Memory.migrated = 2;
+    if (!Memory.intel) Memory.intel = { queue: [], scanCursor: 0, raids: {} };
+    if (!Memory.squads) Memory.squads = {};
+    if (!Memory.flags) Memory.flags = {};
+    if (Memory.flags.squads === undefined) Memory.flags.squads = false;
+    if (Memory.flags.intel === undefined) Memory.flags.intel = false;
+    Memory.migrated = 3;
 }
 
 function ensureRoomMemory(room) {

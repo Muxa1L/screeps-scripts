@@ -6,6 +6,7 @@ const safeModeService = require('./upkeep/safeModeService');
 const memoryCleanupService = require('./upkeep/memoryCleanupService');
 const stuckRecycleService = require('./upkeep/stuckRecycleService');
 const watchdogService = require('./upkeep/watchdogService');
+const intelService = require('./upkeep/intelService');
 
 function runStructures() {
     // Single pass over Game.structures; dispatch towers and links in one
@@ -37,6 +38,7 @@ function run() {
     assert.safeRun('creepMemoryCleanup', memoryCleanupService.runMemoryCleanup);
     assert.safeRun('stuckRecycle', stuckRecycleService.runStuckRecycle);
     assert.safeRun('memoryWatchdog', watchdogService.runWatchdog);
+    assert.safeRun('intel', intelService.tick);
 }
 
 module.exports = {

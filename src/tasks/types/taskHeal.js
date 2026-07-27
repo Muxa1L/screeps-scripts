@@ -1,5 +1,9 @@
 const taskBase = require('../taskBase');
 const move = require('../../utils/moveUtil');
+const memory = require('../../utils/memorySchema');
+const constants = require('../../config/constants');
+
+const SQUAD_RETREAT_HP_RATIO = constants.SQUAD_RETREAT_HP_RATIO;
 
 module.exports = {
     type: 'heal',
@@ -15,11 +19,23 @@ module.exports = {
     run: function (creep, task, _snap) {
         if (creep.getActiveBodyparts(HEAL) === 0) return false;
 
+        // Honor mutual squad retreat: if this healer or its leader is badly
+        // hurt, move with the leader toward the nearest spawn instead of
+        // chasing a target.
+        const leaderId = creep.memory && creep.memory.squadLeader;
+        const leader = leaderId ? Game.getObjectById(leaderId) : null;
+        if (leader && (creep.hits < creep.hitsMax * SQUAD_RETREAT_HP_RATIO || leader.hits < leader.hitsMax * SQUAD_RETREAT_HP_RATIO)) {
+            move.action(creep, 'retreat-with-leader@' + leader.id);
+            if (!creep.pos.inRangeTo(leader, 1)) {
+                move.moveCreep(creep, leader, { visualizePathStyle: { stroke: '#ff0000' } });
+            }
+            return true;
+        }
+
         // Squad-leader priority: if this healer is paired with a fighter and
         // the leader is damaged, prefer healing it over the task target. This
         // keeps the healer in formation with its fighter. If the leader is
         // dead/gone, clear the stale link and fall through to the task target.
-        const leaderId = creep.memory && creep.memory.squadLeader;
         if (leaderId) {
             const leader = Game.getObjectById(leaderId);
             if (leader && leader.hits !== undefined && leader.hits < leader.hitsMax) {
@@ -44,6 +60,16 @@ module.exports = {
             if (!leader) {
                 delete creep.memory.squadLeader;
             }
+        }
+
+        // Squad target sharing: if a shared squad target exists and is
+        // reachable, move toward it so the medic stays near the fight.
+        const sharedId = memory.getSquadTarget(creep);
+        const shared = sharedId ? Game.getObjectById(sharedId) : null;
+        if (shared && shared.hits > 0 && !creep.pos.inRangeTo(shared, 3)) {
+            move.action(creep, 'follow-squad-target@' + shared.id);
+            move.moveCreep(creep, shared, { visualizePathStyle: { stroke: '#00ff00' } });
+            return true;
         }
 
         const target = task.target;

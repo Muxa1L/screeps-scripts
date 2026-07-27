@@ -65,6 +65,16 @@ function hostilesInRoom(room) {
 // null. No reverse link is stored on the fighter, so pairing is deduped by
 // scanning healer memory.squadLeader values each time a healer is about to
 // spawn — cheap because it runs only at spawn time, not per tick.
+function activeRaidCount() {
+    const intel = Memory.intel;
+    if (!intel || !intel.raids) return 0;
+    let count = 0;
+    for (const rn in intel.raids) {
+        if (intel.raids[rn]) count++;
+    }
+    return count;
+}
+
 function findUnpairedFighter() {
     const pairedLeaderIds = {};
     for (const name in Game.creeps) {
@@ -97,14 +107,23 @@ function tryDefenders(spawn, hostiles) {
     const cap = spawn.room.energyCapacityAvailable;
     const available = spawn.room.energyAvailable;
 
-    // Maintain a small combat presence while hostiles are visible.
-    const desiredFighters = 2;
-    const desiredHealers = 1;
+    // Squad-aware desired counts when the squads flag is on.
+    let desiredSquads;
+    if (Memory.flags && Memory.flags.squads) {
+        desiredSquads = activeRaidCount() > 0 ? constants.DESIRED_SQUADS_RAID : constants.DESIRED_SQUADS_BASE;
+    } else {
+        desiredSquads = 1; // legacy: one implicit squad (2 fighters + 1 healer)
+    }
+    const desiredFighters = Memory.flags && Memory.flags.squads ? desiredSquads : 2;
+    const desiredHealers = Memory.flags && Memory.flags.squads ? desiredSquads : 1;
 
     if (fighters < desiredFighters) {
         const pick = bodies.bestBodyForAvailable('fighter', cap, available);
         if (pick) {
-            return spawnBody(spawn, pick.body, 'Fighter' + Game.time + '-' + spawn.name, 'fighter');
+            const extraMem = (Memory.flags && Memory.flags.squads)
+                ? { squadId: 'squad-' + Game.time + '-' + spawn.name, squadRole: 'leader' }
+                : {};
+            return spawnBody(spawn, pick.body, 'Fighter' + Game.time + '-' + spawn.name, 'fighter', extraMem);
         }
     }
     if (fighters >= desiredFighters && healers < desiredHealers) {
@@ -115,7 +134,20 @@ function tryDefenders(spawn, hostiles) {
             // unpaired fighter exists (e.g. healer spawned first), the healer
             // operates independently and reverts to nearest-damaged-friendly.
             const fighter = findUnpairedFighter();
-            const extraMem = fighter ? { squadLeader: fighter.id } : {};
+            const extraMem = { squadLeader: fighter ? fighter.id : null };
+            if (Memory.flags && Memory.flags.squads) {
+                extraMem.squadRole = 'medic';
+                if (fighter && memory.getSquadId(fighter)) {
+                    extraMem.squadId = memory.getSquadId(fighter);
+                } else {
+                    const derivedId = 'squad-' + Game.time + '-' + spawn.name;
+                    extraMem.squadId = derivedId;
+                    if (fighter) {
+                        memory.setSquadId(fighter, derivedId);
+                        memory.setSquadRole(fighter, 'leader');
+                    }
+                }
+            }
             return spawnBody(spawn, hpick.body, 'Healer' + Game.time + '-' + spawn.name, 'healer', extraMem);
         }
     }

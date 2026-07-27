@@ -80,6 +80,20 @@ module.exports = {
     // Creep-memory cleanup
     GHOST_CRITICAL_AGE: 15,
     GHOST_GRACE_TICKS: 10,
+
+    // Squad coordination
+    SQUAD_RETREAT_HP_RATIO: 0.4,
+    SQUAD_FORMATION_RANGE: 2,
+    SQUAD_TARGET_LATCH_TICKS: 5,
+    DESIRED_SQUADS_BASE: 1,
+    DESIRED_SQUADS_RAID: 3,
+
+    // Observer intel
+    INTEL_SCAN_INTERVAL: 1,
+    INTEL_RAID_DECAY_TICKS: 1000,
+    INTEL_RAID_HOSTILE_THRESHOLD: 3,
+    INTEL_RAID_NEARBY_DISTANCE: 2,
+    INTEL_QUEUE_REFRESH_TICKS: 1000,
 };
 
 // Returns the rampart/wall hits target for a given RCL. Unknown RCLs
