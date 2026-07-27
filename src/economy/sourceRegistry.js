@@ -120,15 +120,51 @@ function freeSlot(sourceId) {
 function claimSlot(sourceId, creepName) {
     if (!Memory.sources || !Memory.sources[sourceId]) return false;
     const src = Memory.sources[sourceId];
+    // First, check if this creep already has a slot.
+    for (let i = 0; i < src.slots.length; i++) {
+        if (src.slots[i].claimedBy === creepName) return true;
+    }
+    // Collect free slots.
+    const free = [];
     for (let i = 0; i < src.slots.length; i++) {
         const slot = src.slots[i];
-        if (slot.claimedBy === creepName) return true;
         if (!slot.claimedBy || !Game.creeps[slot.claimedBy]) {
-            slot.claimedBy = creepName;
-            return true;
+            free.push(slot);
         }
     }
-    return false;
+    if (free.length === 0) return false;
+    // Prefer the slot closest to a container near this source so the miner
+    // can deposit into it without moving. With miners capped at 1-2 per
+    // source, slot selection matters: the container-adjacent slot lets the
+    // miner offload in-place instead of dropping on the ground.
+    const room = Game.rooms[src.roomName];
+    if (room) {
+        const containers = room.find(FIND_STRUCTURES, {
+            filter: function (s) { return s.structureType === STRUCTURE_CONTAINER; },
+        });
+        if (containers.length > 0) {
+            let bestSlot = null;
+            let bestDist = Infinity;
+            for (let i = 0; i < free.length; i++) {
+                const slot = free[i];
+                const slotPos = new RoomPosition(slot.x, slot.y, src.roomName);
+                for (let j = 0; j < containers.length; j++) {
+                    const d = slotPos.getRangeTo(containers[j]);
+                    if (d < bestDist) {
+                        bestDist = d;
+                        bestSlot = slot;
+                    }
+                }
+            }
+            if (bestSlot) {
+                bestSlot.claimedBy = creepName;
+                return true;
+            }
+        }
+    }
+    // No container or no container-adjacent slot; claim the first free slot.
+    free[0].claimedBy = creepName;
+    return true;
 }
 
 function releaseClaim(creepName) {
