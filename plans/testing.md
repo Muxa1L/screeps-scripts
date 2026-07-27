@@ -1,7 +1,7 @@
 # Testing — Coverage Plan
 
-Status: **Planned**. Closes test coverage gaps for (a) the new
-defense / remote-mining / multi-room features and (b) existing untested
+Status: **Implemented** (commit 9c2152b). Closes test coverage gaps for (a) the
+new defense / remote-mining / multi-room features and (b) existing untested
 modules. The repo uses Node's built-in test runner (`node --test`) with
 `tests/mocks/screeps.js` providing Screeps globals.
 
