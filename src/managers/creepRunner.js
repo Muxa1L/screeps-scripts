@@ -12,6 +12,7 @@ const roomManager = require('./roomManager');
 const sourceRegistry = require('../economy/sourceRegistry');
 const bodies = require('../economy/creepsBodies');
 const roomFlags = require('../utils/roomFlags');
+const depositService = require('../services/depositService');
 
 const RENEW_THRESHOLD_SMALL = constants.RENEW_THRESHOLD_SMALL;
 const RENEW_THRESHOLD_LARGE = constants.RENEW_THRESHOLD_LARGE;
@@ -492,6 +493,33 @@ function runIdleFallback(creep, room) {
         combatIdleFallback(creep);
         return;
     }
+    const capacity = creep.store.getCapacity(RESOURCE_ENERGY) || 0;
+    const energy = creep.store[RESOURCE_ENERGY] || 0;
+    // A full creep with CARRY should deposit its energy, not force-harvest.
+    // Without this, a full harvester with no available task is sent to a
+    // source by forceTargetFor and harvests into a full carry — the energy
+    // is wasted. Deposit to the nearest structure that needs energy first.
+    if (capacity > 0 && energy >= capacity) {
+        const snap = roomManager.get(room.name);
+        if (snap) {
+            const deposit = depositService.findDeposit(creep, snap, {});
+            if (deposit) {
+                logger.setAction(creep, 'idle-deposit@' + deposit.id);
+                depositService.transferTo(creep, deposit, RESOURCE_ENERGY);
+                return;
+            }
+        }
+        // No deposit available; idle near spawn. Don't force-harvest — a
+        // full creep harvesting wastes the energy.
+        const idleSpawn = spawnUtil.nearestSpawn(creep);
+        if (idleSpawn && !creep.pos.isNearTo(idleSpawn)) {
+            logger.setAction(creep, 'idle->spawn');
+            move.moveCreep(creep, idleSpawn, { visualizePathStyle: { stroke: '#888888' }, reusePath: 10 });
+        } else {
+            logger.setAction(creep, 'idle');
+        }
+        return;
+    }
     const forceTarget = forceTargetFor(creep, room);
     if (forceTarget) {
         if (!creep.pos.isNearTo(forceTarget)) {
@@ -666,4 +694,5 @@ module.exports = {
     collectCombatTasks: collectCombatTasks,
     findCurrentTask: findCurrentTask,
     combatIdleFallback: combatIdleFallback,
+    runIdleFallback: runIdleFallback,
 };

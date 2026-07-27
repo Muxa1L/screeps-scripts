@@ -213,3 +213,90 @@ test('combatIdleFallback: healer with a dead squad leader clears the link and fa
     creepRunner.combatIdleFallback(healer);
     assert.equal(healer.memory.squadLeader, undefined);
 });
+
+// --- runIdleFallback: deposit-excess for full CARRY creeps ---
+
+// Stages a snapshot in roomManager.get for the deposit-excess tests.
+function withSnap(snap, fn) {
+    const origGet = roomManager.get;
+    roomManager.get = function () { return snap; };
+    try {
+        fn();
+    } finally {
+        roomManager.get = origGet;
+    }
+}
+
+test('runIdleFallback: a full harvester deposits to a container with room', function () {
+    mocks.resetGame();
+    const spawn = mocks.mockStructure(STRUCTURE_SPAWN, { id: 'spawn1', pos: { x: 24, y: 22, roomName: 'W1N1' }, energy: 300, capacity: 300 });
+    Game.spawns['Spawn1'] = spawn;
+    const container = mocks.mockStructure(STRUCTURE_CONTAINER, { id: 'cont1', pos: { x: 25, y: 25, roomName: 'W1N1' }, energy: 100, capacity: 2000 });
+    const harvester = mocks.mockCreep({
+        name: 'Harvester1-Spawn1', pos: { x: 26, y: 25, roomName: 'W1N1' },
+        capacity: 100, store: { energy: 100 }, parts: { work: 1, carry: 2, move: 2 },
+    });
+    memory.setRole(harvester, 'harvester');
+    let transferredTo = null;
+    harvester.transfer = function (target, _rtype) { transferredTo = target; return OK; };
+    const room = { name: 'W1N1', controller: { my: true, pos: { x: 39, y: 28, roomName: 'W1N1' } } };
+    const snap = { energyStructures: [spawn], containers: [container], storage: null, links: [], sources: [] };
+    withSnap(snap, function () {
+        creepRunner.runIdleFallback(harvester, room);
+    });
+    assert.equal(transferredTo, container);
+});
+
+test('runIdleFallback: a full harvester with all deposits full idles without force-harvesting', function () {
+    mocks.resetGame();
+    const spawn = mocks.mockStructure(STRUCTURE_SPAWN, { id: 'spawn1', pos: { x: 24, y: 22, roomName: 'W1N1' }, energy: 300, capacity: 300 });
+    Game.spawns['Spawn1'] = spawn;
+    const fullContainer = mocks.mockStructure(STRUCTURE_CONTAINER, { id: 'cont1', pos: { x: 25, y: 25, roomName: 'W1N1' }, energy: 2000, capacity: 2000 });
+    const harvester = mocks.mockCreep({
+        name: 'Harvester1-Spawn1', pos: { x: 24, y: 22, roomName: 'W1N1' },
+        capacity: 100, store: { energy: 100 }, parts: { work: 1, carry: 2, move: 2 },
+    });
+    memory.setRole(harvester, 'harvester');
+    let harvestCalls = 0;
+    harvester.harvest = function () { harvestCalls += 1; return OK; };
+    const room = { name: 'W1N1', controller: { my: true }, find: function () { return []; } };
+    const snap = { energyStructures: [spawn], containers: [fullContainer], storage: null, links: [], sources: [] };
+    withSnap(snap, function () {
+        creepRunner.runIdleFallback(harvester, room);
+    });
+    // Key regression guard: the old code force-harvested a full creep (wasted energy).
+    assert.equal(harvestCalls, 0);
+});
+
+test('runIdleFallback: an empty harvester still force-harvests (existing behavior preserved)', function () {
+    mocks.resetGame();
+    const source = mocks.mockSource({ id: 'src1', pos: { x: 25, y: 25, roomName: 'W1N1' } });
+    const harvester = mocks.mockCreep({
+        name: 'Harvester1-Spawn1', pos: { x: 24, y: 25, roomName: 'W1N1' },
+        capacity: 100, store: {}, parts: { work: 1, carry: 2, move: 2 },
+    });
+    memory.setRole(harvester, 'harvester');
+    let harvestCalls = 0;
+    harvester.harvest = function () { harvestCalls += 1; return OK; };
+    const room = { name: 'W1N1', controller: { my: true }, find: function () { return [source]; } };
+    creepRunner.runIdleFallback(harvester, room);
+    assert.ok(harvestCalls >= 1);
+});
+
+test('runIdleFallback: a full hauler (no WORK) deposits to a container', function () {
+    mocks.resetGame();
+    const container = mocks.mockStructure(STRUCTURE_CONTAINER, { id: 'cont1', pos: { x: 25, y: 25, roomName: 'W1N1' }, energy: 0, capacity: 2000 });
+    const hauler = mocks.mockCreep({
+        name: 'Hauler1-Spawn1', pos: { x: 26, y: 25, roomName: 'W1N1' },
+        capacity: 100, store: { energy: 100 }, parts: { carry: 2, move: 2 },
+    });
+    memory.setRole(hauler, 'hauler');
+    let transferredTo = null;
+    hauler.transfer = function (target, _rtype) { transferredTo = target; return OK; };
+    const room = { name: 'W1N1', controller: { my: true } };
+    const snap = { energyStructures: [], containers: [container], storage: null, links: [], sources: [] };
+    withSnap(snap, function () {
+        creepRunner.runIdleFallback(hauler, room);
+    });
+    assert.equal(transferredTo, container);
+});
