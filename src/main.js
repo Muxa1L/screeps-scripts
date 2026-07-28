@@ -1,4 +1,5 @@
 const assert = require('./utils/assert');
+const statsService = require('./utils/statsService');
 
 // CPU history instrumentation. Records a rolling buffer of {tick, bucket, cpu}
 // samples into Memory.stats.cpuHistory so it can be read back remotely via the
@@ -15,11 +16,11 @@ function recordCpu() {
 }
 
 module.exports.loop = function () {
-    assert.safeTick('globals',    function () { require('./utils/globals').tick(); });
-    assert.safeTick('roomManager', function () { require('./managers/roomManager').tick(); });
+    assert.safeTickTimed('globals',    function () { require('./utils/globals').tick(); });
+    assert.safeTickTimed('roomManager', function () { require('./managers/roomManager').tick(); });
     // Register sources in visible whitelisted foreign rooms so the
     // remoteHarvest dispatcher has target positions to dispatch to.
-    assert.safeTick('remoteSources', function () {
+    assert.safeTickTimed('remoteSources', function () {
         const roomFlags = require('./utils/roomFlags');
         const sourceRegistry = require('./economy/sourceRegistry');
         const allowed = roomFlags.getAllowedRooms();
@@ -32,28 +33,29 @@ module.exports.loop = function () {
     });
 
     if (Game.cpu.bucket > 1000 || Game.shard.name === 'sim') {
-        assert.safeTick('creepManager', function () { require('./managers/creepManager').tick(); });
+        assert.safeTickTimed('creepManager', function () { require('./managers/creepManager').tick(); });
     }
     if (Game.cpu.bucket > 2000 || Game.shard.name === 'sim') {
-        assert.safeTick('spawnManager', function () { require('./managers/spawnManager').tick(); });
+        assert.safeTickTimed('spawnManager', function () { require('./managers/spawnManager').tick(); });
     }
     if (Game.cpu.bucket > 500 || Game.shard.name === 'sim') {
-        assert.safeTick('upkeepManager',  function () { require('./managers/upkeepManager').run(); });
+        assert.safeTickTimed('upkeepManager',  function () { require('./managers/upkeepManager').run(); });
     }
     if (Game.cpu.bucket > 1000 || Game.shard.name === 'sim') {
-        assert.safeTick('squadManager', function () { require('./managers/squadManager').tick(); });
+        assert.safeTickTimed('squadManager', function () { require('./managers/squadManager').tick(); });
     }
     if (Game.cpu.bucket > 1500 || Game.shard.name === 'sim') {
-        assert.safeTick('remoteManager', function () { require('./managers/remoteManager').tick(); });
+        assert.safeTickTimed('remoteManager', function () { require('./managers/remoteManager').tick(); });
     }
     if (Game.cpu.bucket > 1000 || Game.shard.name === 'sim') {
-        assert.safeTick('bootstrapManager', function () { require('./managers/bootstrapManager').tick(); });
+        assert.safeTickTimed('bootstrapManager', function () { require('./managers/bootstrapManager').tick(); });
     }
     if (Game.cpu.bucket > 5000 || Game.shard.name === 'sim') {
-        assert.safeTick('expansionPlanner', function () { require('./managers/expansionPlanner').tick(); });
+        assert.safeTickTimed('expansionPlanner', function () { require('./managers/expansionPlanner').tick(); });
     }
 
     recordCpu();
+    statsService.tick();
 
     if (Game.time % 100 === 0) {
         const meta = '[' + Game.time + '] [meta] bucket=' + Game.cpu.bucket +

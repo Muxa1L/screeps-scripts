@@ -1,4 +1,5 @@
 const constants = require('../config/constants');
+const stats = require('./statsService');
 
 let _lastErrors = [];
 const MAX_ERRORS = constants.MAX_ERRORS;
@@ -43,6 +44,24 @@ function safeTick(module, fn) {
     return safeRun(module, fn);
 }
 
+function safeRunTimed(module, fn) {
+    stats.tickStart();
+    const start = Game.cpu.getUsed();
+    try {
+        return fn();
+    } catch (e) {
+        recordError(module, e);
+        return null;
+    } finally {
+        const used = Game.cpu.getUsed() - start;
+        stats.recordModule(module, used);
+    }
+}
+
+function safeTickTimed(module, fn) {
+    return safeRunTimed(module, fn);
+}
+
 function assert(cond, message) {
     if (cond) return true;
     const msg = message || 'assertion failed';
@@ -67,6 +86,8 @@ module.exports = {
     recordError: recordError,
     safeRun: safeRun,
     safeTick: safeTick,
+    safeRunTimed: safeRunTimed,
+    safeTickTimed: safeTickTimed,
     assert: assert,
     lastErrors: lastErrors,
     clear: clear,
