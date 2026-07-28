@@ -90,6 +90,15 @@ const MIGRATIONS = [
             }
         },
     },
+    {
+        version: 7,
+        description: 'initialize Memory.nuke',
+        run: function () {
+            if (Memory.nuke === undefined) {
+                Memory.nuke = { events: {}, evacuating: {}, stat: { nukesDetected: 0, safeModeTriggered: 0, roomsEvacuated: 0 } };
+            }
+        },
+    },
 ];
 
 function runMigrations() {

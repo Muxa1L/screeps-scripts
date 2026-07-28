@@ -634,6 +634,30 @@ function runCreep(creep, context) {
     // instead of letting them build the new room's spawn.
     const bootstrapRoom = memory.getBootstrapRoom(creep);
     const isBootstrapper = role === 'bootstrapper' || !!bootstrapRoom;
+
+    // Nuke evacuation: if this room is being evacuated due to an incoming
+    // nuke, non-combat creeps walk to a safe tile outside the 5x5 blast
+    // area. If there's another owned room, route there instead.
+    if (role !== 'fighter' && role !== 'healer' && !isBootstrapper &&
+        memory.getNukeEvac(room.name)) {
+        if (memory.getTaskId(creep)) releaseTask(creep, context.claimCounts);
+        // Find the nuke position to avoid
+        const nukeEvents = memory.getNukeEvents();
+        const ev = nukeEvents[room.name];
+        if (ev) {
+            // Walk to a corner far from the blast zone
+            const nukeX = ev.pos.x;
+            const nukeY = ev.pos.y;
+            // Pick the room corner farthest from the nuke
+            const targetX = nukeX < 25 ? 48 : 2;
+            const targetY = nukeY < 25 ? 48 : 2;
+            move.moveCreep(creep, { pos: { x: targetX, y: targetY, roomName: room.name }, range: 1 },
+                { visualizePathStyle: { stroke: '#ff8800' }, reusePath: 10 });
+        }
+        logger.setAction(creep, 'nuke-evac');
+        return;
+    }
+
     if (role !== 'fighter' && role !== 'healer' && !isBootstrapper &&
         (!room.controller || !room.controller.my) &&
         !roomFlags.getAllowedRooms()[room.name]) {

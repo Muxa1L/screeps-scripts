@@ -135,3 +135,9 @@ function rampartTargetFor(rcl) {
            module.exports.RAMPART_TARGET_HITS_BY_RCL[8] || 1000000;
 }
 module.exports.rampartTargetFor = rampartTargetFor;
+
+// Nuke detection
+module.exports.NUKE_SAFE_MODE_TICKS = 5000;
+module.exports.NUKE_EVAC_RADIUS = 2;
+module.exports.DESIRED_SQUADS_NUKE = 3;
+module.exports.NUKE_EVENT_TTL = 60000;

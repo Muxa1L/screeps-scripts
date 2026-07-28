@@ -342,6 +342,32 @@ function clearBootstrapRoom(creep) {
     delete ensureCreepMemory(creep).bootstrapRoom;
 }
 
+// --- Nuke detection ---
+
+function ensureNuke() {
+    if (Memory.nuke === undefined) {
+        Memory.nuke = { events: {}, evacuating: {}, stat: { nukesDetected: 0, safeModeTriggered: 0, roomsEvacuated: 0 } };
+    }
+    return Memory.nuke;
+}
+
+function getNukeEvents() {
+    return ensureNuke().events;
+}
+
+function getNukeEvac(roomName) {
+    const nuke = ensureNuke();
+    return nuke.evacuating[roomName] === true;
+}
+
+function setNukeEvac(roomName) {
+    ensureNuke().evacuating[roomName] = true;
+}
+
+function clearNukeEvac(roomName) {
+    delete ensureNuke().evacuating[roomName];
+}
+
 module.exports = {
     getRole: getRole,
     setRole: setRole,
@@ -415,4 +441,9 @@ module.exports = {
     getBootstrapRoom: getBootstrapRoom,
     setBootstrapRoom: setBootstrapRoom,
     clearBootstrapRoom: clearBootstrapRoom,
+    ensureNuke: ensureNuke,
+    getNukeEvents: getNukeEvents,
+    getNukeEvac: getNukeEvac,
+    setNukeEvac: setNukeEvac,
+    clearNukeEvac: clearNukeEvac,
 };
