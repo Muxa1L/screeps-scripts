@@ -500,7 +500,8 @@ function findClosestHostileRoom(fromRoomName) {
     for (const name in Game.rooms) {
         const snap = roomManager.get(name);
         if (!snap || !snap.hostiles || snap.hostiles.length === 0) continue;
-        const dist = Game.map.getRoomLinearDistance(fromRoomName, name) || Infinity;
+        const dist = Game.map.getRoomLinearDistance(fromRoomName, name);
+        if (typeof dist !== 'number') continue;
         if (dist < bestDist) {
             bestDist = dist;
             best = name;

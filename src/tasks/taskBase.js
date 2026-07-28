@@ -93,7 +93,7 @@ function pathScore(creep, target) {
     // order. This is a defense against unbounded growth; the periodic
     // cleanup below is the primary eviction path.
     if (Object.keys(_pathScoreCache).length > PATH_SCORE_MAX_ENTRIES) {
-        evictOldestPathScores(PATH_SCORE_MAX_ENTRIES - Object.keys(_pathScoreCache).length + 1);
+        evictOldestPathScores(Object.keys(_pathScoreCache).length - PATH_SCORE_MAX_ENTRIES);
     }
 
     if (Game.time % PATH_SCORE_CLEANUP_INTERVAL === 0) {

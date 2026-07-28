@@ -18,10 +18,14 @@ OPPOSITE_EXIT[FIND_EXIT_RIGHT] = FIND_EXIT_LEFT;
 OPPOSITE_EXIT[FIND_EXIT_LEFT] = FIND_EXIT_RIGHT;
 OPPOSITE_EXIT[FIND_EXIT] = FIND_EXIT;
 
-function reverseRoute(route) {
+// Produce the reverse of a standard-format route (from→to becomes to→from).
+// `fromRoom` is the original starting room (not present in the route array).
+// Standard format: route[i].room = next room, route[i].exit = exit from previous room.
+function reverseRoute(route, fromRoom) {
     const out = [];
     for (let i = route.length - 1; i >= 0; i--) {
-        out.push({ room: route[i].room, exit: OPPOSITE_EXIT[route[i].exit] || route[i].exit });
+        const nextRoom = i === 0 ? fromRoom : route[i - 1].room;
+        out.push({ room: nextRoom, exit: OPPOSITE_EXIT[route[i].exit] || route[i].exit });
     }
     return out;
 }
@@ -37,6 +41,8 @@ function readCache(from, to) {
         Game.time - entryTo.routes[from].tick < REMOTE_ROUTE_TTL) {
         return entryTo.routes[from].route;
     }
+    // Check 2: the reverse mirror (to→from stored at rr[from].routes[to])
+    // is a standard-format route for the from→to direction.
     const entryFrom = rr[from];
     if (entryFrom && entryFrom.routes && entryFrom.routes[to] &&
         Game.time - entryFrom.routes[to].tick < REMOTE_ROUTE_TTL) {
@@ -54,9 +60,7 @@ function writeCache(from, to, route) {
     // trip hits the cache on the first call instead of recomputing findRoute.
     if (!rr[from]) rr[from] = {};
     if (!rr[from].routes) rr[from].routes = {};
-    if (!rr[from].routes[to]) {
-        rr[from].routes[to] = { route: reverseRoute(route), tick: Game.time };
-    }
+    rr[from].routes[to] = { route: reverseRoute(route, from), tick: Game.time };
 }
 
 function getRoute(from, to, options) {
@@ -76,8 +80,12 @@ function getNextStep(from, to, currentRoomName) {
     if (!route || route.length === 0) return null;
     // If current room is the last route entry's exit room, head to the destination.
     if (currentRoomName === to) return ROUTE_DONE;
+    // route[i].room is the *next* room (the room you enter), and route[i].exit
+    // is the exit from the *previous* room. So to find the step for the creep's
+    // current room, we match the previous room in the chain, not route[i].room.
     for (let i = 0; i < route.length; i++) {
-        if (route[i].room === currentRoomName) {
+        const prevRoom = i === 0 ? from : route[i - 1].room;
+        if (prevRoom === currentRoomName) {
             return route[i];
         }
     }
