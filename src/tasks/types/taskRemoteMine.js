@@ -40,7 +40,11 @@ module.exports = {
 
         if (!sourceRegistry.claimSlot(sourceId, creep.name)) {
             sourceRegistry.releaseClaim(creep.name);
-            return false;
+            // Don't return false — that blacklists the task for 5 ticks and,
+            // if no alternative remote mine task is available, leaves the
+            // miner idling. Return true so the scheduler re-evaluates next
+            // tick and picks up a freshly-freed slot immediately.
+            return true;
         }
 
         const slot = sourceRegistry.slotPos(sourceId, creep.name);

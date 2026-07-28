@@ -140,8 +140,7 @@ function scoreCandidate(roomName) {
     const dist = distanceFromNearestOwned(roomName);
     const swamp = swampRatio(roomName);
     const mineral = mineralPenalty(roomName);
-    const allowBonus = alreadyRemoteTarget(roomName) ? 500 : 0;
-    return sources * 1000 - dist * 100 - mineral - swamp * 200 + allowBonus;
+    return sources * 1000 - dist * 100 - mineral - swamp * 200;
 }
 
 function pickBest(candidates) {

@@ -104,7 +104,6 @@ function shouldRenew(creep) {
     if (creep.ticksToLive >= renewThresholdFor(creep)) return false;
     const used = creep.store.getUsedCapacity(RESOURCE_ENERGY);
     if (used === 0) return true;
-    if (memory.getRole(creep) === 'miner') return true;
     return false;
 }
 
