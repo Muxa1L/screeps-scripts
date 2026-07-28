@@ -160,7 +160,7 @@ function pickBest(candidates) {
 function tick() {
     if (!Memory.flags || !Memory.flags.expansion) return;
     if (Game.time % INTERVAL !== 0 && !(Game.shard && Game.shard.name === 'sim')) return;
-    if (Game.cpu.bucket < 5000 && !(Game.shard && Game.shard.name === 'sim')) return;
+    if (Game.cpu.bucket < 1000 && !(Game.shard && Game.shard.name === 'sim')) return;
 
     const exp = memory.ensureExpansion();
 

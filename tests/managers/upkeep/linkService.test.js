@@ -128,7 +128,21 @@ test('runLink does not transfer when the source link is on cooldown', function (
     });
 });
 
-test('runLink does not transfer when the source link has less than 50 energy', function () {
+test('runLink does not transfer when the source link has less than 10 energy', function () {
+    mocks.resetGame();
+    const sourceLink = makeLink({ id: 'slink', pos: pos(10, 10), energy: 9 });
+    const controllerLink = makeLink({
+        id: 'clink', pos: pos(20, 21), energy: 0, capacity: 800,
+        controllerPos: pos(20, 20), storage: null,
+    });
+    const source = mocks.mockSource({ id: 'src1', pos: pos(11, 10) });
+    withSnap({ sources: [source], links: [sourceLink, controllerLink] }, function () {
+        linkService.runLink(sourceLink);
+        assert.equal(sourceLink._lastTransferTarget, undefined);
+    });
+});
+
+test('runLink transfers at low energy (>=10) so the controller link stays topped up', function () {
     mocks.resetGame();
     const sourceLink = makeLink({ id: 'slink', pos: pos(10, 10), energy: 49 });
     const controllerLink = makeLink({
@@ -138,7 +152,7 @@ test('runLink does not transfer when the source link has less than 50 energy', f
     const source = mocks.mockSource({ id: 'src1', pos: pos(11, 10) });
     withSnap({ sources: [source], links: [sourceLink, controllerLink] }, function () {
         linkService.runLink(sourceLink);
-        assert.equal(sourceLink._lastTransferTarget, undefined);
+        assert.equal(sourceLink._lastTransferTarget, controllerLink);
     });
 });
 

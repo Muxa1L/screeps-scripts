@@ -73,6 +73,7 @@ module.exports = {
         // back to reserved — remoteManager owns that transition.
         if (reservation && reservation.username === me && reservation.ticksToEnd > 500) {
             entry.reservationExpires = Game.time + reservation.ticksToEnd;
+            move.action(creep, 'holding-reservation@' + roomName);
             return true;
         }
 

@@ -43,11 +43,26 @@ module.exports = {
         }
 
         // Ensure we have a slot. If all slots are taken, release the task so
-        // the creep doesn't wander onto another miner's tile.
+        // the creep doesn't wander onto another miner's tile. Don't return
+        // false here — that blacklists the task for 5 ticks and, if no
+        // alternative mine task is available, leaves the miner idling /
+        // falling through to idleFallback where it can be starved out. Keep
+        // the sourceId claimed-less and harvest directly if we have CARRY
+        // (so the energy isn't wasted) and otherwise stay put for a tick so
+        // the scheduler re-picks a different source next tick without the
+        // blacklist penalty.
         if (!sourceRegistry.claimSlot(sourceId, creep.name)) {
             sourceRegistry.releaseClaim(creep.name);
             memory.clearSourceId(creep);
-            return false;
+            const fallbackSource = Game.getObjectById(sourceId);
+            if (fallbackSource && creep.getActiveBodyparts(CARRY) > 0 && creep.pos.isNearTo(fallbackSource)) {
+                creep.harvest(fallbackSource);
+                move.action(creep, 'mine-fallback@' + sourceId);
+            }
+            // Re-evaluate next tick; the 5-tick blacklist from `return false`
+            // is intentionally avoided so a freshly-freed slot is picked up
+            // immediately.
+            return true;
         }
 
         const source = Game.getObjectById(sourceId);
@@ -67,11 +82,12 @@ module.exports = {
         }
 
         if (creep.pos.isNearTo(source)) {
+            const hasCarry = creep.getActiveBodyparts(CARRY) > 0;
             // Offload phase: deposit carried energy into an adjacent container/storage
             // so it doesn't decay on the floor. Only offload when full (or source depleted)
             // to minimize transfer ticks (each transfer replaces one harvest tick).
             const carried = creep.store[RESOURCE_ENERGY] || 0;
-            if (carried > 0 &&
+            if (hasCarry && carried > 0 &&
                 (creep.store.getFreeCapacity(RESOURCE_ENERGY) === 0 || source.energy === 0)) {
                 const deposit = adjacentDeposit(creep, snap);
                 if (deposit) {
@@ -92,8 +108,9 @@ module.exports = {
             // Source depleted: pick up dropped energy on adjacent tiles rather
             // than sitting idle. Self-contained — no role/priority change, slot
             // claim persists. Kept within 2 tiles of the source so the miner can
-            // return to its slot quickly when the source regenerates.
-            if (source.energy === 0 && creep.store.getFreeCapacity(RESOURCE_ENERGY) > 0) {
+            // return to its slot quickly when the source regenerates. Requires
+            // CARRY — a no-CARRY miner can't pick up.
+            if (hasCarry && source.energy === 0 && creep.store.getFreeCapacity(RESOURCE_ENERGY) > 0) {
                 const adjacent = source.room.find(FIND_DROPPED_RESOURCES, {
                     filter: function (r) {
                         return r.resourceType === RESOURCE_ENERGY &&

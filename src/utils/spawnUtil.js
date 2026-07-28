@@ -15,12 +15,20 @@ function nearestSpawn(creep) {
         }
     }
     if (best) return best;
-    const sameRoom = [];
-    for (let j = 0; j < spawns.length; j++) {
-        if (spawns[j].pos.roomName === creep.pos.roomName) sameRoom.push(spawns[j]);
+    // Foreign room: no spawn shares the creep's room. Fall back to linear
+    // room distance so a 1-hop neighbor wins over a 3-hop one; the previous
+    // "sameRoom" loop was unreachable here (same predicate as the best loop)
+    // and fell through to whichever spawn `for…in` hit first.
+    let crossBest = null;
+    let crossRange = Infinity;
+    for (let i = 0; i < spawns.length; i++) {
+        const d = Game.map.getRoomLinearDistance(creep.pos.roomName, spawns[i].pos.roomName);
+        if (d < crossRange) {
+            crossRange = d;
+            crossBest = spawns[i];
+        }
     }
-    if (sameRoom.length > 0) return sameRoom[0];
-    return spawns[0];
+    return crossBest;
 }
 
 function leastBusySpawn(room) {

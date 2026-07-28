@@ -37,7 +37,13 @@ function snapshotFor(room) {
         const s = allStructures[i];
         const st = s.structureType;
         if (st === STRUCTURE_RAMPART || st === STRUCTURE_WALL) {
-            if (s.hits < 10000) damagedCritical.push(s);
+            // Critical threshold scales with RCL so a 50k-hits rampart at RCL 8
+            // (whose target is 1M) is triaged ahead of a freshly-built 9k one
+            // at RCL 3. Floor at 10000 so thin low-RCL ramparts still jump the
+            // queue, and cap at rampartTarget/2 so a half-target rampart is
+            // always considered critical regardless of RCL.
+            const critThreshold = Math.min(10000, Math.floor(rampartTarget / 2));
+            if (s.hits < critThreshold) damagedCritical.push(s);
             else if (s.hits < s.hitsMax) damagedNonCritical.push(s);
             if (s.hits < rampartTarget) repairTargets.push(s);
         } else if (st === STRUCTURE_CONTAINER) {

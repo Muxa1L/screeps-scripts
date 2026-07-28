@@ -27,8 +27,12 @@ function buildSummary() {
     for (const cn in Game.creeps) {
         total++;
         const cr = Game.creeps[cn];
-        const r = memory.getRole(cr) || 'unknown';
-        byRole[r] = (byRole[r] || 0) + 1;
+        // Run the same name-based role inference runCreep does so the
+        // summary counts a freshly-spawned creep under its real role
+        // rather than 'unknown' (runCreep hasn't run yet this tick).
+        let r = memory.getRole(cr);
+        if (!r) r = creepRunner.inferRoleFromName(cr.name);
+        byRole[r || 'unknown'] = (byRole[r || 'unknown'] || 0) + 1;
         const t = memory.getTaskId(cr);
         if (t) {
             const type = t.split(':')[0];

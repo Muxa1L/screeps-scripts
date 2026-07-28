@@ -23,7 +23,12 @@ function runLink(link) {
     const sources = snap ? snap.sources : room.find(FIND_SOURCES);
     if (!isSourceLink(link, sources)) return;
 
-    if (link.store[RESOURCE_ENERGY] < 50) return;
+    // Transfer threshold: keep low enough that the controller link stays
+    // topped up even when source links fill slowly. The previous 50-energy
+    // threshold let a 49-energy source link sit idle while the controller
+    // link starved with storage full. 10 is the minimum that still avoids
+    // single-energy noise transfers.
+    if (link.store[RESOURCE_ENERGY] < 10) return;
     if (link.cooldown > 0) return;
 
     let storageLink = null;

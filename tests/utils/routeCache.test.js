@@ -40,11 +40,11 @@ test('getNextStep returns the correct next exit', function () {
     assert.equal(step.room, 'E2N1');
 });
 
-test('getNextStep returns null when already at destination', function () {
+test('getNextStep returns ROUTE_DONE when already at destination', function () {
     mocks.resetGame();
     Memory.remoteRooms = { E2N1: { routes: { 'E1N1': { route: [{ exit: FIND_EXIT_RIGHT, room: 'E2N1' }], tick: Game.time } } } };
     Game.map.findRoute = function () { return [{ exit: FIND_EXIT_RIGHT, room: 'E2N1' }]; };
 
     const step = routeCache.getNextStep('E1N1', 'E2N1', 'E2N1');
-    assert.equal(step, null);
+    assert.equal(step, routeCache.ROUTE_DONE);
 });

@@ -71,10 +71,10 @@ test('tick transitions scouted room to reserving', function () {
     assert.equal(Memory.remoteRooms['E2N1'].status, 'reserving');
 });
 
-test('tick sets contested status on visible hostiles', function () {
+test('tick sets contested status on visible armed hostiles', function () {
     mocks.resetGame();
     Memory.flags = { remoteMining: true };
-    const hostile = mocks.mockCreep({ name: 'E1', pos: { x: 10, y: 10, roomName: 'E2N1' }, parts: {} });
+    const hostile = mocks.mockCreep({ name: 'E1', pos: { x: 10, y: 10, roomName: 'E2N1' }, parts: { attack: 1 } });
     hostile.hits = 100;
     makeRoom('E2N1', { hostiles: [hostile] });
     Memory.remoteRooms = {
@@ -85,6 +85,22 @@ test('tick sets contested status on visible hostiles', function () {
     };
     remoteManager.tick();
     assert.equal(Memory.remoteRooms['E2N1'].status, 'contested');
+});
+
+test('tick ignores a lone unarmed scout (no false-positive contested)', function () {
+    mocks.resetGame();
+    Memory.flags = { remoteMining: true };
+    const scout = mocks.mockCreep({ name: 'Scout', pos: { x: 10, y: 10, roomName: 'E2N1' }, parts: {} });
+    scout.hits = 100;
+    makeRoom('E2N1', { hostiles: [scout] });
+    Memory.remoteRooms = {
+        'E2N1': {
+            target: 'E2N1', status: 'active',
+            sourceIds: [], containerSiteIds: [], roadSiteIds: [], threats: [],
+        },
+    };
+    remoteManager.tick();
+    assert.equal(Memory.remoteRooms['E2N1'].status, 'active');
 });
 
 test('remoteManager no-op when remoteMining flag is off', function () {

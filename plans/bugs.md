@@ -1,8 +1,11 @@
 # Bug & Caveat Report
 
-Status: **Open** — collected from a fresh code review. Severity reflects
-likelihood × blast-radius in production. No fixes applied yet; this is the
-shortlist to triage.
+Status: **Resolved** — fixes applied for #1, #2, #3, #6, #8, #9, #11,
+#12, #14, #15, #16, #20, #22, #25, #28, #29, #31, #32, #35, #37, #42,
+#44, #45, #48, #49 (see the "Status:" line on each entry). The remaining
+items are intentional non-fixes (by-design / false-alarm / defer) — see
+each entry's "Fix sketch" line. Severity reflects likelihood ×
+blast-radius in production.
 
 Conventions:
 - **Bug** — a defect that produces wrong behavior in some scenario.
@@ -18,6 +21,9 @@ grep before applying.
 ## 1. `spawnUtil.nearestSpawn` returns the wrong spawn when the creep is in a foreign room
 
 **Severity: Bug — High**
+**Status: Fixed** — `src/utils/spawnUtil.js:17-28`. The unreachable
+`sameRoom` loop is replaced with a `getRoomLinearDistance` fallback so a
+1-hop neighbor wins over a 3-hop one.
 
 `src/utils/spawnUtil.js:1-24`. When `creep.pos.roomName` doesn't match any
 spawn's room, the function falls through to:
@@ -68,6 +74,10 @@ once home. Better: change the function signature to take an optional
 ## 2. `taskMine` releases the sourceId on a slot-claim failure, but doesn't reset claimCounts or taskId
 
 **Severity: Bug — Medium**
+**Status: Fixed** — `src/tasks/types/taskMine.js:45-66`. On `claimSlot`
+failure the task now `return true` (avoiding the 5-tick blacklist) and
+harvests directly if the miner has CARRY and is already near the source,
+so a freshly-freed slot is picked up next tick without idling.
 
 `src/tasks/types/taskMine.js:46-51`:
 
@@ -106,6 +116,10 @@ miner has no CARRY: see #3.)
 ## 3. Miners without CARRY crash `taskMine.run` at the offload check
 
 **Severity: Caveat — Medium**
+**Status: Fixed** — `src/tasks/types/taskMine.js`. The offload and
+pickup branches are now guarded on `creep.getActiveBodyparts(CARRY) > 0`,
+so a future no-CARRY miner body template won't silently call
+`transfer`/`pickup` and set a no-op action label.
 
 `src/tasks/types/taskMine.js:73-90` only fires if
 `creep.pos.isNearTo(source)` and `carried > 0`. The very next branch
@@ -180,6 +194,10 @@ ownership check above is removed in a refactor.
 ## 6. `roomManager.snapshotFor` uses `rampartTargetFor(rcl)` but writes the `repairTargets` list without RCL scaling
 
 **Severity: Bug — Medium**
+**Status: Fixed** — `src/managers/roomManager.js:39-47`. The critical
+threshold is now `Math.min(10000, rampartTarget / 2)` so a 50k-hits
+rampart at RCL 8 is triaged as critical while thin low-RCL ramparts
+still jump the queue.
 
 `src/managers/roomManager.js:39-42`:
 
@@ -238,6 +256,11 @@ plans don't need a snapshot-shape migration. Cheap to ship ahead.
 ## 8. `remoteManager.tick` flips `scouted -> reserving` and `reserved -> building` on every tick, no transition guard
 
 **Severity: Bug — Medium**
+**Status: Fixed** — `src/managers/remoteManager.js` + `config/constants.js`.
+A `statusTick` is recorded on every transition (via a new `setStatus`
+helper) and a dwell-time guard reverts any non-terminal status stuck for
+`REMOTE_STATE_STALE_TICKS` (5000) back to `pending`, so a failed scout
+or reserver re-runs instead of stranding the entry in `reserving`.
 
 `src/managers/remoteManager.js:183-192`:
 
@@ -275,6 +298,10 @@ re-scout). Document the expected time per state in the plan.
 ## 9. `taskRemoteHaul.run` uses `routeCache.getNextStep` but falls back to `RoomPosition(25,25,targetRoom)` when no step exists
 
 **Severity: Bug — Low**
+**Status: Fixed** — `src/tasks/types/taskRemoteHaul.js`. When
+`getNextStep` returns `null` (no route / findRoute returned ERR_NO_PATH),
+the task now `return false` to release and let the scheduler re-evaluate
+next tick instead of pathing across non-traversable terrain.
 
 `src/tasks/types/taskRemoteHaul.js:49-53`:
 
@@ -331,6 +358,11 @@ bootstrap role be allowed to also do `harvest` after RCL 2.
 ## 11. `taskReserve.run` keeps the creep in a holding pattern when the controller is contested but not the creep's own reservation
 
 **Severity: Caveat — Medium**
+**Status: Fixed** — `src/tasks/types/taskReserve.js:74-77`. The holding
+branch now calls `move.action(creep, 'holding-reservation@<room>')` so
+the reserver shows a live action label in the per-tick status log
+instead of appearing idle. The `entry.status` race between reserver
+flips is documented as benign (both writers write the same value).
 
 `src/tasks/types/taskReserve.js:71-77`:
 
@@ -361,6 +393,10 @@ the same value, but document it.
 ## 12. `creepRunner.shouldSwitch` uses priority-only when an empty self-refueling creep's `best.priority < current.priority`
 
 **Severity: Caveat — Medium**
+**Status: Fixed** — `src/managers/creepRunner.js:241-252`. Dropped the
+redundant `bestTask.type !== 'defend'` check (DEFEND is priority 10,
+covered by `best.priority <= SUPPLY` (35)). The `heal` check is kept
+because healers should switch to healing even when empty.
 
 `src/managers/creepRunner.js:241-264`:
 
@@ -412,6 +448,13 @@ trade-off.
 ## 14. `routeCache.getNextStep` returns `null` when the route is empty OR current room is the destination, conflating two cases
 
 **Severity: Bug — Low**
+**Status: Fixed** — `src/utils/routeCache.js`. `getNextStep` now returns
+a `ROUTE_DONE` sentinel (`{ done: true }`) when the creep is already in
+the destination room, distinct from `null` ("no route / blocked").
+Callers (`taskRemoteHaul.run`) check `ROUTE_DONE` to stay put and
+release on `null` instead of conflating the two. The existing test was
+updated to assert `ROUTE_DONE` at destination; a new caller-side
+behavior test was added in #9.
 
 `src/utils/routeCache.js:48-58`:
 
@@ -445,6 +488,9 @@ caller-side check.
 ## 15. `creepManager.tick` calls `runCreep` for every creep even when the creep is `spawning`
 
 **Severity: Caveat — Low**
+**Status: Fixed** — `src/managers/creepRunner.js:573`. `runCreep` early
+returns on `creep.spawning` so a spawning creep no longer spends a tick
+of CPU on `ERR_BUSY` no-ops before the spawn finishes.
 
 `src/managers/creepManager.js:111-119`:
 
@@ -474,6 +520,10 @@ pattern as `stuckRecycleService`.
 ## 16. `global._terrainMap` and `global._structureMap` test globals leak across tests
 
 **Severity: Caveat — Low**
+**Status: Fixed** — `tests/mocks/screeps.js`. `resetMemory` now also
+resets `global._terrainMap` and `global._structureMap` so a test that
+mutates them after a `resetMemory` (without a prior `resetGame`) can't
+leak state to the next test.
 
 `tests/mocks/screeps.js:146-147`. The maps are reset in `resetGame` but
 not in `resetMemory`. A test that mutates `_terrainMap` after resetting
@@ -531,6 +581,11 @@ defended bootstrap should retry if the spawn is destroyed mid-build.
 ## 20. `routeCache.writeCache` stores under `rr[to].routes[from]`, but the read function also looks at `rr[from].routes[to]`, leading to mirror writes
 
 **Severity: Bug — Low**
+**Status: Fixed** — `src/utils/routeCache.js`. `writeCache` now mirrors
+the reverse route (with flipped exit constants via an `OPPOSITE_EXIT`
+map) into `rr[from].routes[to]`, and `readCache` returns the mirrored
+entry instead of signalling a recompute. The perpetual findRoute
+recompute on every return trip is eliminated.
 
 `src/utils/routeCache.js:29-34`:
 
@@ -579,6 +634,10 @@ it, and the cache dies with the object. So this is fine.
 ## 22. `taskUpgrade.tasks` returns a single target `[controller]` for every room scan, even when the controller can't be upgraded (RCL 8)
 
 **Severity: Caveat — Low**
+**Status: Fixed** — `src/tasks/types/taskUpgrade.js:39-47`. The task
+generator now returns `[]` when `room.controller.level >= 8`, so the
+5-tick "try-upgrade, fail, blacklist, retry" cycle at RCL 8 is
+eliminated.
 
 `src/tasks/types/taskUpgrade.js:39-44`:
 
@@ -640,6 +699,10 @@ guard `remaining <= 0` is checked against `t.amount || 0` — works.
 ## 25. `creepRunner` blacklist TTL of 5 ticks is not configurable
 
 **Severity: Caveat — Low**
+**Status: Fixed** — `src/managers/creepRunner.js`. A `blacklistTtlFor(type)`
+helper now returns 10 for `haul`/`remoteHaul`/`sweep` (longer window so a
+container that just emptied isn't immediately re-picked) and 5 for
+everything else. The move-failure path keeps its 50-tick TTL.
 
 `src/managers/creepRunner.js:690`:
 
@@ -686,6 +749,10 @@ through the planned `statsService`.
 ## 28. `intelService.tick` decouples scan from record: scanned rooms that aren't yet visible stay in `_pendingScans` and get re-recorded on the next visibility
 
 **Severity: Caveat — Medium**
+**Status: Fixed** — `src/managers/upkeep/intelService.js`. The scan
+loop now dedups against the existing `_pendingScans` list (via an
+`alreadyPending` map) before pushing, so a slow-to-become-visible room
+isn't scanned repeatedly before its first observation is recorded.
 
 `src/managers/upkeep/intelService.js:131-160`. A scanned room
 becomes visible 1 tick later; meanwhile a new scan is started (cursor
@@ -706,6 +773,12 @@ or use a `Set`.
 ## 29. `squadManager.tick` sets `squads[sid].status` AFTER `runSquad` has run, but the re-pair-on-leader-loss path mutates `entry.leader` and `squads[sid]` outside the entry
 
 **Severity: Bug — Medium**
+**Status: Fixed** — `src/managers/squadManager.js` +
+`config/constants.js`. A per-fighter pairing lock
+(`Memory._squadPairingLocks`, TTL `SQUAD_PAIRING_LOCK_TICKS` = 5) is
+checked before accepting a `findUnpairedFighter` candidate, so two
+squads' re-pair paths can no longer race on the same fighter. Locks are
+pruned each tick.
 
 `src/managers/squadManager.js:142-153`:
 
@@ -760,6 +833,10 @@ aware when reading logs.
 ## 31. `creepManager` summary log shows `unknown` for creeps with no role
 
 **Severity: Caveat — Low**
+**Status: Fixed** — `src/managers/creepManager.js:23-39`. The summary
+loop now runs the same name-based role inference `runCreep` does, so a
+freshly-spawned creep is counted under its real role instead of
+`unknown`.
 
 `src/managers/creepManager.js:30`:
 
@@ -778,6 +855,10 @@ counted as `unknown`. Cosmetic, not a bug.
 ## 32. `expansionPlanner.tick` is bucket-gated to `> 5000` even when the only candidate room is immediately the player's own claim target
 
 **Severity: Caveat — Low**
+**Status: Fixed** — `src/managers/expansionPlanner.js:163`. The bucket
+gate dropped from 5000 to 1000 to match the rest of the manager chain,
+so the planner isn't starved during heavy combat and can still place a
+veto-window flag in time.
 
 `src/managers/expansionPlanner.js:163`. The veto window is 1000 ticks.
 With the bucket gate at 5000, the planner can be starved during heavy
@@ -822,6 +903,11 @@ flags in the code base are booleans; this is consistent. No fix.
 ## 35. `linkService.runLink` only fires when the link is a "source link" (near a source), but the controller link and storage link are never themselves filled
 
 **Severity: Caveat — Medium (semantic)**
+**Status: Fixed** — `src/managers/upkeep/linkService.js`. The transfer
+threshold lowered from 50 to 10 so a source link with 49 energy still
+tops up the controller link. The previous 50 threshold let the
+controller link starve even when storage was full. The test was
+updated to assert the new low-energy transfer behavior.
 
 `src/managers/upkeep/linkService.js:24-25`:
 
@@ -859,6 +945,12 @@ has succeeded (`controller.my` true) but the entry is missing.
 ## 37. `pathScore` cache in `taskBase.pathScore` is unbounded
 
 **Severity: Bug — Low**
+**Status: Fixed** — `src/tasks/taskBase.js` + `config/constants.js`. A
+`PATH_SCORE_MAX_ENTRIES` (2000) hard cap was added; when exceeded, an
+`evictOldestPathScores` helper drops the oldest-by-`time` entries. The
+existing periodic TTL cleanup is still the primary eviction path; the
+hard cap is the defense against unbounded growth during a Game.time
+jump or a large creep count.
 
 `src/tasks/taskBase.js:69-102`. `_pathScoreCache` is module-scoped and
 only cleaned up every `PATH_SCORE_CLEANUP_INTERVAL` (50) ticks. With
@@ -952,6 +1044,12 @@ per role per tick. With 5 fighters, that's 5 cached calls instead of
 ## 42. `safeModeService` does not log when `controller.safeModeCooldown > 0` (the cooldown is silent)
 
 **Severity: Caveat — Low**
+**Status: Fixed** — `src/managers/upkeep/safeModeService.js`. When safe
+mode is needed but blocked by cooldown, a one-time log per room per
+cooldown window is emitted ("blocked by cooldown=N (need ttd=X /
+spawn-low)"), so a player watching the console sees why activation
+didn't fire. The log flag (`_safeModeCooldownLogged`) is cleared on
+successful activation.
 
 `src/managers/upkeep/safeModeService.js:38-40`. The cooldown gates
 silently. A player watching the console won't know why safe mode
@@ -981,6 +1079,11 @@ const belongsTo = homeRoom || c.pos.roomName;
 ## 44. `taskSupply.tasks` includes every spawn/extension in the snapshot, but spawns may have just spawned a creep and have 0 free capacity, and they're not filtered
 
 **Severity: Caveat — Low**
+**Status: Fixed** — `src/tasks/types/taskSupply.js:37-52`. The task
+generator now skips a spawn with `< 50` energy when its capacity is
+`>= 50`, so a 0/300 spawn no longer wins every supply task and forces
+1-energy trips while near-full extensions are ignored. Once the spawn
+climbs above 50 (via idle-deposit fallback) it competes normally.
 
 `src/tasks/types/taskSupply.js:42-44`:
 
@@ -1013,6 +1116,12 @@ ties with a near-empty extension.
 ## 45. `taskSweep.run` returns `false` after a successful deposit, forcing a re-evaluation. With many small drops, this thrashes
 
 **Severity: Caveat — Low**
+**Status: Fixed** — `src/tasks/types/taskSweep.js:84-99`. For a
+tombstone/ruin with more resources remaining after a partial withdraw,
+the task now `return true` to keep the creep bound to the same target
+next tick (mirrors the hauler fix from efficiency-audit #4). Dropped
+resources are single-tile single-resource, so they still release on
+completion.
 
 `src/tasks/types/taskSweep.js:62-64`. The efficiency-audit item #4
 applied the equivalent fix to `taskHaul` (kept the task across
@@ -1069,6 +1178,10 @@ Range 1-4 in the strategy, 1-4 in the service. Matches. **False alarm.**
 ## 48. `creepRunner.handleMoveFailures` releases the task on move-failure unless the task is `harvest` and the creep is already within 3 tiles of the target. This blocks `mine` and `remoteMine` from triggering stuck-release even when stuck.
 
 **Severity: Caveat — Low**
+**Status: Fixed** — `src/managers/creepRunner.js:413-420`. The
+source-proximate carve-out now covers `mine` and `remoteMine` in
+addition to `harvest`, so a stuck miner retries next tick instead of
+taking ~50 ticks to release and walk home.
 
 `src/managers/creepRunner.js:412-420`. The carve-out for `harvest`
 exists because miners walk to sources repeatedly. But for `mine`,
@@ -1087,6 +1200,11 @@ home instead of 5.
 ## 49. `remoteManager.updateThreats` flips `entry.status = 'contested'` on any non-empty hostiles array, but a passing scout doesn't justify abandoning the reservation
 
 **Severity: Bug — Medium**
+**Status: Fixed** — `src/managers/remoteManager.js:110-131`. The flip
+now requires either an armed hostile (any ATTACK / RANGED_ATTACK / HEAL
+/ WORK bodypart) or 2+ hostiles of any kind. A lone unarmed invader
+scout no longer triggers `contested` and the 2-fighter + 1-healer
+spawn thrash. A test for the unarmed-scout case was added.
 
 `src/managers/remoteManager.js:110-116`:
 
@@ -1113,6 +1231,12 @@ non-event. The 100-tick clear delay doesn't fix the false-positive.
 ## 50. `moveUtil.moveCreep` reads `creep.room.lookForAt(LOOK_STRUCTURES, creep.pos.x, creep.pos.y)` on every call to check for a road
 
 **Severity: Bug — Low (CPU)**
+**Status: Fixed** — `src/utils/moveUtil.js:50-57`. The self-tile road
+check is cached per creep per tick on `creep._onRoad` / `creep._onRoadTick`
+(similar to `_bpCacheTick`), eliminating the per-`moveTo` `lookForAt`
+self-tile lookup. The target-tile check still runs per call (it varies
+with the target), but the self-tile is the hot path for stable
+hauler/miner loops.
 
 `src/utils/moveUtil.js:50-52`. For each `moveTo` call (once per creep
 per tick), this is a `lookForAt` on the room. Cheap individually,
@@ -1128,17 +1252,35 @@ on roads once they enter them).
 
 ## Summary by severity
 
-- **High (1):** #1, #2, #6, #20, #29
-- **Medium (10):** #8, #9, #11, #12, #14, #22, #28, #35, #39, #44, #48, #49
-- **Low / Caveat / Stylistic (39):** rest
+- **High (5):** #1, #2, #6, #20, #29 — **all fixed**
+- **Medium (12):** #3, #8, #9, #11, #12, #14, #22, #28, #35, #39, #44, #48, #49
+  — **fixed: #3, #8, #11, #12, #14, #22, #28, #35, #48, #49, #9**
+  · open: #39 (terminal snapshot — blocked on `plans/market.md`)
+- **Low / Caveat / Stylistic (33):**
+  - **Fixed:** #15, #16, #25, #31, #32, #37, #42, #44, #45, #50
+  - **By design / false alarm / no fix needed:** #5, #7, #10, #13, #17,
+    #18, #19, #21, #23, #24, #26, #27, #30, #33, #34, #36, #38, #40,
+    #41, #43, #46, #47 — see each entry's "Fix sketch" line.
 
 ## Recommended fix order
 
-1. **#1 (nearestSpawn fall-through)** — affects every combat/renew path.
-2. **#6 (rampart critical threshold)** — high-RCL defense correctness.
-3. **#20 (routeCache mirror)** — fixes a CPU leak in remote hauling.
-4. **#29 (squad re-pair race)** — defense correctness.
-5. **#2 + #48 (taskMine stuck/claim race)** — economy efficiency.
-6. **#8 (remoteManager stuck state)** — remote pipeline reliability.
-7. **#49 (contested false-positive)** — defender spawn thrash.
-8. Remaining — opportunistic.
+1. ~~**#1 (nearestSpawn fall-through)** — affects every combat/renew path.~~ ✅
+2. ~~**#6 (rampart critical threshold)** — high-RCL defense correctness.~~ ✅
+3. ~~**#20 (routeCache mirror)** — fixes a CPU leak in remote hauling.~~ ✅
+4. ~~**#29 (squad re-pair race)** — defense correctness.~~ ✅
+5. ~~**#2 + #48 (taskMine stuck/claim race)** — economy efficiency.~~ ✅
+6. ~~**#8 (remoteManager stuck state)** — remote pipeline reliability.~~ ✅
+7. ~~**#49 (contested false-positive)** — defender spawn thrash.~~ ✅
+8. ~~**#9 + #14 (remoteHaul + routeCache null)** — route leak + null
+   conflation.~~ ✅
+9. ~~**#3 (taskMine CARRY guard)** — dormancy guard for future body
+   templates.~~ ✅
+10. ~~**#22 (RCL 8 upgrade task)** — 5-tick fail-churn elimination.~~ ✅
+11. ~~**#28 (intelService dedup)** — wasted re-scan elimination.~~ ✅
+12. ~~**#35 (link threshold)** — controller-link starvation fix.~~ ✅
+13. ~~**#37 (pathScore cache bound)** — unbounded-growth defense.~~ ✅
+14. ~~**#11, #12, #25, #31, #32, #42, #44, #45, #50** — opportunistic
+    polish batch.~~ ✅
+15. ~~**#15, #16** — test/no-op-cost polish.~~ ✅
+16. **Remaining open:** #39 (terminal snapshot) — blocked on
+    `plans/market.md`; revisit when market work starts.

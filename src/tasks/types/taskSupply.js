@@ -40,9 +40,19 @@ module.exports = {
         for (let i = 0; i < snap.energyStructures.length; i++) {
             const s = snap.energyStructures[i];
             if (s.structureType === STRUCTURE_TOWER) continue;
-            if ((s.store[RESOURCE_ENERGY] || 0) < (s.store.getCapacity(RESOURCE_ENERGY) || 0)) {
-                out.push({ target: s });
-            }
+            const capacity = s.store.getCapacity(RESOURCE_ENERGY) || 0;
+            const energy = s.store[RESOURCE_ENERGY] || 0;
+            if (energy >= capacity) continue;
+            // Skip a spawn with a tiny fill (under 50 energy) when extensions
+            // are also available. A spawn at 0/300 would otherwise win every
+            // supply task (lowest-priority id wins ties in scoreDeposit) and
+            // every supply creep delivers 1 energy per trip while ignoring
+            // near-full extensions. Letting the spawn climb above 50 first
+            // (via idle-deposit fallback) keeps supply creeps on efficient
+            // extension-filling runs. Once the spawn is past 50 it competes
+            // normally.
+            if (s.structureType === STRUCTURE_SPAWN && energy < 50 && capacity >= 50) continue;
+            out.push({ target: s });
         }
         return out;
     },

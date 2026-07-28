@@ -46,10 +46,16 @@ function moveCreep(creep, target, opts) {
 
     // Stable hauler/miner loops benefit from a longer path cache on roads.
     // Combat/follow paths override this with a caller-provided reusePath when
-    // targets change frequently.
-    const selfOnRoad = creep.room && creep.room.lookForAt(LOOK_STRUCTURES, creep.pos.x, creep.pos.y).some(function (s) {
-        return s.structureType === STRUCTURE_ROAD;
-    });
+    // targets change frequently. Cache the lookForAt result per creep per
+    // tick (most creeps stay on roads once they enter them, and the
+    // self-tile check runs on every moveCreep call).
+    if (creep._onRoadTick !== Game.time) {
+        creep._onRoadTick = Game.time;
+        creep._onRoad = creep.room && creep.room.lookForAt(LOOK_STRUCTURES, creep.pos.x, creep.pos.y).some(function (s) {
+            return s.structureType === STRUCTURE_ROAD;
+        });
+    }
+    const selfOnRoad = creep._onRoad;
     const targetOnRoad = pos.roomName === creep.pos.roomName &&
         creep.room && creep.room.lookForAt(LOOK_STRUCTURES, pos.x, pos.y).some(function (s) {
         return s.structureType === STRUCTURE_ROAD;

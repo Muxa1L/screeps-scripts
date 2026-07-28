@@ -240,10 +240,17 @@ function shouldSwitch(creep, current, currentApprox, best) {
     }
     if (best.priority < current.priority) {
         // Empty builders/repairers/upgraders should still switch to combat,
-        // critical supply, or emergency upgrade to defend the room.
+        // critical supply, or emergency upgrade to defend the room. The
+        // `defend` early-exit was previously listed separately but is redundant
+        // with the `best.priority <= SUPPLY` clause below (DEFEND is priority 10,
+        // SUPPLY is 35). Heal is priority 30 — also covered by `<= SUPPLY` — so
+        // the separate `!== 'heal'` check is kept because healers should switch
+        // to healing even when empty (heal doesn't require energy). Only
+        // supply/upgrade are gated because those are self-refueling tasks an
+        // empty creep can't perform.
         const energy = creep.store[RESOURCE_ENERGY] || 0;
         if (energy === 0 && SELF_REFUELING_TASKS[current.type] &&
-            bestTask.type !== 'defend' && bestTask.type !== 'heal' &&
+            bestTask.type !== 'heal' &&
             !(bestTask.type === 'supply' && best.priority <= taskBase.PRIORITY.SUPPLY) &&
             !(bestTask.type === 'upgrade' && best.priority <= taskBase.PRIORITY.SUPPLY)) {
             return false;
@@ -401,6 +408,17 @@ function checkStuck(creep) {
     return true;
 }
 
+function blacklistTtlFor(taskType) {
+    // Default blacklist window for a failed task. Haul and sweep get a
+    // slightly longer window so a container that just emptied (hauler) or
+    // a drop that was just picked up (sweeper) isn't immediately re-picked
+    // by the same creep on the next evaluation. Combat and harvest stay
+    // short so a transient failure (path blocked) recovers quickly.
+    if (taskType === 'haul' || taskType === 'remoteHaul') return 10;
+    if (taskType === 'sweep') return 10;
+    return 5;
+}
+
 function handleMoveFailures(creep, claimCounts) {
     if (memory.getMoveFailures(creep) < MOVE_FAIL_THRESHOLD) return false;
     const taskId = memory.getTaskId(creep);
@@ -410,7 +428,11 @@ function handleMoveFailures(creep, claimCounts) {
         const targetId = parts[2];
         const liveTarget = targetId ? Game.getObjectById(targetId) : null;
         const nearTarget = liveTarget && creep.pos.inRangeTo(liveTarget, 3);
-        if (taskType === 'harvest' && nearTarget) {
+        // Source-proximate tasks (harvest + mine + remoteMine) repeatedly
+        // path to the same source; a transient block shouldn't release the
+        // slot. Without this carve-out a stuck miner takes ~50 ticks to
+        // walk home instead of retrying next tick.
+        if ((taskType === 'harvest' || taskType === 'mine' || taskType === 'remoteMine') && nearTarget) {
             memory.setMoveFailures(creep, 0);
         } else {
             logger.event('creep', '[' + Game.time + '] [unreachable] ' + creep.name + ' releasing task ' + taskId + ' after ' + memory.getMoveFailures(creep) + ' move failures');
@@ -566,6 +588,7 @@ function collectCombatTasks(role) {
 }
 
 function runCreep(creep, context) {
+    if (creep.spawning) return;
     if (!memory.getRole(creep)) {
         memory.setRole(creep, inferRoleFromName(creep.name));
     }
@@ -686,8 +709,10 @@ function runCreep(creep, context) {
         // Blacklist this task briefly so a stale target (e.g. an already-empty
         // sweep pile that preempts build every tick then immediately fails)
         // is not re-picked next tick. Per-creep-per-target, so other targets
-        // of the same type remain available.
-        memory.addFailedTask(creep, assigned.id, 5);
+        // of the same type remain available. TTL is task-type-aware: hauling
+        // and sweeping benefit from a slightly longer blacklist so a container
+        // that just emptied isn't immediately re-picked.
+        memory.addFailedTask(creep, assigned.id, blacklistTtlFor(assigned.type));
         logger.event('creep', '[' + Game.time + '] [release] ' + creep.name + ' finished ' + taskBase.describeTask(assigned));
         releaseTask(creep, context.claimCounts);
         memory.setLastTaskChange(creep, Game.time);

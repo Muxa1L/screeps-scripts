@@ -45,11 +45,17 @@ module.exports = {
         if (energy === 0) {
             if (creep.pos.roomName !== roomName) {
                 const step = routeCache.getNextStep(homeRoom, roomName, creep.pos.roomName);
-                if (step) {
+                if (step === routeCache.ROUTE_DONE) {
+                    // Already at destination (shouldn't happen here since we checked
+                    // roomName above, but guard anyway); fall through to collect.
+                } else if (step) {
                     const exitPos = creep.pos.findClosestByPath(step.exit);
                     if (exitPos) move.moveCreep(creep, exitPos, { visualizePathStyle: { stroke: '#ffffaa' } });
                 } else {
-                    move.moveCreep(creep, { pos: { x: 25, y: 25, roomName: roomName } }, { visualizePathStyle: { stroke: '#ffffaa' } });
+                    // No cached route / findRoute returned ERR_NO_PATH. Release the
+                    // task so the scheduler can re-evaluate next tick instead of
+                    // burning CPU on a room-center path across non-traversable terrain.
+                    return false;
                 }
                 return true;
             }
@@ -74,11 +80,15 @@ module.exports = {
 
         // Energy loaded and not home: path home via cached route.
         const step = routeCache.getNextStep(roomName, homeRoom, creep.pos.roomName);
-        if (step) {
+        if (step === routeCache.ROUTE_DONE) {
+            // Already home (the deposit branch above handles this, but guard).
+            return true;
+        } else if (step) {
             const exitPos = creep.pos.findClosestByPath(step.exit);
             if (exitPos) move.moveCreep(creep, exitPos, { visualizePathStyle: { stroke: '#ffffaa' } });
         } else {
-            move.moveCreep(creep, { pos: { x: 25, y: 25, roomName: homeRoom } }, { visualizePathStyle: { stroke: '#ffffaa' } });
+            // Route blocked: release so the scheduler re-evaluates next tick.
+            return false;
         }
         return true;
     },

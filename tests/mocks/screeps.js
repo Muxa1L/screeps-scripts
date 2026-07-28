@@ -215,6 +215,12 @@ global.Memory = global.Memory || {};
 
 function resetMemory() {
     global.Memory = {};
+    // Also reset the test-only global maps so a test that mutates them after
+    // a resetMemory (without a prior resetGame) doesn't leak state to the next
+    // test. resetGame also resets these, but the order across the suite isn't
+    // documented, so reset them here too for safety.
+    global._terrainMap = {};
+    global._structureMap = {};
 }
 
 let _resetCount = 0;

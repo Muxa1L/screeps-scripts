@@ -62,6 +62,11 @@ module.exports = {
     // Path cache
     PATH_SCORE_TTL: 10,
     PATH_SCORE_CLEANUP_INTERVAL: 50,
+    // Upper bound on path-score cache entries. The cache is module-scoped
+    // and cleaned up every PATH_SCORE_CLEANUP_INTERVAL ticks, but between
+    // cleanups (or after a Game.time jump) it can grow unbounded. Hard-cap
+    // it so a long tick gap or a large creep count can't leak memory.
+    PATH_SCORE_MAX_ENTRIES: 2000,
 
     // Logger state
     MAX_PERIODIC_KEYS: 200,
@@ -85,6 +90,10 @@ module.exports = {
     SQUAD_RETREAT_HP_RATIO: 0.4,
     SQUAD_FORMATION_RANGE: 2,
     SQUAD_TARGET_LATCH_TICKS: 5,
+    // Per-squad pairing lock TTL: once a squad claims an unpaired fighter as
+    // its new leader, other squads skip that fighter for this many ticks to
+    // avoid a last-writer-wins race on findUnpairedFighter.
+    SQUAD_PAIRING_LOCK_TICKS: 5,
     DESIRED_SQUADS_BASE: 1,
     DESIRED_SQUADS_RAID: 3,
 
@@ -102,6 +111,12 @@ module.exports = {
     REMOTE_THREAT_STALE_TICKS: 5000,
     REMOTE_ABANDON_TICKS: 2000,
     REMOTE_ROUTE_TTL: 1000,
+    // Per-state dwell-time guard for remoteManager. A non-terminal status
+    // that lingers longer than this reverts to 'pending' so the scout /
+    // reserver pipeline re-runs instead of sticking the entry in a half-
+    // state forever (e.g. reserver never spawned because of an energy
+    // drought — 'reserving' would otherwise sit indefinitely).
+    REMOTE_STATE_STALE_TICKS: 5000,
 
     // Expansion / multi-room
     EXPANSION_PLANNING_INTERVAL: 1000,

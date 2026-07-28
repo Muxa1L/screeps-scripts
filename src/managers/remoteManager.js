@@ -6,6 +6,7 @@ const REMOTE_MIN_STORAGE_RATIO = constants.REMOTE_MIN_STORAGE_RATIO;
 const REMOTE_MAX_ROOMS = constants.REMOTE_MAX_ROOMS;
 const REMOTE_THREAT_STALE_TICKS = constants.REMOTE_THREAT_STALE_TICKS;
 const REMOTE_ABANDON_TICKS = constants.REMOTE_ABANDON_TICKS;
+const REMOTE_STATE_STALE_TICKS = constants.REMOTE_STATE_STALE_TICKS;
 
 function homeRoomForRemote(remoteRoomName) {
     // For v1 assume the closest owned room by linear distance.
@@ -53,12 +54,19 @@ function canActivate(remoteRoomName) {
     return true;
 }
 
+function setStatus(entry, status) {
+    if (entry.status === status) return;
+    entry.status = status;
+    entry.statusTick = Game.time;
+}
+
 function ensureRemoteRoom(roomName) {
     const rr = memory.ensureRemoteRooms();
     if (!rr[roomName]) {
         rr[roomName] = {
             target: roomName,
             status: 'pending',
+            statusTick: Game.time,
             scoutedTick: 0,
             reservationExpires: 0,
             sourceIds: [],
@@ -107,12 +115,25 @@ function updateThreats(entry) {
             existingById[h.id] = entry.threats[entry.threats.length - 1];
         }
     }
-    if (hostiles.length > 0) {
-        entry.status = 'contested';
+    // A passing scout (lone unarmed invader core) doesn't justify flipping
+    // the room to 'contested' and spawning 2 fighters + 1 healer. Require at
+    // least one hostile with combat bodyparts, or 2+ hostiles of any kind.
+    let armedHostiles = 0;
+    for (let i = 0; i < hostiles.length; i++) {
+        const h = hostiles[i];
+        if ((h.getActiveBodyparts(ATTACK) || 0) > 0 ||
+            (h.getActiveBodyparts(RANGED_ATTACK) || 0) > 0 ||
+            (h.getActiveBodyparts(HEAL) || 0) > 0 ||
+            (h.getActiveBodyparts(WORK) || 0) > 0) {
+            armedHostiles++;
+        }
+    }
+    if (armedHostiles > 0 || hostiles.length >= 2) {
+        setStatus(entry, 'contested');
     } else if (entry.status === 'contested') {
         // Require clear period before returning to active.
         const lastThreat = entry.threats.length > 0 ? entry.threats[entry.threats.length - 1].detectedTick : Game.time;
-        if (Game.time - lastThreat > 100) entry.status = 'active';
+        if (Game.time - lastThreat > 100) setStatus(entry, 'active');
     }
 }
 
@@ -175,19 +196,35 @@ function tick() {
         updateThreats(entry);
         if (entry.status === 'abandoned') continue;
 
+        // Dwell-time guard: a non-terminal status that has sat untouched for
+        // longer than REMOTE_STATE_STALE_TICKS reverts to 'pending' so the
+        // scout / reserver pipeline re-runs. This catches the "scout never
+        // arrived" / "reserver never spawned" stuck states that the previous
+        // unconditional `scouted -> reserving` flip could land in. Existing
+        // entries (pre-fix) may lack statusTick — initialize it on first
+        // observation so the guard activates going forward.
+        if (entry.status !== 'pending' && entry.status !== 'active' &&
+            entry.status !== 'contested' && entry.status !== 'building') {
+            if (typeof entry.statusTick !== 'number') {
+                entry.statusTick = Game.time;
+            } else if (Game.time - entry.statusTick > REMOTE_STATE_STALE_TICKS) {
+                setStatus(entry, 'pending');
+            }
+        }
+
         // `pending` rooms stay pending until the prerequisites are met; the
         // scout task picks them up when canActivate returns true. The flag
         // loop above already created the entry, so there's nothing to do
         // here besides leaving the status alone.
 
         if (entry.status === 'scouted') {
-            entry.status = 'reserving';
+            setStatus(entry, 'reserving');
         }
 
         if (entry.status === 'reserved') {
             if ((entry.containerSiteIds || []).length === 0 && (entry.containerIds || []).length === 0) {
                 queueConstruction(entry);
-                entry.status = 'building';
+                setStatus(entry, 'building');
             }
         }
 
@@ -201,7 +238,7 @@ function tick() {
                     entry.containerIds = containers.map(function (c) { return c.id; });
                     entry.containerSiteIds = [];
                     entry.roadSiteIds = [];
-                    entry.status = 'active';
+                    setStatus(entry, 'active');
                 }
             }
         }
@@ -210,7 +247,7 @@ function tick() {
         if ((entry.status === 'reserved' || entry.status === 'active') &&
             Game.time - (entry.reservationExpires || Game.time) > REMOTE_ABANDON_TICKS &&
             entry.threats.length === 0) {
-            entry.status = 'abandoned';
+            setStatus(entry, 'abandoned');
         }
     }
 }

@@ -6,6 +6,7 @@ const constants = require('../config/constants');
 const SQUAD_RETREAT_HP_RATIO = constants.SQUAD_RETREAT_HP_RATIO;
 const SQUAD_FORMATION_RANGE = constants.SQUAD_FORMATION_RANGE;
 const SQUAD_TARGET_LATCH_TICKS = constants.SQUAD_TARGET_LATCH_TICKS;
+const SQUAD_PAIRING_LOCK_TICKS = constants.SQUAD_PAIRING_LOCK_TICKS;
 
 function isRetreating(creep) {
     return creep.hits < creep.hitsMax * SQUAD_RETREAT_HP_RATIO;
@@ -70,8 +71,34 @@ function runSquad(squadId, leader, medic) {
     return status;
 }
 
+function isPairingLocked(fighterId) {
+    const lock = Memory._squadPairingLocks && Memory._squadPairingLocks[fighterId];
+    return !!lock && Game.time - lock < SQUAD_PAIRING_LOCK_TICKS;
+}
+
+function lockPairing(fighterId) {
+    if (!Memory._squadPairingLocks) Memory._squadPairingLocks = {};
+    Memory._squadPairingLocks[fighterId] = Game.time;
+}
+
+function prunePairingLocks() {
+    if (!Memory._squadPairingLocks) return;
+    let changed = false;
+    for (const fid in Memory._squadPairingLocks) {
+        if (Game.time - Memory._squadPairingLocks[fid] >= SQUAD_PAIRING_LOCK_TICKS) {
+            delete Memory._squadPairingLocks[fid];
+            changed = true;
+        }
+    }
+    // Drop the table entirely once empty so Memory stays tidy.
+    if (changed && Object.keys(Memory._squadPairingLocks).length === 0) {
+        delete Memory._squadPairingLocks;
+    }
+}
+
 function tick() {
     if (!Memory.flags || !Memory.flags.squads) return;
+    prunePairingLocks();
     const squads = memory.ensureSquads();
     const liveById = {};
     for (const name in Game.creeps) {
@@ -141,10 +168,17 @@ function tick() {
         // null leader); the medic will pick up the new leader next tick.
         if (!entry.leader && entry.medic) {
             const spawnManager = require('./spawnManager');
-            const newLeader = spawnManager.findUnpairedFighter();
+            const candidate = spawnManager.findUnpairedFighter();
+            // Skip a fighter another squad claimed this tick / within the
+            // lock window. Without this guard two squads' re-pair paths race
+            // on findUnpairedFighter and the last writer wins, leaving the
+            // other squad's medic paired with a fighter that has already
+            // been re-pointed at the first squad.
+            const newLeader = (candidate && !isPairingLocked(candidate.id)) ? candidate : null;
             if (newLeader) {
                 memory.setSquadId(newLeader, sid);
                 memory.setSquadRole(newLeader, 'leader');
+                lockPairing(newLeader.id);
                 entry.leader = newLeader;
                 squads[sid].leaderId = newLeader.id;
                 squads[sid].status = 'active';

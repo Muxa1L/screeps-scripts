@@ -90,7 +90,17 @@ module.exports = {
                 res = creep.pickup(t);
                 move.action(creep, 'pickup@' + t.id);
             }
-            return res === OK;
+            if (res !== OK) return false;
+            // For a tombstone/ruin with more resources remaining after this
+            // withdraw, keep the task so the creep returns next tick instead
+            // of re-evaluating (mirrors the hauler fix from efficiency-audit
+            // #4). Dropped resources are single-tile single-resource, so
+            // releasing is fine.
+            if (t.store) {
+                const stillRemaining = _.sum(t.store);
+                if (stillRemaining > 0) return true;
+            }
+            return false;
         }
         move.action(creep, 'moving->sweep@' + t.id);
         move.moveCreep(creep, t, { visualizePathStyle: { stroke: '#ffff00' }, exactTile: isDropped });

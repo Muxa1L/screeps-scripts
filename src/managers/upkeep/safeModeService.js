@@ -37,10 +37,26 @@ function runSafeMode() {
         if ((lowHealth || lowTtd) &&
             controller.safeModeAvailable > 0 &&
             !controller.safeMode &&
+            !cooldownClear) {
+            // Cooldown blocks activation. Log once per room per cooldown
+            // window so a player watching the console sees why safe mode
+            // isn't firing, instead of silent gating.
+            const memKey = '_safeModeCooldownLogged';
+            const roomMem = memory.getRoomMemory(rn);
+            if (!roomMem[memKey]) {
+                const reason = controller.safeModeCooldown ? 'cooldown=' + controller.safeModeCooldown : 'memory-cooldown';
+                console.log('[' + Game.time + '] [safe-mode] [' + rn + '] blocked by ' + reason + ' (need ' + (lowTtd ? 'ttd=' + ttd : 'spawn-low') + ')');
+                roomMem[memKey] = Game.time;
+            }
+        }
+        if ((lowHealth || lowTtd) &&
+            controller.safeModeAvailable > 0 &&
+            !controller.safeMode &&
             cooldownClear) {
             const res = controller.activateSafeMode();
             if (res === OK) {
                 memory.getRoomMemory(rn)[SAFE_MODE_MEMORY_KEY] = Game.time;
+                delete memory.getRoomMemory(rn)._safeModeCooldownLogged;
                 console.log('[' + Game.time + '] [safe-mode] [' + rn + '] activate -> ' + res + (lowTtd ? ' (ttd=' + ttd + ')' : ' (spawn-low)'));
             } else if (Game.time % 100 === 0) {
                 console.log('[' + Game.time + '] [safe-mode] [' + rn + '] activate -> ' + res);

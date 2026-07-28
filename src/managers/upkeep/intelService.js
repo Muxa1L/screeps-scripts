@@ -129,6 +129,12 @@ function tick() {
     if (observers.length === 0) return;
 
     const pendingScans = [];
+    const alreadyPending = {};
+    if (intel._pendingScans) {
+        for (let p = 0; p < intel._pendingScans.length; p++) {
+            alreadyPending[intel._pendingScans[p]] = true;
+        }
+    }
     for (let i = 0; i < observers.length; i++) {
         if (intel.scanCursor === undefined || intel.scanCursor === null) intel.scanCursor = 0;
         const cursor = intel.scanCursor % intel.queue.length;
@@ -136,8 +142,14 @@ function tick() {
         intel.scanCursor = cursor + 1;
         const res = observers[i].observeRoom(targetName);
         if (res === OK) {
-            // Intel will be recorded next tick when the room becomes visible.
-            pendingScans.push(targetName);
+            // Dedup so a room that's still pending (not yet visible from a
+            // previous tick's scan) isn't pushed again — without this the
+            // same room can be scanned multiple times before it becomes
+            // visible, and recordIntel runs twice on the same tick (wasted work).
+            if (!alreadyPending[targetName]) {
+                pendingScans.push(targetName);
+                alreadyPending[targetName] = true;
+            }
         }
     }
     if (pendingScans.length > 0) {

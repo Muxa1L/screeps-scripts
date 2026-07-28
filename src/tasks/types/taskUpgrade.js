@@ -38,6 +38,11 @@ module.exports = {
     priorityFor: upgradePriority,
     tasks: function (room, _snap) {
         if (room.controller && room.controller.my) {
+            // At RCL 8 the controller can no longer be upgraded; emitting a
+            // target would cause upgradeController to return ERR_INVALID_TARGET,
+            // the task to release + blacklist for 5 ticks, then re-emit and
+            // re-fail — 5-tick cycles of wasted churn. Skip instead.
+            if (room.controller.level >= 8) return [];
             return [{ target: room.controller }];
         }
         return [];

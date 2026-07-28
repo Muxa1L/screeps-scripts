@@ -4,8 +4,8 @@ A task-queued Screeps AI with a snapshot-driven room model, role-restricted cree
 dispatcher, and a per-tick cap-aware scheduler. Single-room focused; a `room_allow:`
 flag whitelist permits surplus harvesters to commute to sources in adjacent unowned rooms
 (see [In-game flags](#in-game-flags) and [Remote harvest dispatch](#remote-harvest-dispatch)).
-A full remote-mining pipeline (scout / reserve / build / mine / haul / defend) is designed
-but not yet implemented (see `plans/remote-mining.md`).
+A full remote-mining pipeline (scout / reserve / build / mine / haul / defend) is implemented
+and gated behind `Memory.flags.remoteMining` (see [Feature flags](#feature-flags)).
 
 ## Architecture
 
@@ -214,20 +214,44 @@ Example flag names: `haul:controller`, `haul:spawn`, `haul:extensions`, `build:t
 Set these in the game console via `Memory.flags = { <flag>: true }`. Clear
 with `delete Memory.flags.<flag>` or `Memory.flags = {}`.
 
-| Flag             | Effect                                                              |
-|------------------|---------------------------------------------------------------------|
-| `verbose`        | Logger prints every category (overrides `quiet`).                   |
-| `quiet`          | Logger silences all output.                                         |
-| `debugStuck`     | Logs fatigue/move-failure diagnostics for each creep each tick.     |
-| `stuckRecycle`   | Enables the `misc.upkeep` stuck-recycle loop: creeps idle for 200+  |
-|                  | ticks path to a spawn and get recycled. Off by default.             |
-| `disableRoads`   | Skips `planRoads` in the construction planner. Other structures    |
-|                  | (extensions, containers, links, towers, storage) are still planned. |
+Four infrastructure flags (`squads`, `intel`, `remoteMining`, `expansion`)
+are initialized to `false` on first tick by `src/utils/globals.js` and gate
+whole subsystems on. The remaining flags default off (treated as falsy when
+`undefined`) and toggle diagnostics or one-off behavior.
+
+| Flag               | Default      | Effect                                                              |
+|--------------------|--------------|---------------------------------------------------------------------|
+| `verbose`          | off          | Logger prints every category (overrides `quiet`).                    |
+| `quiet`            | off          | Logger silences all output.                                         |
+| `debugStuck`       | off          | Logs fatigue/move-failure diagnostics for each creep each tick.     |
+| `stuckRecycle`     | off          | Enables the `upkeep.stuckRecycle` loop: creeps idle for 200+ ticks  |
+|                    |              | path to a spawn and get recycled.                                   |
+| `disableRoads`     | off          | Skips `planRoads` in the construction planner. Other structures     |
+|                    |              | (extensions, containers, links, towers, storage) are still planned. |
+| `obsoleteRecycle`  | off          | Recycles creeps whose body cost is below the best body tier the     |
+|                    |              | current `energyCapacityAvailable` affords. Drives the harvester →   |
+|                    |              | miner/hauler phase-out: a RCL-3 spawn recycles its RCL-1/2          |
+|                    |              | harvesters so miners spawn in their place rather than waiting for   |
+|                    |              | natural TTL expiry. Without this flag, obsolete creeps live out    |
+|                    |              | their TTL and block the replacement quota slot.                     |
+| `squads`           | `false`      | Enables `squadManager.tick` (fighter/healer pairing, mutual        |
+|                    |              | retreat, target sharing). Required for the squad-based defense      |
+|                    |              | pipeline in `plans/defense.md`.                                     |
+| `intel`            | `false`      | Enables `intelService.tick` (observer-driven room scans recorded    |
+|                    |              | into `Memory.intel.rooms`).                                         |
+| `remoteMining`     | `false`      | Enables `remoteManager.tick` (scout / reserve / build / mine / haul |
+|                    |              | pipeline for foreign rooms). `Memory.flags.remoteMining` is also a  |
+|                    |              | prerequisite for `remotePrerequisitesMet` (RCL ≥ 4, observer, ≥ 2   |
+|                    |              | home sources claimed), so flipping the flag alone doesn't dispatch  |
+|                    |              | remote creeps until those gates pass.                               |
+| `expansion`        | `false`      | Enables `expansionPlanner.tick` (searches for claim targets and     |
+|                    |              | places a `ClaimTarget<room>` flag). Also gates `claimer` /          |
+|                    |              | `bootstrapper` role quotas in `creepsQuotas.expansionRoleQuotas`.   |
 
 Example:
 
 ```js
-Memory.flags = { verbose: true, disableRoads: true };
+Memory.flags = { verbose: true, disableRoads: true, obsoleteRecycle: true, remoteMining: true };
 ```
 
 Per-category log suppression is also available via `Memory.logCategories`:
@@ -235,6 +259,34 @@ Per-category log suppression is also available via `Memory.logCategories`:
 ```js
 Memory.logCategories = { creep: false, summary: false };
 ```
+
+### Harvester → miner/hauler phase-out
+
+The RCL-1/2 economy runs on `harvester` creeps (self-depositing `WORK+CARRY+MOVE`),
+which can drop energy directly into a spawn — necessary because no containers
+exist yet. From RCL 3 onward, `creepsQuotas.QUOTAS` drops the `harvester` quota
+to zero and rolls in `miner: 2` + `hauler: 4+`: miners harvest into containers,
+haulers move the energy to spawns/extensions/storage.
+
+Existing harvesters don't disappear on their own — they live out their TTL.
+Flip `Memory.flags.obsoleteRecycle = true` to recycle them early so the miner
+replacements spawn immediately. The `isObsolete` check
+(`src/managers/creepRunner.js:35-51`) compares each creep's `bodyCostOfCreep`
+against the best body its role can wear for the current spawn
+`energyCapacityAvailable`; a 200-cost harvester at a 300+ energy spawn is
+flagged, walks to the spawn, and recycles. `creepCountByRole` excludes creeps
+marked `_obsoleteRecycling` from the quota, so the replacement miner spawns in
+parallel rather than waiting for the harvester to die. The recycle is
+rate-limited to one per role at a time to avoid starving the spawn queue.
+
+A harvester is still spawned in two narrow fallback cases even with the flag on:
+
+- **Income-continuity guard** (`creepsQuotas.nextRoleToSpawn:196-198`): if both
+  `miner` and `harvester` counts are zero at RCL ≥ 3 (e.g. a raid wiped the
+  mining line), a harvester spawns first because a miner without haulers
+  can't move energy and would deadlock the economy.
+- **RCL 1-2 bootstrapping**: no containers exist, so the harvester's
+  self-deposit is the only viable income source.
 
 ## Bucket gating
 
@@ -296,6 +348,18 @@ the simulator/private server will throw `Identifier has already been declared`.
   populated by `sourceRegistry.ensureRegistry`. Slots are recomputed every 500
   ticks to account for structures built on top of them.
 - `Memory.rooms[name]` - per-room metadata (`lastSeen`, `lastSafeModeActivate`).
+- `Memory.remoteRooms[name]` - per-remote-room pipeline state
+  (`status`, `statusTick`, `scoutedTick`, `reservationExpires`, `sourceIds`,
+  `containerSiteIds`, `containerIds`, `roadSiteIds`, `threats`, `homeRoom`).
+  `status` transitions `pending → scouted → reserving → reserved → building →
+  active` (and `contested` / `abandoned`); a `statusTick` dwell-time guard
+  reverts stuck non-terminal states to `pending` after
+  `REMOTE_STATE_STALE_TICKS`.
+- `Memory.squads[sid]` - per-squad pairing state (`leaderId`, `medicId`,
+  `formedTick`, `status`).
+- `Memory._squadPairingLocks[fighterId]` - per-fighter TTL timestamp set when
+  a squad claims it as a new leader, to prevent cross-squad re-pair races.
+  Pruned each tick after `SQUAD_PAIRING_LOCK_TICKS` expires.
 - `Memory.flags` - feature flags (see above).
 - `Memory.logCategories` - per-category log enable/disable overrides.
 - `Memory.stats.errors[module]` - cumulative error counts per module.
@@ -303,5 +367,22 @@ the simulator/private server will throw `Identifier has already been declared`.
 
 ## Plans
 
-- `plans/remote-mining.md` - design doc for a future remote mining pipeline
-  (scout / reserve / build / mine / haul / defend). Not yet implemented.
+- `plans/remote-mining.md` - design doc for the remote mining pipeline
+  (scout / reserve / build / mine / haul / defend). Implemented and wired into
+  `main.js`; gated behind `Memory.flags.remoteMining` + the per-room
+  prerequisites in `creepsQuotas.remotePrerequisitesMet` (RCL ≥ 4, observer,
+  ≥ 2 home sources claimed).
+- `plans/multi-room.md` - design doc for expansion (claimer → bootstrapper →
+  spawn up). Implemented; gated behind `Memory.flags.expansion`.
+- `plans/defense.md` - design doc for the squad-based defense pipeline
+  (fighter/healer pairing, mutual retreat, target sharing). Implemented;
+  gated behind `Memory.flags.squads`.
+- `plans/efficiency-audit.md` - one-shot audit of the harvest/mine/haul
+  pipeline with fix sketches. Most items applied; see the file's status line.
+- `plans/bugs.md` - living bug & caveat log with severity triage and fix
+  sketches. See it for the current open/complete breakdown.
+- `plans/labs.md`, `plans/market.md`, `plans/power.md`,
+  `plans/highway-mining.md`, `plans/nuke-detection.md`,
+  `plans/auto-discovery.md`, `plans/stats-dashboard.md`, `plans/ci.md`,
+  `plans/testing.md`, `plans/migration-framework.md` - forward design
+  docs; not yet implemented.

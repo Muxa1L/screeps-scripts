@@ -3,6 +3,7 @@ const constants = require('../config/constants');
 
 const PATH_SCORE_TTL = constants.PATH_SCORE_TTL;
 const PATH_SCORE_CLEANUP_INTERVAL = constants.PATH_SCORE_CLEANUP_INTERVAL;
+const PATH_SCORE_MAX_ENTRIES = constants.PATH_SCORE_MAX_ENTRIES;
 
 const TASK_TYPE = {
     DEFEND: 'defend',
@@ -86,10 +87,31 @@ function pathScore(creep, target) {
     const len = path ? path.length : 9999;
     _pathScoreCache[key] = { time: Game.time, length: len };
 
+    // Hard cap: if the cache has grown past PATH_SCORE_MAX_ENTRIES (e.g.
+    // many creeps, or a Game.time jump left stale entries that the periodic
+    // cleanup hasn't run on yet), evict the oldest entries by insertion
+    // order. This is a defense against unbounded growth; the periodic
+    // cleanup below is the primary eviction path.
+    if (Object.keys(_pathScoreCache).length > PATH_SCORE_MAX_ENTRIES) {
+        evictOldestPathScores(PATH_SCORE_MAX_ENTRIES - Object.keys(_pathScoreCache).length + 1);
+    }
+
     if (Game.time % PATH_SCORE_CLEANUP_INTERVAL === 0) {
         cleanupPathScoreCache();
     }
     return len;
+}
+
+function evictOldestPathScores(count) {
+    // evict the `count` entries with the smallest `time` (oldest).
+    const entries = [];
+    for (const k in _pathScoreCache) {
+        entries.push({ key: k, time: _pathScoreCache[k].time });
+    }
+    entries.sort(function (a, b) { return a.time - b.time; });
+    for (let i = 0; i < count && i < entries.length; i++) {
+        delete _pathScoreCache[entries[i].key];
+    }
 }
 
 function cleanupPathScoreCache() {
