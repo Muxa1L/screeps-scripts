@@ -52,6 +52,7 @@ module.exports.loop = function () {
     }
     if (Game.cpu.bucket > 5000 || Game.shard.name === 'sim') {
         assert.safeTickTimed('expansionPlanner', function () { require('./managers/expansionPlanner').tick(); });
+        assert.safeTickTimed('remoteDiscovery', function () { require('./managers/remoteDiscovery').tick(); });
     }
 
     recordCpu();

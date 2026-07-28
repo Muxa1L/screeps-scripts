@@ -141,3 +141,9 @@ module.exports.NUKE_SAFE_MODE_TICKS = 5000;
 module.exports.NUKE_EVAC_RADIUS = 2;
 module.exports.DESIRED_SQUADS_NUKE = 3;
 module.exports.NUKE_EVENT_TTL = 60000;
+
+// Remote auto-discovery
+module.exports.REMOTE_DISCOVERY_INTERVAL = 5000;
+module.exports.REMOTE_AUTO_DISCOVERY_CAP = 2;
+module.exports.REMOTE_AUTO_MIN_DISTANCE = 1;
+module.exports.REMOTE_AUTO_VETO_TICKS = 1000;
