@@ -79,7 +79,15 @@ function runTower(tower) {
     if (energy >= TOWER_MIN_REPAIR_ENERGY) {
         let damaged = null;
         if (snap && snap.repairTargets && snap.repairTargets.length > 0) {
-            damaged = closestByRangeFrom(tower.pos, snap.repairTargets);
+            // Towers should not waste energy repairing roads — leave that to
+            // creep repairers. Filter roads out of the snapshot list.
+            const nonRoad = [];
+            for (let i = 0; i < snap.repairTargets.length; i++) {
+                if (snap.repairTargets[i].structureType !== STRUCTURE_ROAD) {
+                    nonRoad.push(snap.repairTargets[i]);
+                }
+            }
+            damaged = closestByRangeFrom(tower.pos, nonRoad);
         } else {
             // Defensive fallback (snap null in unowned rooms — shouldn't
             // happen for an owned tower, but keeps the function safe).
@@ -91,7 +99,6 @@ function runTower(tower) {
                     }
                     if (s.hits >= s.hitsMax) return false;
                     return s.structureType === STRUCTURE_CONTAINER ||
-                           s.structureType === STRUCTURE_ROAD ||
                            s.structureType === STRUCTURE_SPAWN ||
                            s.structureType === STRUCTURE_EXTENSION;
                 },

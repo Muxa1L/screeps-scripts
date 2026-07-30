@@ -29,7 +29,7 @@ src/
     creepManager.js  - per-creep task selection + dispatch (thin scheduler)
     creepRunner.js   - task switching, assignment, renew/recycle helpers
     spawnManager.js  - quota-driven spawning + emergency defender spawning
-    upkeepManager.js - towers, links, safe mode, memory cleanup, stuck recycle
+    upkeepManager.js - towers (attack/heal/repair, roads excluded), links, safe mode, memory cleanup, stuck recycle
   economy/
     sourceRegistry.js - per-source mining slots with claim/release
     creepsBodies.js   - tiered body templates per role, cost-aware selection
@@ -40,7 +40,7 @@ src/
     strategies/*.js        - one strategy per structure type
   services/
     energyService.js  - shared source selection (storage/containers/dropped/harvest)
-    depositService.js - shared deposit selection (spawn/extension/tower/storage/container)
+    depositService.js - shared deposit selection (spawn/extension/tower/storage/container, source-adjacent containers excluded)
   tasks/
     taskBase.js       - task model, distance heuristics, path-score cache
     taskBaseClass.js  - TaskType wrapper around plain data-driven specs
@@ -73,6 +73,9 @@ For each creep, `creepManager.runCreep`:
    target id is added to a per-creep failed-task blacklist for ~5 ticks
    (`memory.addFailedTask`), and the creep re-evaluates next tick. This stops
    a stale target from preempting a good task every tick only to fail on run.
+   Haulers and sweepers carrying energy are never switched to other tasks —
+   they must deliver their load first, preventing mid-load trips across the
+   room to chase a different source.
 
 Non-combat creeps in rooms the player does not own are sent home instead of
 taking tasks there: a harvester that dips across a border would otherwise pick
@@ -160,7 +163,11 @@ task to be released cleanly instead of throwing. Applied to: `taskDefend`,
 - `src/services/depositService.js` centralizes deposit selection for haulers,
   sweepers, and suppliers, with a configurable priority order and per-resource
   handling. Containers marked with a `haul:` flag are chosen before other
-  deposits so energy can be staged closer to where it is needed.
+  deposits so energy can be staged closer to where it is needed. Containers
+  adjacent to sources (within range 2) are excluded from deposit candidates —
+  those are haul sources, not deposit targets. Source links are no longer
+  deposit targets; they are filled by miners and drained by `linkService` into
+  controller/storage links, which haulers then withdraw from.
 - `src/utils/memorySchema.js` provides safe typed accessors for all
   `creep.memory` and `Memory` keys used by the AI. All setters initialize
   missing parent objects so callers never have to guard against undefined

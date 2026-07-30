@@ -8,7 +8,6 @@ const plannerUtils = require('../plannerUtils');
 // and lower priority than protecting the buildings themselves).
 const CRITICAL_TYPES = [
     STRUCTURE_SPAWN,
-    STRUCTURE_EXTENSION,
     STRUCTURE_TOWER,
     STRUCTURE_STORAGE,
     STRUCTURE_LINK,

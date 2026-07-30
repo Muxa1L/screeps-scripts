@@ -1,7 +1,6 @@
 const taskBase = require('../tasks/taskBase');
 const move = require('../utils/moveUtil');
 const roomFlags = require('../utils/roomFlags');
-const linkService = require('../managers/upkeep/linkService');
 
 const DEPOSIT_PRIORITY = {
     [STRUCTURE_SPAWN]: 1,
@@ -38,6 +37,23 @@ function findDeposit(creep, snapshot, options) {
     if (resourceType === RESOURCE_ENERGY) {
         const candidates = [];
         const priorityIds = roomFlags.getPriorityContainerIds(creep.pos.roomName);
+        // Build a set of source-adjacent container IDs so haulers never deposit
+        // into containers that sit next to sources — those are haul sources,
+        // not deposit targets. A container within range 2 of any source is
+        // considered a source container.
+        const sourceContainerIds = {};
+        if (snapshot.sources && snapshot.containers) {
+            for (let s = 0; s < snapshot.sources.length; s++) {
+                const src = snapshot.sources[s];
+                for (let c = 0; c < snapshot.containers.length; c++) {
+                    const con = snapshot.containers[c];
+                    if (src.pos && con.pos && src.pos.roomName === con.pos.roomName &&
+                        Math.abs(src.pos.x - con.pos.x) <= 2 && Math.abs(src.pos.y - con.pos.y) <= 2) {
+                        sourceContainerIds[con.id] = true;
+                    }
+                }
+            }
+        }
         // Use snapshot objects directly — roomManager.snapshotFor stores live
         // structure references from room.find, valid for the whole tick. The
         // per-candidate Game.getObjectById re-fetches were redundant;
@@ -58,23 +74,9 @@ function findDeposit(creep, snapshot, options) {
                 const c = snapshot.containers[i];
                 if (excludeId && c.id === excludeId) continue;
                 if (excludeTypes[STRUCTURE_CONTAINER]) continue;
+                if (sourceContainerIds[c.id]) continue; // don't deposit into source containers
                 if (!structureNeedsEnergy(c)) continue;
                 candidates.push(c);
-            }
-        }
-        // Source links are a last-resort deposit (tier 6, below containers).
-        // Only source links qualify — controller/storage links are filled by
-        // the link-to-link transfer in linkService, not by haulers. Filling a
-        // source link beams the energy to the controller/storage link next
-        // tick, keeping the hauler loop moving when the room is saturated.
-        if (snapshot.links) {
-            const sources = snapshot.sources || [];
-            for (let i = 0; i < snapshot.links.length; i++) {
-                const l = snapshot.links[i];
-                if (excludeTypes[STRUCTURE_LINK]) continue;
-                if (!structureNeedsEnergy(l)) continue;
-                if (!linkService.isSourceLink(l, sources)) continue;
-                candidates.push(l);
             }
         }
         if (candidates.length === 0) return null;

@@ -8,6 +8,7 @@ module.exports = {
     type: 'haul',
     priority: taskBase.PRIORITY.HAUL,
     requirements: { carry: 1 },
+    cap: 2,
     capFor: function (room, snap) {
         const rcl = (snap.controller && snap.controller.level) || 1;
         return Math.min(6, 1 + Math.floor((snap.energyStructures ? snap.energyStructures.length : 0) / 5) + Math.floor(rcl / 2));
@@ -50,7 +51,6 @@ module.exports = {
         if (energy > 0 && (freeCapacity === 0 || !depositService.structureNeedsEnergy(container) || hauledFrom === container.id)) {
             const deposit = depositService.findDeposit(creep, snap, {
                 excludeId: container.id,
-                excludeTypes: { [STRUCTURE_TOWER]: true },
             });
             if (!deposit) {
                 // No deposit available; keep hauling this container rather than
@@ -79,6 +79,43 @@ module.exports = {
             if (wRes === OK) memory.setHauledFrom(creep, container.id);
             // After a successful withdraw, keep the task so the next tick delivers.
             return wRes === OK;
+        }
+
+        // Source container is empty but creep still has room — try to top up
+        // from nearby containers and dropped energy before heading to delivery.
+        if (freeCapacity > 0) {
+            const priorityIds = roomFlags.getPriorityContainerIds(creep.pos.roomName);
+            // Check adjacent containers (range 3) that are haul sources.
+            for (let i = 0; i < snap.containers.length; i++) {
+                const c = snap.containers[i];
+                if (c.id === container.id) continue;
+                if (priorityIds[c.id]) continue;
+                const cEnergy = c.store[RESOURCE_ENERGY] || 0;
+                if (cEnergy < 100) continue;
+                const cRange = taskBase.approxDistance(creep, c);
+                if (cRange > 3) continue;
+                move.action(creep, 'withdraw@' + c.id);
+                const r = creep.withdraw(c, RESOURCE_ENERGY);
+                if (r === ERR_NOT_IN_RANGE) {
+                    move.moveCreep(creep, c, { visualizePathStyle: { stroke: '#ffffaa' } });
+                    return true;
+                }
+                if (r === OK) return true;
+            }
+            // Check adjacent dropped energy (range 3).
+            for (let i = 0; i < snap.droppedEnergy.length; i++) {
+                const d = snap.droppedEnergy[i];
+                if ((d.amount || 0) < 50) continue;
+                const dRange = taskBase.approxDistance(creep, d);
+                if (dRange > 3) continue;
+                move.action(creep, 'pickup@' + d.id);
+                const r = creep.pickup(d);
+                if (r === ERR_NOT_IN_RANGE) {
+                    move.moveCreep(creep, d, { visualizePathStyle: { stroke: '#ffffaa' }, exactTile: true });
+                    return true;
+                }
+                if (r === OK) return true;
+            }
         }
 
         return false;

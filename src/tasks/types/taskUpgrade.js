@@ -56,9 +56,9 @@ module.exports = {
         const energy = creep.store[RESOURCE_ENERGY] || 0;
         const workParts = creep.getActiveBodyparts(WORK);
         const perTickCost = workParts * UPGRADE_CONTROLLER_POWER;
-        // Require a full load before walking to the controller. Only fall back to
-        // partial cargo when no energy source is available.
-        const minEnergy = Math.max(perTickCost, Math.floor(capacity * 0.5));
+        // Keep upgrading until we don't have enough for one more tick — no
+        // point walking to a source with energy still in the tank.
+        const minEnergy = perTickCost;
         const isFull = energy >= capacity;
         if (isFull) memory.clearRefueling(creep);
         if (memory.getRefueling(creep) || energy < minEnergy) {

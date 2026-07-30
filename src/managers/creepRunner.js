@@ -238,6 +238,13 @@ function shouldSwitch(creep, current, currentApprox, best) {
         if (energy < capacity) return false;
     }
     if (best.priority < current.priority) {
+        // A hauler/sweeper carrying energy must deliver it before switching
+        // to any other task — no point chasing a sweep pile or a different
+        // haul source with a full tank.
+        if ((current.type === 'haul' || current.type === 'sweep') &&
+            (creep.store[RESOURCE_ENERGY] || 0) > 0) {
+            return false;
+        }
         // Empty builders/repairers/upgraders should still switch to combat,
         // critical supply, or emergency upgrade to defend the room. The
         // `defend` early-exit was previously listed separately but is redundant
@@ -264,6 +271,10 @@ function shouldSwitch(creep, current, currentApprox, best) {
     // so keep a smaller margin to avoid lock-in while still preventing rapid
     // target flipping.
     if (current.type === 'haul' || current.type === 'sweep') {
+        // Don't switch haul/sweep targets mid-load — a creep that has already
+        // collected partial energy should deliver it, not chase a better source.
+        const carried = creep.store[RESOURCE_ENERGY] || 0;
+        if (carried > 0) return false;
         return best.approx <= currentApprox - 3;
     }
     return best.approx < currentApprox;
