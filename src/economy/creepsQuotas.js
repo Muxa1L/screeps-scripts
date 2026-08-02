@@ -4,18 +4,18 @@ const QUOTAS = {
     0: {},
     1: { harvester: 3, upgrader: 1 },
     2: { harvester: 5, upgrader: 2 },
-    3: { miner: 2, hauler: 4, upgrader: 3, builder: 1 },
-    4: { miner: 2, hauler: 3, upgrader: 3, builder: 2 },
-    5: { miner: 2, hauler: 4, upgrader: 3, builder: 2 },
-    6: { miner: 2, hauler: 5, upgrader: 3, builder: 2 },
-    7: { miner: 2, hauler: 6, upgrader: 3, builder: 2 },
-    8: { miner: 2, hauler: 8, upgrader: 3, builder: 2 },
+    3: { miner: 2, hauler: 3, distributor: 2, upgrader: 3, builder: 1 },
+    4: { miner: 2, hauler: 2, distributor: 3, upgrader: 3, builder: 2 },
+    5: { miner: 2, hauler: 3, distributor: 2, upgrader: 3, builder: 2 },
+    6: { miner: 2, hauler: 4, distributor: 3, upgrader: 3, builder: 2 },
+    7: { miner: 2, hauler: 5, distributor: 3, upgrader: 3, builder: 2 },
+    8: { miner: 2, hauler: 6, distributor: 4, upgrader: 3, builder: 2 },
 };
 
 // Order in which roles are evaluated for spawning. `claimer` and
 // `bootstrapper` are gated by the `Memory.flags.expansion` flag (see
 // expansionRoleQuotas / dynamicQuota) and stay inert until that flag is on.
-const ROLE_PRIORITY = ['fighter', 'healer', 'scout', 'reserver', 'claimer', 'bootstrapper', 'miner', 'hauler', 'remoteMiner', 'remoteHauler', 'remoteBuilder', 'harvester', 'builder', 'upgrader'];
+const ROLE_PRIORITY = ['fighter', 'healer', 'scout', 'reserver', 'claimer', 'bootstrapper', 'miner', 'hauler', 'distributor', 'remoteMiner', 'remoteHauler', 'remoteBuilder', 'harvester', 'builder', 'upgrader'];
 
 const URGENT_TTD = constants.URGENT_TTD;
 const CRITICAL_TTD = constants.CRITICAL_TTD;

@@ -5,6 +5,7 @@ const harvestSpec = require('./types/taskHarvest');
 const mineSpec = require('./types/taskMine');
 const haulSpec = require('./types/taskHaul');
 const supplySpec = require('./types/taskSupply');
+const distributeSpec = require('./types/taskDistributor');
 const sweepSpec = require('./types/taskSweep');
 const buildSpec = require('./types/taskBuild');
 const repairSpec = require('./types/taskRepair');
@@ -26,6 +27,7 @@ const registry = {
     mine: new TaskType(mineSpec),
     haul: new TaskType(haulSpec),
     supply: new TaskType(supplySpec),
+    distribute: new TaskType(distributeSpec),
     sweep: new TaskType(sweepSpec),
     build: new TaskType(buildSpec),
     repair: new TaskType(repairSpec),

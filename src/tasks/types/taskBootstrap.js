@@ -92,7 +92,7 @@ module.exports = {
         }
 
         // Empty: harvest from the local source.
-        const sources = room.find(FIND_SOURCES_ACTIVE);
+        const sources = room.find(FIND_SOURCES);
         if (sources.length === 0) return true;
         const source = creep.pos.findClosestByPath(sources);
         if (!source) return true;

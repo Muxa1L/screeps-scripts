@@ -110,6 +110,7 @@ function shouldRenew(creep) {
 function inferRoleFromName(name) {
     if (name.indexOf('Miner') === 0) return 'miner';
     if (name.indexOf('Hauler') === 0) return 'hauler';
+    if (name.indexOf('Distributor') === 0) return 'distributor';
     if (name.indexOf('Upgrader') === 0) return 'upgrader';
     if (name.indexOf('Builder') === 0) return 'builder';
     if (name.indexOf('Fighter') === 0) return 'fighter';
@@ -205,7 +206,7 @@ function bestTaskFor(creep, taskList, snap, claimCounts, capCache) {
             if (!depositAvailable(snap, excludeId)) continue;
         }
         if (isEmpty && !SELF_REFUELING_TASKS[t.type] &&
-            t.type !== 'harvest' && t.type !== 'sweep' && t.type !== 'haul' && t.type !== 'mine' && t.type !== 'supply') continue;
+            t.type !== 'harvest' && t.type !== 'sweep' && t.type !== 'haul' && t.type !== 'mine' && t.type !== 'supply' && t.type !== 'distribute') continue;
         const failedTasks = memory.getFailedTasks(creep);
         if (failedTasks[t.id]) continue;
         let priority = t.priority;
@@ -241,7 +242,7 @@ function shouldSwitch(creep, current, currentApprox, best) {
         // A hauler/sweeper carrying energy must deliver it before switching
         // to any other task — no point chasing a sweep pile or a different
         // haul source with a full tank.
-        if ((current.type === 'haul' || current.type === 'sweep') &&
+        if ((current.type === 'haul' || current.type === 'sweep' || current.type === 'distribute') &&
             (creep.store[RESOURCE_ENERGY] || 0) > 0) {
             return false;
         }
@@ -305,6 +306,15 @@ function selectTask(creep, taskList, snap, currentTask, claimCounts, capCache) {
     let assigned = currentTask;
     if (best) {
         if (!currentTask) {
+            // A full hauler/sweeper with no current task must deliver its load
+            // before picking up a new collection task — otherwise it chases
+            // sweep/haul targets with a full tank and never deposits.
+            const carried = creep.store[RESOURCE_ENERGY] || 0;
+            const cap = creep.store.getCapacity(RESOURCE_ENERGY) || 0;
+            if (cap > 0 && carried > 0 && carried >= cap * 0.5 &&
+                (best.task.type === 'haul' || best.task.type === 'sweep' || best.task.type === 'distribute')) {
+                return null;
+            }
             assigned = best.task;
         } else if (shouldSwitch(creep, currentTask, currentApprox, best)) {
             assigned = best.task;
@@ -472,6 +482,16 @@ function combatIdleFallback(creep) {
             return;
         }
         delete creep.memory.squadLeader;
+        // Healer without a leader has no attack capability — retreat to
+        // the nearest spawn instead of charging at hostiles.
+        if (memory.getRole(creep) === 'healer') {
+            const retreatSpawn = spawnUtil.nearestSpawn(creep);
+            if (retreatSpawn && !creep.pos.isNearTo(retreatSpawn)) {
+                logger.setAction(creep, 'retreat->spawn@' + retreatSpawn.id);
+                move.moveCreep(creep, retreatSpawn, { visualizePathStyle: { stroke: '#888888' }, reusePath: 10 });
+            }
+            return;
+        }
     }
 
     // Move toward the nearest visible hostile, or any known hostile position from snapshots.
@@ -528,11 +548,11 @@ function runIdleFallback(creep, room) {
     }
     const capacity = creep.store.getCapacity(RESOURCE_ENERGY) || 0;
     const energy = creep.store[RESOURCE_ENERGY] || 0;
-    // A full creep with CARRY should deposit its energy, not force-harvest.
-    // Without this, a full harvester with no available task is sent to a
-    // source by forceTargetFor and harvests into a full carry — the energy
-    // is wasted. Deposit to the nearest structure that needs energy first.
-    if (capacity > 0 && energy >= capacity) {
+    // A creep with CARRY and energy should deposit it, not force-harvest.
+    // Without this, a partial-load hauler with no available task is sent to a
+    // source by forceTargetFor and harvests into a partially-full carry —
+    // the energy is wasted. Deposit to the nearest structure that needs energy.
+    if (capacity > 0 && energy > 0) {
         const snap = roomManager.get(room.name);
         if (snap) {
             const deposit = depositService.findDeposit(creep, snap, {});

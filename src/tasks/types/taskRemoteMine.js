@@ -48,7 +48,7 @@ module.exports = {
         }
 
         const slot = sourceRegistry.slotPos(sourceId, creep.name);
-        if (slot && !creep.pos.isEqualTo(slot)) {
+        if (slot && (creep.pos.x !== slot.x || creep.pos.y !== slot.y)) {
             move.moveCreep(creep, slot, { visualizePathStyle: { stroke: '#ffaa00' }, exactTile: true });
             return true;
         }

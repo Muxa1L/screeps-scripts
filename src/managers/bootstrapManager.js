@@ -12,7 +12,7 @@ function tick() {
     if (!Memory.flags || !Memory.flags.expansion) return;
     if (!Memory.rooms) return;
 
-    const exp = memory.getExpansion();
+    const exp = memory.ensureExpansion();
     for (const roomName in Memory.rooms) {
         const m = Memory.rooms[roomName];
         if (!m || !m.bootstrapping) continue;

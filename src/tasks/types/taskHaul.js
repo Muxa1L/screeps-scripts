@@ -51,6 +51,7 @@ module.exports = {
         if (energy > 0 && (freeCapacity === 0 || !depositService.structureNeedsEnergy(container) || hauledFrom === container.id)) {
             const deposit = depositService.findDeposit(creep, snap, {
                 excludeId: container.id,
+                excludeTypes: { [STRUCTURE_SPAWN]: true, [STRUCTURE_EXTENSION]: true, [STRUCTURE_TOWER]: true },
             });
             if (!deposit) {
                 // No deposit available; keep hauling this container rather than

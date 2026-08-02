@@ -50,6 +50,19 @@ const HAULER_BODIES = {
     2400: [CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE],
 };
 
+// Distributors are local haulers (storage → spawn/extensions/towers).
+// They travel short distances on roads, so they use a 1:2 CARRY:MOVE
+// ratio — fewer carry parts (smaller loads) but 2x speed on roads and
+// 1x on plains (unladen). This keeps the base fed with low latency.
+const DISTRIBUTOR_BODIES = {
+    100:  [CARRY, MOVE],
+    200:  [CARRY, MOVE, MOVE],
+    400:  [CARRY, CARRY, MOVE, MOVE, MOVE, MOVE],
+    600:  [CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE],
+    800:  [CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE],
+    1200: [CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE],
+};
+
 const HARVESTER_BODIES = {
     200:  [WORK, CARRY, MOVE],
     300:  [WORK, CARRY, CARRY, MOVE, MOVE],
@@ -131,6 +144,7 @@ const BOOTSTRAPPER_BODIES = {
 const BODIES = {
     miner:    MINER_BODIES,
     hauler:   HAULER_BODIES,
+    distributor: DISTRIBUTOR_BODIES,
     harvester:HARVESTER_BODIES,
     upgrader: UPGRADER_BODIES,
     fighter:  FIGHTER_BODIES,
@@ -170,6 +184,7 @@ function bodySummary() {
     return {
         miner: Object.keys(MINER_BODIES).map(Number),
         hauler: Object.keys(HAULER_BODIES).map(Number),
+        distributor: Object.keys(DISTRIBUTOR_BODIES).map(Number),
         harvester: Object.keys(HARVESTER_BODIES).map(Number),
         upgrader: Object.keys(UPGRADER_BODIES).map(Number),
         fighter: Object.keys(FIGHTER_BODIES).map(Number),

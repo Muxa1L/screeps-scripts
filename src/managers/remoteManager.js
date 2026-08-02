@@ -123,8 +123,7 @@ function updateThreats(entry) {
         const h = hostiles[i];
         if ((h.getActiveBodyparts(ATTACK) || 0) > 0 ||
             (h.getActiveBodyparts(RANGED_ATTACK) || 0) > 0 ||
-            (h.getActiveBodyparts(HEAL) || 0) > 0 ||
-            (h.getActiveBodyparts(WORK) || 0) > 0) {
+            (h.getActiveBodyparts(HEAL) || 0) > 0) {
             armedHostiles++;
         }
     }

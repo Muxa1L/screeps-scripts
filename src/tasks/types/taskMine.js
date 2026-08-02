@@ -119,7 +119,7 @@ module.exports = {
                     },
                 });
                 if (adjacent.length > 0) {
-                    if (creep.pos.isEqualTo(adjacent[0])) {
+                    if (creep.pos.isEqualTo(adjacent[0].pos)) {
                         creep.pickup(adjacent[0]);
                         move.action(creep, 'mine->pickup@' + adjacent[0].id);
                         return true;

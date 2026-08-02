@@ -1,6 +1,7 @@
 const ROLES = {
     miner:    { allowed: ['mine'] },
-    hauler:   { allowed: ['haul', 'sweep', 'supply'] },
+    hauler:   { allowed: ['haul', 'sweep'] },
+    distributor: { allowed: ['distribute', 'sweep'] },
     fighter:  { allowed: ['defend', 'remoteDefend'] },
     healer:   { allowed: ['heal'] },
     builder:  { allowed: ['build', 'repair', 'upgrade'] },

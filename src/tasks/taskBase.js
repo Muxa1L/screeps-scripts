@@ -84,7 +84,7 @@ function pathScore(creep, target) {
         swampCost: 5,
         plainCost: 2,
     });
-    const len = path ? path.length : 9999;
+    const len = Array.isArray(path) ? path.length : 9999;
     _pathScoreCache[key] = { time: Game.time, length: len };
 
     // Hard cap: if the cache has grown past PATH_SCORE_MAX_ENTRIES (e.g.

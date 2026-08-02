@@ -42,7 +42,7 @@ function snapshotFor(room) {
             // at RCL 3. Floor at 10000 so thin low-RCL ramparts still jump the
             // queue, and cap at rampartTarget/2 so a half-target rampart is
             // always considered critical regardless of RCL.
-            const critThreshold = Math.min(10000, Math.floor(rampartTarget / 2));
+            const critThreshold = Math.max(10000, Math.floor(rampartTarget / 2));
             if (s.hits < critThreshold) damagedCritical.push(s);
             else if (s.hits < s.hitsMax) damagedNonCritical.push(s);
             if (s.hits < rampartTarget) repairTargets.push(s);
