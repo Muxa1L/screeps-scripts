@@ -86,8 +86,8 @@ module.exports = {
                 entry.reservationExpires = Game.time + (controller.reservation ? controller.reservation.ticksToEnd : 0);
                 return true;
             }
-            if (res === ERR_INVALID_TARGET && controller.level > 0) {
-                // Controller is claimed by someone; abort.
+            if (res === ERR_INVALID_TARGET) {
+                // Controller is claimed or reserved by someone else; abort.
                 entry.status = 'contested';
                 return false;
             }

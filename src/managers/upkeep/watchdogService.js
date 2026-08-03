@@ -8,7 +8,8 @@ function runWatchdog() {
     let maxAge = 0;
     for (const cname in Memory.creeps) {
         if (Game.creeps[cname]) continue;
-        const diedAt = Memory.creeps[cname]._diedAt || 0;
+        const diedAt = Memory.creeps[cname]._diedAt;
+        if (diedAt === undefined) continue;
         const age = Game.time - diedAt;
         if (age > maxAge) maxAge = age;
     }

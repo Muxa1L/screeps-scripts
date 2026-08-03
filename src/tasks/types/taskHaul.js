@@ -18,6 +18,7 @@ module.exports = {
     },
     tasks: function (room, snap) {
         const out = [];
+        if (!snap.containers) return out;
         const priorityIds = roomFlags.getPriorityContainerIds(room.name);
         for (let i = 0; i < snap.containers.length; i++) {
             const c = snap.containers[i];
@@ -78,13 +79,14 @@ module.exports = {
                 return true;
             }
             if (wRes === OK) memory.setHauledFrom(creep, container.id);
-            // After a successful withdraw, keep the task so the next tick delivers.
-            return wRes === OK;
+            // After a successful withdraw (or fill-then-stop on a partial
+            // source), keep the task so the next tick delivers.
+            return wRes === OK || wRes === ERR_FULL;
         }
 
         // Source container is empty but creep still has room — try to top up
         // from nearby containers and dropped energy before heading to delivery.
-        if (freeCapacity > 0) {
+        if (freeCapacity > 0 && snap.containers) {
             const priorityIds = roomFlags.getPriorityContainerIds(creep.pos.roomName);
             // Check adjacent containers (range 3) that are haul sources.
             for (let i = 0; i < snap.containers.length; i++) {
@@ -104,7 +106,7 @@ module.exports = {
                 if (r === OK) return true;
             }
             // Check adjacent dropped energy (range 3).
-            for (let i = 0; i < snap.droppedEnergy.length; i++) {
+            if (snap.droppedEnergy) for (let i = 0; i < snap.droppedEnergy.length; i++) {
                 const d = snap.droppedEnergy[i];
                 if ((d.amount || 0) < 50) continue;
                 const dRange = taskBase.approxDistance(creep, d);

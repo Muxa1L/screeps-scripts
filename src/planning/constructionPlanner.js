@@ -23,6 +23,7 @@ const MAX_SITES_PER_TICK = constants.MAX_SITES_PER_TICK;
 const PLANNING_INTERVAL = constants.PLANNING_INTERVAL;
 
 function planRoom(room) {
+    if (!room.controller) return;
     const limits = STRUCTURE_LIMITS[room.controller.level];
     if (!limits) return;
 

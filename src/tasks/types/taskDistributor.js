@@ -56,7 +56,9 @@ module.exports = {
                 move.moveCreep(creep, storage, { visualizePathStyle: { stroke: '#aaffaa' } });
                 return true;
             }
-            return wRes === OK;
+            // ERR_FULL means we filled the creep before storage emptied —
+            // treat that as "withdrew successfully, proceed to delivery".
+            return wRes === OK || wRes === ERR_FULL;
         }
 
         // Delivery phase: transfer to the target structure.

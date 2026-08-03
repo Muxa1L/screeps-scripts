@@ -132,7 +132,8 @@ function tick() {
     const alreadyPending = {};
     if (intel._pendingScans) {
         for (let p = 0; p < intel._pendingScans.length; p++) {
-            alreadyPending[intel._pendingScans[p]] = true;
+            const e = intel._pendingScans[p];
+            alreadyPending[typeof e === 'string' ? e : e.roomName] = true;
         }
     }
     for (let i = 0; i < observers.length; i++) {
@@ -153,19 +154,23 @@ function tick() {
         }
     }
     if (pendingScans.length > 0) {
-        intel._pendingScans = (intel._pendingScans || []).concat(pendingScans);
+        const stamped = pendingScans.map(function (rn) { return { roomName: rn, tick: Game.time }; });
+        intel._pendingScans = (intel._pendingScans || []).concat(stamped);
     }
 
     // If any previously scanned rooms are now visible, record their intel.
+    // Drop entries that have been pending too long (room never became visible).
     if (intel._pendingScans && intel._pendingScans.length > 0) {
         const stillPending = [];
         for (let i = 0; i < intel._pendingScans.length; i++) {
-            const roomName = intel._pendingScans[i];
+            const entry = intel._pendingScans[i];
+            const roomName = typeof entry === 'string' ? entry : entry.roomName;
+            const queuedTick = typeof entry === 'string' ? 0 : entry.tick;
             if (Game.rooms[roomName]) {
                 const snap = roomManager.get(roomName);
                 recordIntel(roomName, snap);
-            } else {
-                stillPending.push(roomName);
+            } else if (Game.time - queuedTick < INTEL_QUEUE_REFRESH_TICKS * 5) {
+                stillPending.push({ roomName: roomName, tick: queuedTick || Game.time });
             }
         }
         intel._pendingScans = stillPending;

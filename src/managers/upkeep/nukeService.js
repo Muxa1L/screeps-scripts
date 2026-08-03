@@ -29,16 +29,22 @@ function tick() {
         for (let i = 0; i < nukes.length; i++) {
             const n = nukes[i];
             const timeToLand = n.timeToLand;
+            const eventKey = rn + ':' + n.id;
 
-            // Record the event
-            nuke.events[rn] = {
-                detectedTick: Game.time,
-                pos: { x: n.pos.x, y: n.pos.y },
-                timeToLand: timeToLand,
-                launchRoomName: n.launchRoomName || null,
-                safeModeActivated: false,
-            };
-            nuke.stat.nukesDetected++;
+            // Record the event only on first detection (not every tick)
+            if (!nuke.events[eventKey]) {
+                nuke.events[eventKey] = {
+                    detectedTick: Game.time,
+                    pos: { x: n.pos.x, y: n.pos.y },
+                    timeToLand: timeToLand,
+                    launchRoomName: n.launchRoomName || null,
+                    safeModeActivated: false,
+                };
+                nuke.stat.nukesDetected++;
+            } else {
+                // Update timeToLand for the existing event
+                nuke.events[eventKey].timeToLand = timeToLand;
+            }
 
             // Trigger safe mode if landing soon and safe mode is available
             if (timeToLand < NUKE_SAFE_MODE_TICKS &&
@@ -47,7 +53,7 @@ function tick() {
                 !controller.safeModeCooldown) {
                 const res = controller.activateSafeMode();
                 if (res === OK) {
-                    nuke.events[rn].safeModeActivated = true;
+                    nuke.events[eventKey].safeModeActivated = true;
                     nuke.stat.safeModeTriggered++;
                     console.log('[' + Game.time + '] [nuke] [' + rn + '] safe mode activated for nuke @' +
                         n.pos.x + ',' + n.pos.y + ' timeToLand=' + timeToLand);

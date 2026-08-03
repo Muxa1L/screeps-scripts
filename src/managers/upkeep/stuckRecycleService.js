@@ -43,6 +43,7 @@ function runStuckRecycle() {
         }
 
         const lastChange = memory.getLastTaskChange(c);
+        if (lastChange === 0) continue; // fresh creep, never assigned a task
         if (Game.time - lastChange < STUCK_THRESHOLD) continue;
         if (c.getActiveBodyparts(MOVE) === 0) continue;
 

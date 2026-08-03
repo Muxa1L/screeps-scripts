@@ -43,7 +43,9 @@ function runSafeMode() {
             // isn't firing, instead of silent gating.
             const memKey = '_safeModeCooldownLogged';
             const roomMem = memory.getRoomMemory(rn);
-            if (!roomMem[memKey]) {
+            // Don't re-log while the native cooldown is still active —
+            // it lasts ~20000 ticks and would spam the console every tick.
+            if (!roomMem[memKey] || (controller.safeModeCooldown && roomMem[memKey] < Game.time - 100)) {
                 const reason = controller.safeModeCooldown ? 'cooldown=' + controller.safeModeCooldown : 'memory-cooldown';
                 console.log('[' + Game.time + '] [safe-mode] [' + rn + '] blocked by ' + reason + ' (need ' + (lowTtd ? 'ttd=' + ttd : 'spawn-low') + ')');
                 roomMem[memKey] = Game.time;

@@ -101,7 +101,14 @@ function transferTo(creep, target, resourceType) {
         move.moveCreep(creep, live, { visualizePathStyle: { stroke: '#ffffff' } });
         return true;
     }
-    return res === OK && (creep.store[resourceType] || 0) > 0;
+    // Return true if the creep is still carrying any of this resource after
+    // the transfer attempt. ERR_FULL / OK-with-remaining both mean "still
+    // carrying" — caller should re-pick a target. Only OK with empty store
+    // (stillCarrying=false) signals the task can be released.
+    if (res === OK || res === ERR_FULL) {
+        return (creep.store[resourceType] || 0) > 0;
+    }
+    return false;
 }
 
 module.exports = {
