@@ -555,7 +555,14 @@ function runIdleFallback(creep, room) {
     if (capacity > 0 && energy > 0) {
         const snap = roomManager.get(room.name);
         if (snap) {
-            const deposit = depositService.findDeposit(creep, snap, {});
+            // Haulers should only deposit to storage/priority-containers in idle
+            // fallback — energy structures are the distributor's job. Without
+            // this, haulers dump into spawn/extensions and storage stays empty.
+            const opts = {};
+            if (role === 'hauler') {
+                opts.excludeTypes = { [STRUCTURE_SPAWN]: true, [STRUCTURE_EXTENSION]: true, [STRUCTURE_TOWER]: true };
+            }
+            const deposit = depositService.findDeposit(creep, snap, opts);
             if (deposit) {
                 logger.setAction(creep, 'idle-deposit@' + deposit.id);
                 depositService.transferTo(creep, deposit, RESOURCE_ENERGY);
