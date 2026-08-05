@@ -90,10 +90,11 @@ function moveCreep(creep, target, opts) {
     // `exactTile`, which is consumed inside moveCreep above, not forwarded).
     // A caller-provided reusePath overrides the road-based default.
     const callerReuse = opts && opts.reusePath !== undefined ? opts.reusePath : null;
+    const callerIgnoreCreeps = opts && opts.ignoreCreeps !== undefined ? opts.ignoreCreeps : null;
     const moveOpts = {
         reusePath: callerReuse !== null ? callerReuse : (roadReuse !== null ? roadReuse : 10),
         maxOps: 2000,
-        ignoreCreeps: false,
+        ignoreCreeps: callerIgnoreCreeps !== null ? callerIgnoreCreeps : false,
         costCallback: function (roomName, matrix) {
             if (roomName !== creep.pos.roomName) return matrix;
             // In 1-tile corridors creeps can deadlock if they all plan around

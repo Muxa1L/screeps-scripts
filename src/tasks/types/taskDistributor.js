@@ -53,7 +53,7 @@ module.exports = {
             move.action(creep, 'withdraw@storage');
             const wRes = creep.withdraw(storage, RESOURCE_ENERGY);
             if (wRes === ERR_NOT_IN_RANGE) {
-                move.moveCreep(creep, storage, { visualizePathStyle: { stroke: '#aaffaa' } });
+                move.moveCreep(creep, storage, { visualizePathStyle: { stroke: '#aaffaa' }, ignoreCreeps: true });
                 return true;
             }
             // ERR_FULL means we filled the creep before storage emptied —

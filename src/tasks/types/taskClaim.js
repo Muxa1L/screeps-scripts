@@ -28,7 +28,9 @@ module.exports = {
         if (!exp || !exp.target || exp.target.roomName !== roomName) return false;
 
         if (creep.pos.roomName !== roomName) {
-            move.moveCreep(creep, { pos: { x: 25, y: 25, roomName: roomName } }, { visualizePathStyle: { stroke: '#ff00ff' } });
+            // Cross-room movement — ignore creeps so the claimer doesn't get
+            // stuck behind friendly creeps clustering near the spawn.
+            creep.moveTo(new RoomPosition(25, 25, roomName), { reusePath: 10, ignoreCreeps: true, visualizePathStyle: { stroke: '#ff00ff' } });
             return true;
         }
 

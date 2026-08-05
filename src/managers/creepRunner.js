@@ -242,7 +242,7 @@ function shouldSwitch(creep, current, currentApprox, best) {
         // A hauler/sweeper carrying energy must deliver it before switching
         // to any other task — no point chasing a sweep pile or a different
         // haul source with a full tank.
-        if ((current.type === 'haul' || current.type === 'sweep' || current.type === 'distribute') &&
+        if ((current.type === 'haul' || current.type === 'sweep') &&
             (creep.store[RESOURCE_ENERGY] || 0) > 0) {
             return false;
         }
@@ -309,10 +309,12 @@ function selectTask(creep, taskList, snap, currentTask, claimCounts, capCache) {
             // A full hauler/sweeper with no current task must deliver its load
             // before picking up a new collection task — otherwise it chases
             // sweep/haul targets with a full tank and never deposits.
+            // distribute is a DELIVERY task (storage→spawn/ext/tower), not a
+            // collection task — a full distributor should take it.
             const carried = creep.store[RESOURCE_ENERGY] || 0;
             const cap = creep.store.getCapacity(RESOURCE_ENERGY) || 0;
             if (cap > 0 && carried > 0 && carried >= cap * 0.5 &&
-                (best.task.type === 'haul' || best.task.type === 'sweep' || best.task.type === 'distribute')) {
+                (best.task.type === 'haul' || best.task.type === 'sweep')) {
                 return null;
             }
             assigned = best.task;
