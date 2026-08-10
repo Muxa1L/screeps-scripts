@@ -148,6 +148,17 @@ module.exports = {
 
 function adjacentDeposit(creep, snap) {
     if (!snap) return null;
+    // Prefer links first — they send energy to the storage link, keeping
+    // the haul pipeline flowing without haulers walking to the source.
+    if (snap.links) {
+        for (let i = 0; i < snap.links.length; i++) {
+            const l = snap.links[i];
+            if (creep.pos.inRangeTo(l, 1) &&
+                (l.store.getFreeCapacity(RESOURCE_ENERGY) || 0) > 0) {
+                return l;
+            }
+        }
+    }
     if (snap.storage && creep.pos.inRangeTo(snap.storage, 1) &&
         (snap.storage.store.getFreeCapacity(RESOURCE_ENERGY) || 0) > 0) {
         return snap.storage;
