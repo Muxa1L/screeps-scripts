@@ -49,7 +49,7 @@ module.exports = {
 
         // Delivery phase: we have energy (or are full) and a deposit exists.
         // Always exclude the source container so we don't dump back into it.
-        if (energy > 0 && (freeCapacity === 0 || !depositService.structureNeedsEnergy(container) || hauledFrom === container.id)) {
+        if (energy > 0 && (freeCapacity === 0 || !depositService.structureNeedsEnergy(container) || hauledFrom === container.id || (container.store[RESOURCE_ENERGY] || 0) === 0)) {
             const deposit = depositService.findDeposit(creep, snap, {
                 excludeId: container.id,
                 excludeTypes: { [STRUCTURE_SPAWN]: true, [STRUCTURE_EXTENSION]: true, [STRUCTURE_TOWER]: true },

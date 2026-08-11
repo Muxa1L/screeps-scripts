@@ -95,13 +95,16 @@ function moveCreep(creep, target, opts) {
         reusePath: callerReuse !== null ? callerReuse : (roadReuse !== null ? roadReuse : 10),
         maxOps: 2000,
         ignoreCreeps: callerIgnoreCreeps !== null ? callerIgnoreCreeps : false,
-        costCallback: function (roomName, matrix) {
+    };
+    // Only add creep-avoidance costCallback when ignoreCreeps is false.
+    // When ignoreCreeps is true, the caller wants to path THROUGH creeps,
+    // so adding 255 to creep tiles would defeat the purpose.
+    if (!moveOpts.ignoreCreeps) {
+        moveOpts.costCallback = function (roomName, matrix) {
             if (roomName !== creep.pos.roomName) return matrix;
-            // In 1-tile corridors creeps can deadlock if they all plan around
-            // static positions. Only mark creeps that are not immediately behind
-            // us (same direction of travel) and are not already adjacent to the
-            // target, so head-on traffic gets routed around while following
-            // traffic is allowed through.
+            // Lower the cost of following creeps (behind us) from the
+            // default 255 to 10 so the pathfinder can route through them
+            // in 1-tile corridors. Head-on creeps keep 255.
             const positions = getCreepPositions(roomName);
             const selfX = creep.pos.x;
             const selfY = creep.pos.y;
@@ -113,19 +116,15 @@ function moveCreep(creep, target, opts) {
                 const dx = p.x - selfX;
                 const dy = p.y - selfY;
                 // If a creep is directly behind us it is probably following;
-                // don't block it.
+                // lower its cost so the pathfinder can route through.
                 if ((Math.abs(targetX - selfX) > Math.abs(targetY - selfY) && dx !== 0 && (targetX - selfX) * dx < 0) ||
                     (Math.abs(targetY - selfY) >= Math.abs(targetX - selfX) && dy !== 0 && (targetY - selfY) * dy < 0)) {
-                    continue;
-                }
-                const existing = matrix.get(p.x, p.y);
-                if (existing === 0) {
-                    matrix.set(p.x, p.y, CREEP_COST);
+                    matrix.set(p.x, p.y, 10);
                 }
             }
             return matrix;
-        },
-    };
+        };
+    }
     if (opts && opts.visualizePathStyle) moveOpts.visualizePathStyle = opts.visualizePathStyle;
 
     const mvr = creep.moveTo(target, moveOpts);

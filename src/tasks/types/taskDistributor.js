@@ -1,6 +1,7 @@
 const taskBase = require('../taskBase');
 const depositService = require('../../services/depositService');
 const move = require('../../utils/moveUtil');
+const linkService = require('../../managers/upkeep/linkService');
 
 // Distributor: a local hauler that withdraws energy from storage and
 // delivers it to spawn/extensions/towers. Unlike taskSupply (which can
@@ -43,22 +44,39 @@ module.exports = {
 
         const creepEnergy = creep.store[RESOURCE_ENERGY] || 0;
 
-        // Refuel phase: withdraw from storage only.
+        // Refuel phase: withdraw from storage or storage link.
         if (creepEnergy === 0) {
-            if (!snap || !snap.storage) return false;
-            const storageEnergy = snap.storage.store[RESOURCE_ENERGY] || 0;
-            if (storageEnergy < 50) return false;
-            const storage = Game.getObjectById(snap.storage.id);
-            if (!storage) return false;
-            move.action(creep, 'withdraw@storage');
-            const wRes = creep.withdraw(storage, RESOURCE_ENERGY);
+            if (!snap) return false;
+            // Find a withdraw source: storage link first (it fills up from
+            // source links and has no other consumer), then storage.
+            const sources = snap.sources || [];
+            let withdrawTarget = null;
+            if (snap.links) {
+                for (let i = 0; i < snap.links.length; i++) {
+                    const l = snap.links[i];
+                    if (linkService.isSourceLink(l, sources)) continue;
+                    if ((l.store[RESOURCE_ENERGY] || 0) >= 50) {
+                        withdrawTarget = l;
+                        break;
+                    }
+                }
+            }
+            if (!withdrawTarget && snap.storage) {
+                const storageEnergy = snap.storage.store[RESOURCE_ENERGY] || 0;
+                if (storageEnergy >= 50) {
+                    withdrawTarget = Game.getObjectById(snap.storage.id);
+                }
+            }
+            if (!withdrawTarget) return false;
+            move.action(creep, 'withdraw@' + withdrawTarget.id);
+            const wRes = creep.withdraw(withdrawTarget, RESOURCE_ENERGY);
             if (wRes === ERR_NOT_IN_RANGE) {
-                move.moveCreep(creep, storage, { visualizePathStyle: { stroke: '#aaffaa' }, ignoreCreeps: true });
+                move.moveCreep(creep, withdrawTarget, { visualizePathStyle: { stroke: '#aaffaa' }, ignoreCreeps: true });
                 return true;
             }
-            // ERR_FULL means we filled the creep before storage emptied —
-            // treat that as "withdrew successfully, proceed to delivery".
-            return wRes === OK || wRes === ERR_FULL;
+            // OK, ERR_FULL, or ERR_NOT_ENOUGH_RESOURCES (transient race) —
+            // keep the task so the creep retries next tick.
+            return wRes === OK || wRes === ERR_FULL || wRes === ERR_NOT_ENOUGH_RESOURCES;
         }
 
         // Delivery phase: transfer to the target structure.

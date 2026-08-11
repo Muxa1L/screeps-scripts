@@ -168,7 +168,7 @@ function tryDefenders(spawn, hostiles) {
     return false;
 }
 
-function tryRoleSpawn(spawn, role) {
+function tryRoleSpawn(spawn, role, allowCheapFallback) {
     const cap = spawn.room.energyCapacityAvailable;
     const available = spawn.room.energyAvailable;
     const prefix = role.charAt(0).toUpperCase() + role.slice(1);
@@ -187,12 +187,15 @@ function tryRoleSpawn(spawn, role) {
         const fallback = bodies.bestBodyForAvailable(role, cap, available);
         if (fallback) return spawnBody(spawn, fallback.body, name, role, extraMemFor(role, spawn));
     }
-    // If we got here from the emergency bootstrap path (storage has energy
-    // but spawn can't afford the full body), try a cheaper body for the
-    // same role rather than giving up.
-    const cheap = bodies.bestBodyForAvailable(role, cap, available);
-    if (cheap && cheap.cost < (target ? target.cost : Infinity)) {
-        return spawnBody(spawn, cheap.body, name, role, extraMemFor(role, spawn));
+    // Only allow cheap body fallback from the emergency bootstrap path
+    // (storage has energy but spawn can't afford the full body). Without
+    // this gate, the spawn would always spawn underpowered creeps instead
+    // of waiting for enough energy for the full body.
+    if (allowCheapFallback) {
+        const cheap = bodies.bestBodyForAvailable(role, cap, available);
+        if (cheap && cheap.cost < (target ? target.cost : Infinity)) {
+            return spawnBody(spawn, cheap.body, name, role, extraMemFor(role, spawn));
+        }
     }
     return false;
 }
@@ -278,7 +281,7 @@ function tryRunForSpawn(spawn) {
                 const altTarget = bodies.bestBodyForAvailable(alt, room.energyCapacityAvailable, room.energyAvailable);
                 if (altTarget && (counts[alt] || 0) < (quotas.quotasFor(rcl)[alt] || 0)) {
                     summaryLog(spawn, counts, rcl);
-                    tryRoleSpawn(spawn, alt);
+                    tryRoleSpawn(spawn, alt, true);
                     return;
                 }
             }

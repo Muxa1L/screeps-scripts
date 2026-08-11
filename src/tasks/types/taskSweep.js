@@ -51,9 +51,10 @@ module.exports = {
                 if (creep.store[rtype] <= 0) continue;
                 const deposit = depositService.findDeposit(creep, snap, { resourceType: rtype });
                 if (!deposit) {
-                    // No deposit available; release the task so the creep can
-                    // idle and pick up sweep/haul again when a deposit opens.
-                    return false;
+                    // No deposit for this resource type — try the next one
+                    // before giving up (e.g. storage full for energy but has
+                    // room for minerals).
+                    continue;
                 }
                 if (depositService.transferTo(creep, deposit, rtype)) {
                     // Still carrying this resource type; keep sweeping/depositing.
