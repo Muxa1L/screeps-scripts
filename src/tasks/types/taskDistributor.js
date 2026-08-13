@@ -16,17 +16,35 @@ module.exports = {
         return creep.getActiveBodyparts(CARRY) > 0;
     },
     tasks: function (room, snap) {
-        // No storage or storage is empty — nothing to distribute.
-        if (!snap.storage || (snap.storage.store[RESOURCE_ENERGY] || 0) < 50) return [];
+        // Need either storage or a non-source link with energy to distribute.
+        const storageEnergy = snap.storage ? (snap.storage.store[RESOURCE_ENERGY] || 0) : 0;
+        const sources = snap.sources || [];
+        let storageLinkEnergy = 0;
+        if (snap.links) {
+            for (let i = 0; i < snap.links.length; i++) {
+                if (!linkService.isSourceLink(snap.links[i], sources)) {
+                    storageLinkEnergy += snap.links[i].store[RESOURCE_ENERGY] || 0;
+                }
+            }
+        }
+        if (storageEnergy < 50 && storageLinkEnergy < 50) return [];
         const out = [];
-        if (snap.energyStructures) {
+        // If storage link has energy and storage has room, add a task to
+        // move energy from storage link → storage (keeps the link network
+        // flowing and centralizes energy in storage for distributors).
+        if (snap.storage && snap.links && storageLinkEnergy >= 50) {
+            const storageFree = snap.storage.store.getFreeCapacity(RESOURCE_ENERGY) || 0;
+            if (storageFree > 50) {
+                out.push({ target: snap.storage, fromLink: true });
+            }
+        }
+        // Normal distribute tasks: fill spawn/extensions/towers from storage.
+        if (storageEnergy >= 50 && snap.energyStructures) {
             for (let i = 0; i < snap.energyStructures.length; i++) {
                 const s = snap.energyStructures[i];
                 const capacity = s.store.getCapacity(RESOURCE_ENERGY) || 0;
                 const energy = s.store[RESOURCE_ENERGY] || 0;
                 if (energy >= capacity) continue;
-                // Skip a spawn with a tiny fill (under 50) when extensions
-                // are also available — same logic as taskSupply.
                 if (s.structureType === STRUCTURE_SPAWN && energy < 50 && capacity >= 50) continue;
                 out.push({ target: s });
             }
@@ -38,11 +56,42 @@ module.exports = {
         if (!target || !target.id) return false;
         const live = Game.getObjectById(target.id);
         if (!live || live.store === undefined) return false;
+
+        const creepEnergy = creep.store[RESOURCE_ENERGY] || 0;
+
+        // Link-to-storage task: withdraw from storage link, deposit into storage.
+        if (task.fromLink) {
+            const storageFree = live.store.getFreeCapacity(RESOURCE_ENERGY) || 0;
+            if (storageFree <= 0) return false; // storage full
+            if (creepEnergy === 0) {
+                // Find the storage link (non-source link with energy).
+                if (!snap || !snap.links) return false;
+                const sources = snap.sources || [];
+                let linkTarget = null;
+                for (let i = 0; i < snap.links.length; i++) {
+                    const l = snap.links[i];
+                    if (linkService.isSourceLink(l, sources)) continue;
+                    if ((l.store[RESOURCE_ENERGY] || 0) >= 50) { linkTarget = l; break; }
+                }
+                if (!linkTarget) return false;
+                move.action(creep, 'withdraw@link->storage');
+                const wRes = creep.withdraw(linkTarget, RESOURCE_ENERGY);
+                if (wRes === ERR_NOT_IN_RANGE) {
+                    move.moveCreep(creep, linkTarget, { visualizePathStyle: { stroke: '#aaffaa' }, ignoreCreeps: true });
+                    return true;
+                }
+                return wRes === OK || wRes === ERR_FULL || wRes === ERR_NOT_ENOUGH_RESOURCES;
+            }
+            // Deposit into storage.
+            const stillCarrying = depositService.transferTo(creep, live, RESOURCE_ENERGY);
+            if (!stillCarrying) return false;
+            return true;
+        }
+
+        // Normal distribute: fill spawn/extension/tower from storage or link.
         const capacity = live.store.getCapacity(RESOURCE_ENERGY) || 0;
         const energy = live.store[RESOURCE_ENERGY] || 0;
         if (energy >= capacity) return false;
-
-        const creepEnergy = creep.store[RESOURCE_ENERGY] || 0;
 
         // Refuel phase: withdraw from storage or storage link.
         if (creepEnergy === 0) {
