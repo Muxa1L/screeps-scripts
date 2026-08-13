@@ -35,6 +35,9 @@ function planContainers(room, _anchor, counts, limits, budget) {
     for (let i = 0; i < sources.length && placed < budget; i++) {
         if (placedContainers >= target) break;
         if (existingNear(room, sources[i].pos, 1, STRUCTURE_CONTAINER)) continue;
+        // Skip container if a link is already near this source — the miner
+        // will deposit into the link directly, no container needed.
+        if (existingNear(room, sources[i].pos, 2, STRUCTURE_LINK)) continue;
         const cpos = findContainerPositionNearSource(room, sources[i]);
         if (!cpos) continue;
         const res = room.createConstructionSite(cpos, STRUCTURE_CONTAINER);

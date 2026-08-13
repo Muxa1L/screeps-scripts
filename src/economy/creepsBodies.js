@@ -28,15 +28,23 @@ function bodyCostOfCreep(creep) {
     return total;
 }
 
+// Static miners sit on a link or container next to the source and harvest
+// continuously. 1 CARRY is needed to buffer energy for transfer into a link
+// (harvest fills CARRY, then transfer empties it each tick). Without CARRY,
+// energy drops on the ground (fine for containers, bad for links).
+// 5 WORK = 10 energy/tick = matches source regen (3000/300).
+// 2 MOVE is enough on roads; on plains the miner moves 1 tile/3 ticks (fine
+// for a static creep that only walks to the source once).
 const MINER_BODIES = {
     200:  [WORK, CARRY, MOVE],
     300:  [WORK, WORK, CARRY, MOVE],
-    550:  [WORK, WORK, WORK, WORK, CARRY, MOVE, MOVE],
-    800:  [WORK, WORK, WORK, WORK, WORK, WORK, CARRY, CARRY, MOVE, MOVE],
-    1100: [WORK, WORK, WORK, WORK, WORK, WORK, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE],
-    1650: [WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE],
-    2200: [WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE],
-    3300: [WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE],
+    400:  [WORK, WORK, WORK, CARRY, MOVE],
+    500:  [WORK, WORK, WORK, WORK, CARRY, MOVE],
+    600:  [WORK, WORK, WORK, WORK, WORK, CARRY, MOVE],
+    700:  [WORK, WORK, WORK, WORK, WORK, CARRY, MOVE, MOVE],
+    800:  [WORK, WORK, WORK, WORK, WORK, WORK, CARRY, MOVE, MOVE],
+    1100: [WORK, WORK, WORK, WORK, WORK, WORK, WORK, CARRY, MOVE, MOVE, MOVE],
+    1650: [WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE],
 };
 
 const HAULER_BODIES = {
@@ -51,16 +59,16 @@ const HAULER_BODIES = {
 };
 
 // Distributors are local haulers (storage → spawn/extensions/towers).
-// They travel short distances on roads, so they use a 1:2 CARRY:MOVE
-// ratio — fewer carry parts (smaller loads) but 2x speed on roads and
-// 1x on plains (unladen). This keeps the base fed with low latency.
+// They travel short distances on roads, so they use a 2:1 CARRY:MOVE
+// ratio — on roads 1 MOVE handles 2 CARRY, giving max speed with minimal
+// cost. No WORK parts needed.
 const DISTRIBUTOR_BODIES = {
     100:  [CARRY, MOVE],
-    200:  [CARRY, MOVE, MOVE],
-    400:  [CARRY, CARRY, MOVE, MOVE, MOVE, MOVE],
-    600:  [CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE],
-    800:  [CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE],
-    1200: [CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE],
+    150:  [CARRY, CARRY, MOVE],
+    300:  [CARRY, CARRY, CARRY, CARRY, MOVE, MOVE],
+    450:  [CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE],
+    600:  [CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE],
+    900:  [CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE],
 };
 
 const HARVESTER_BODIES = {
