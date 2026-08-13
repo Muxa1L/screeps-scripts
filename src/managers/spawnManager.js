@@ -218,11 +218,17 @@ function noIncomeProducer(room) {
     const counts = creepCountByRole(room.name);
     const producers = (counts.harvester || 0) + (counts.miner || 0);
     // No producers at all → income is dead, must bootstrap.
-    // Or: only one harvester with no miners/haulers → income exists but is
+    // Or: only one harvester with no miners → income exists but is
     // too weak to fill the spawn. Without a fallback, the spawn waits for
     // enough energy for a full-body creep and deadlocks.
+    // Also check storage link energy — if links have energy, a distributor
+    // can bootstrap from them even with an empty storage.
     if (producers === 0) return true;
-    if (counts.miner === 0 && counts.harvester === 1 && room.energyAvailable < 200) return true;
+    const snap = roomManager.get(room.name);
+    const storageLinkEnergy = snap && snap.links ? snap.links.reduce(function (sum, l) { return sum + (l.store[RESOURCE_ENERGY] || 0); }, 0) : 0;
+    const storageEnergy = snap && snap.storage ? (snap.storage.store[RESOURCE_ENERGY] || 0) : 0;
+    const available = storageEnergy + storageLinkEnergy;
+    if (counts.miner === 0 && counts.harvester <= 1 && (room.energyAvailable < 200 || available < 200)) return true;
     return false;
 }
 
@@ -265,12 +271,15 @@ function tryRunForSpawn(spawn) {
     const snap = roomManager.get(room.name);
     const role = quotas.nextRoleToSpawn(counts, rcl, controllerState, snap && snap.storage, snap && snap.constructionSites);
 
-    // Emergency bootstrap: if storage has energy but spawn can't afford the
-    // role returned by nextRoleToSpawn (e.g. miner=200), try a cheaper role
-    // that can withdraw from storage and fill the spawn (distributor=100).
-    // Without this, the spawn deadlocks waiting for a miner it can't afford
-    // while 20k energy sits unused in storage.
-    if (role && snap && snap.storage && (snap.storage.store[RESOURCE_ENERGY] || 0) > 200) {
+    // Emergency bootstrap: if storage or storage link has energy but spawn
+    // can't afford the role returned by nextRoleToSpawn (e.g. miner=400),
+    // try a cheaper role that can withdraw from storage/link and fill the
+    // spawn (distributor=100). Without this, the spawn deadlocks waiting
+    // for a miner it can't afford while energy sits in links.
+    const storageLinkEnergy = snap && snap.links ? snap.links.reduce(function (sum, l) { return sum + (l.store[RESOURCE_ENERGY] || 0); }, 0) : 0;
+    const storageEnergy = snap && snap.storage ? (snap.storage.store[RESOURCE_ENERGY] || 0) : 0;
+    const totalAvailable = storageEnergy + storageLinkEnergy;
+    if (role && totalAvailable > 200) {
         const target = bodies.bestBodyForAvailable(role, room.energyCapacityAvailable, room.energyCapacityAvailable);
         if (target && room.energyAvailable < target.cost) {
             // Can't afford the preferred role — try cheaper alternatives
