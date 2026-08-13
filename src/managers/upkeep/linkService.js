@@ -62,8 +62,12 @@ function runLink(link) {
     // over-transfer and waste energy the source could keep for next tick.
     const targetFree = target.store.getCapacity(RESOURCE_ENERGY) - (target.store[RESOURCE_ENERGY] || 0);
     const sourceEnergy = link.store[RESOURCE_ENERGY] || 0;
-    const amount = Math.min(sourceEnergy, Math.ceil(targetFree / (1 - LINK_LOSS_RATIO)));
-    if (amount > 0) link.transferEnergy(target, amount);
+    // Account for the 3% link transfer loss: transferring `amount` delivers
+    // floor(amount * (1 - LINK_LOSS_RATIO)) to the target. Cap by targetFree
+    // so transferEnergy doesn't return ERR_FULL (it rejects if amount > free).
+    const delivered = Math.min(sourceEnergy, targetFree);
+    const amount = Math.ceil(delivered / (1 - LINK_LOSS_RATIO));
+    if (amount > 0 && amount <= sourceEnergy) link.transferEnergy(target, amount);
 }
 
 module.exports = {
