@@ -101,9 +101,14 @@ module.exports = {
                 }
                 return wRes === OK || wRes === ERR_FULL || wRes === ERR_NOT_ENOUGH_RESOURCES;
             }
-            // Deposit into storage.
+            // Deposit into storage. Keep the task active (return true) after
+            // a successful deposit so the distributor immediately goes back to
+            // the link for another load. Returning false would blacklist the
+            // task for 5 ticks (blacklistTtlFor default), throttling the
+            // link→storage flow to once per 5 ticks — far too slow when the
+            // link is nearly full and the pipeline is jamming.
             const stillCarrying = depositService.transferTo(creep, live, RESOURCE_ENERGY);
-            if (!stillCarrying) return false;
+            if (!stillCarrying) return true; // emptied into storage; go refill
             return true;
         }
 
