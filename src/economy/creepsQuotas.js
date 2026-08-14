@@ -6,7 +6,7 @@ const QUOTAS = {
     2: { harvester: 5, upgrader: 2 },
     3: { miner: 2, hauler: 3, distributor: 2, upgrader: 3, builder: 1 },
     4: { miner: 2, hauler: 2, distributor: 3, upgrader: 3, builder: 2 },
-    5: { miner: 2, hauler: 1, distributor: 2, upgrader: 3, builder: 2 },
+    5: { miner: 2, hauler: 2, distributor: 2, upgrader: 3, builder: 2 },
     6: { miner: 2, hauler: 4, distributor: 3, upgrader: 3, builder: 2 },
     7: { miner: 2, hauler: 5, distributor: 3, upgrader: 3, builder: 2 },
     8: { miner: 2, hauler: 6, distributor: 4, upgrader: 3, builder: 2 },

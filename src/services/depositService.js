@@ -98,7 +98,7 @@ function transferTo(creep, target, resourceType) {
     move.action(creep, 'transfer@' + live.id);
     const res = creep.transfer(live, resourceType);
     if (res === ERR_NOT_IN_RANGE) {
-        move.moveCreep(creep, live, { visualizePathStyle: { stroke: '#ffffff' }, ignoreCreeps: true });
+        move.moveCreep(creep, live, { visualizePathStyle: { stroke: '#ffffff' } });
         return true;
     }
     // Return true if the creep is still carrying any of this resource after

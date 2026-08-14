@@ -75,7 +75,7 @@ module.exports = {
             move.action(creep, 'withdraw@' + container.id);
             const wRes = creep.withdraw(container, RESOURCE_ENERGY);
             if (wRes === ERR_NOT_IN_RANGE) {
-                move.moveCreep(creep, container, { visualizePathStyle: { stroke: '#ffffaa' }, ignoreCreeps: true });
+                move.moveCreep(creep, container, { visualizePathStyle: { stroke: '#ffffaa' } });
                 return true;
             }
             if (wRes === OK) memory.setHauledFrom(creep, container.id);

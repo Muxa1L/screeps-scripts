@@ -160,23 +160,23 @@ function claimSlot(sourceId, creepName) {
         }
     }
     if (free.length === 0) return false;
-    // Prefer the slot closest to a container near this source so the miner
-    // can deposit into it without moving. With miners capped at 1-2 per
-    // source, slot selection matters: the container-adjacent slot lets the
-    // miner offload in-place instead of dropping on the ground.
+    // Prefer the slot closest to a container OR link near this source so
+    // the miner can deposit into it without moving. With miners capped at
+    // 1-2 per source, slot selection matters: the container/link-adjacent
+    // slot lets the miner offload in-place instead of dropping on the ground.
     const room = Game.rooms[src.roomName];
     if (room) {
-        const containers = room.find(FIND_STRUCTURES, {
-            filter: function (s) { return s.structureType === STRUCTURE_CONTAINER; },
+        const depositStructs = room.find(FIND_STRUCTURES, {
+            filter: function (s) { return s.structureType === STRUCTURE_CONTAINER || s.structureType === STRUCTURE_LINK; },
         });
-        if (containers.length > 0) {
+        if (depositStructs.length > 0) {
             let bestSlot = null;
             let bestDist = Infinity;
             for (let i = 0; i < free.length; i++) {
                 const slot = free[i];
                 const slotPos = new RoomPosition(slot.x, slot.y, src.roomName);
-                for (let j = 0; j < containers.length; j++) {
-                    const d = slotPos.getRangeTo(containers[j]);
+                for (let j = 0; j < depositStructs.length; j++) {
+                    const d = slotPos.getRangeTo(depositStructs[j]);
                     if (d < bestDist) {
                         bestDist = d;
                         bestSlot = slot;

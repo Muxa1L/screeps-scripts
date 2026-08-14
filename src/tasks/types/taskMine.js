@@ -150,10 +150,12 @@ function adjacentDeposit(creep, snap) {
     if (!snap) return null;
     // Prefer links first — they send energy to the storage link, keeping
     // the haul pipeline flowing without haulers walking to the source.
+    // Use range 2 because linkStrategy places links within range 1-3 of
+    // the source, and miner slots can be 2 tiles from the link.
     if (snap.links) {
         for (let i = 0; i < snap.links.length; i++) {
             const l = snap.links[i];
-            if (creep.pos.inRangeTo(l, 1) &&
+            if (creep.pos.inRangeTo(l, 2) &&
                 (l.store.getFreeCapacity(RESOURCE_ENERGY) || 0) > 0) {
                 return l;
             }
