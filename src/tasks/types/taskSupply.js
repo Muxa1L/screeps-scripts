@@ -51,7 +51,19 @@ module.exports = {
             // (via idle-deposit fallback) keeps supply creeps on efficient
             // extension-filling runs. Once the spawn is past 50 it competes
             // normally.
-            if (s.structureType === STRUCTURE_SPAWN && energy < 50 && capacity >= 50) continue;
+            // EXCEPTION: when no extensions are available (all full or none
+            // built), don't skip the spawn — it's the only target.
+            if (s.structureType === STRUCTURE_SPAWN && energy < 50 && capacity >= 50) {
+                let hasExtensionTarget = false;
+                for (let j = 0; j < snap.energyStructures.length; j++) {
+                    const e = snap.energyStructures[j];
+                    if (e.structureType === STRUCTURE_EXTENSION && (e.store[RESOURCE_ENERGY] || 0) < (e.store.getCapacity(RESOURCE_ENERGY) || 0)) {
+                        hasExtensionTarget = true;
+                        break;
+                    }
+                }
+                if (hasExtensionTarget) continue;
+            }
             out.push({ target: s });
         }
         return out;

@@ -20,10 +20,12 @@ module.exports = {
         const storageEnergy = snap.storage ? (snap.storage.store[RESOURCE_ENERGY] || 0) : 0;
         const sources = snap.sources || [];
         let storageLinkEnergy = 0;
+        let storageLink = null;
         if (snap.links) {
             for (let i = 0; i < snap.links.length; i++) {
                 if (!linkService.isSourceLink(snap.links[i], sources)) {
                     storageLinkEnergy += snap.links[i].store[RESOURCE_ENERGY] || 0;
+                    storageLink = snap.links[i];
                 }
             }
         }
@@ -32,24 +34,41 @@ module.exports = {
         // If storage link has energy and storage has room, add a task to
         // move energy from storage link → storage (keeps the link network
         // flowing and centralizes energy in storage for distributors).
+        // When the storage link is nearly full (≥90%), this task is
+        // critical — a full link blocks source-link transfers, jamming
+        // the entire pipeline. Tag it so the score function can prioritize.
         if (snap.storage && snap.links && storageLinkEnergy >= 50) {
             const storageFree = snap.storage.store.getFreeCapacity(RESOURCE_ENERGY) || 0;
             if (storageFree > 50) {
-                out.push({ target: snap.storage, fromLink: true });
+                const linkCap = storageLink ? (storageLink.store.getCapacity(RESOURCE_ENERGY) || 800) : 800;
+                const linkUrgent = storageLinkEnergy >= linkCap * 0.9;
+                // Attach fromLink/urgent to the target object so they survive
+                // makeTask (which only copies target, not task-level props).
+                out.push({ target: { id: snap.storage.id, pos: snap.storage.pos, fromLink: true, urgent: linkUrgent } });
             }
         }
-        // Normal distribute tasks: fill spawn/extensions/towers from storage.
-        if (storageEnergy >= 50 && snap.energyStructures) {
+        // Normal distribute tasks: fill spawn/extensions/towers from storage
+        // or storage link. The withdraw phase (run) already tries the storage
+        // link first, so the gate only needs either source to have energy.
+        if ((storageEnergy >= 50 || storageLinkEnergy >= 50) && snap.energyStructures) {
             for (let i = 0; i < snap.energyStructures.length; i++) {
                 const s = snap.energyStructures[i];
                 const capacity = s.store.getCapacity(RESOURCE_ENERGY) || 0;
                 const energy = s.store[RESOURCE_ENERGY] || 0;
                 if (energy >= capacity) continue;
-                if (s.structureType === STRUCTURE_SPAWN && energy < 50 && capacity >= 50) continue;
                 out.push({ target: s });
             }
         }
         return out;
+    },
+    score: function (creep, target) {
+        const dist = taskBase.approxDistance(creep, target);
+        // Urgent fromLink tasks (storage link ≥90% full) get a large score
+        // bonus so a distributor picks them over normal distribute targets.
+        // Without this, both task types share priority SUPPLY and the
+        // nearest target wins — the link stays full and the pipeline jams.
+        if (target && target.urgent) return dist - 500;
+        return dist;
     },
     run: function (creep, task, snap) {
         const target = task.target;
@@ -60,7 +79,7 @@ module.exports = {
         const creepEnergy = creep.store[RESOURCE_ENERGY] || 0;
 
         // Link-to-storage task: withdraw from storage link, deposit into storage.
-        if (task.fromLink) {
+        if (target && target.fromLink) {
             const storageFree = live.store.getFreeCapacity(RESOURCE_ENERGY) || 0;
             if (storageFree <= 0) return false; // storage full
             if (creepEnergy === 0) {
