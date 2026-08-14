@@ -18,13 +18,24 @@ function tileIsWalkable(pos) {
 function isSlotReachable(room, slot) {
     const exitPos = room.find(FIND_EXIT);
     if (!exitPos || exitPos.length === 0) return true;
-    // Fast path-reachability check: can we path from an arbitrary exit tile
-    // to the slot? Use ignoreCreeps to keep it cheap; any static obstacle still
-    // blocks it. Recomputed every 500 ticks alongside slot refresh.
-    const start = exitPos[0];
+    // Try a sample of exit tiles — the first tile may be blocked by terrain,
+    // making a reachable source appear unreachable. Sample up to 8 tiles
+    // spread across the room's exits to get a representative coverage.
     const end = new RoomPosition(slot.x, slot.y, room.name);
-    const path = room.findPath(start, end, { ignoreCreeps: true, maxOps: 200 });
-    return path.length > 0 && path[path.length - 1].x === end.x && path[path.length - 1].y === end.y;
+    const sample = exitPos.length <= 8 ? exitPos : [];
+    if (sample.length === 0) {
+        const step = Math.floor(exitPos.length / 8);
+        for (let i = 0; i < exitPos.length && sample.length < 8; i += step) {
+            sample.push(exitPos[i]);
+        }
+    }
+    for (let i = 0; i < sample.length; i++) {
+        const path = room.findPath(sample[i], end, { ignoreCreeps: true, maxOps: 200 });
+        if (path.length > 0 && path[path.length - 1].x === end.x && path[path.length - 1].y === end.y) {
+            return true;
+        }
+    }
+    return false;
 }
 
 function computeSlots(room, source) {
@@ -84,7 +95,19 @@ function ensureRegistry(room) {
             };
         } else {
             cleanupDeadClaims(Memory.sources[src.id]);
-            if (Game.time % 500 === 0) {
+            // Recompute if any slot has reachable===undefined (set by migration
+            // to force a reachability re-evaluation with the updated algorithm)
+            // or on the regular 500-tick interval.
+            let needsRecompute = (Game.time % 500 === 0);
+            if (!needsRecompute && Memory.sources[src.id].slots) {
+                for (let j = 0; j < Memory.sources[src.id].slots.length; j++) {
+                    if (Memory.sources[src.id].slots[j].reachable === undefined) {
+                        needsRecompute = true;
+                        break;
+                    }
+                }
+            }
+            if (needsRecompute) {
                 recomputeSlots(room, src.id, Memory.sources[src.id]);
             }
         }
@@ -110,6 +133,7 @@ function freeSlot(sourceId) {
     const src = Memory.sources[sourceId];
     for (let i = 0; i < src.slots.length; i++) {
         const slot = src.slots[i];
+        if (slot.reachable === false) continue;
         if (!slot.claimedBy || !Game.creeps[slot.claimedBy]) {
             return slot;
         }
@@ -124,10 +148,13 @@ function claimSlot(sourceId, creepName) {
     for (let i = 0; i < src.slots.length; i++) {
         if (src.slots[i].claimedBy === creepName) return true;
     }
-    // Collect free slots.
+    // Collect free slots, skipping unreachable ones so miners aren't
+    // assigned to sources they can't path to (which leaves them stuck
+    // and blocks the quota from being satisfied by a different source).
     const free = [];
     for (let i = 0; i < src.slots.length; i++) {
         const slot = src.slots[i];
+        if (slot.reachable === false) continue;
         if (!slot.claimedBy || !Game.creeps[slot.claimedBy]) {
             free.push(slot);
         }

@@ -187,6 +187,25 @@ function tryRoleSpawn(spawn, role, allowCheapFallback) {
         const fallback = bodies.bestBodyForAvailable(role, cap, available);
         if (fallback) return spawnBody(spawn, fallback.body, name, role, extraMemFor(role, spawn));
     }
+    // Critical-role shortage escape: if the spawn can't afford the full body
+    // AND storage+links are empty (no bootstrap source), the room is in a
+    // death spiral. Carriers (distributor/hauler/upgrader) with very low TTL
+    // won't survive long enough for the spawn to accumulate enough energy.
+    // Spawn the best body we can afford NOW so the role isn't vacant when
+    // the current creep dies. This is gated on storage+links being empty so
+    // it only triggers in genuine starvation, not during normal filling.
+    if (target && available < target.cost) {
+        const snap = roomManager.get(spawn.room.name);
+        const storageEnergy = snap && snap.storage ? (snap.storage.store[RESOURCE_ENERGY] || 0) : 0;
+        const linkEnergy = snap && snap.links ? snap.links.reduce(function (sum, l) { return sum + (l.store[RESOURCE_ENERGY] || 0); }, 0) : 0;
+        if (storageEnergy < 200 && linkEnergy < 200) {
+            // Room is starving — spawn what we can afford for any missing role.
+            const fallback = bodies.bestBodyForAvailable(role, cap, available);
+            if (fallback && fallback.cost < (target ? target.cost : Infinity)) {
+                return spawnBody(spawn, fallback.body, name, role, extraMemFor(role, spawn));
+            }
+        }
+    }
     // Only allow cheap body fallback from the emergency bootstrap path
     // (storage has energy but spawn can't afford the full body). Without
     // this gate, the spawn would always spawn underpowered creeps instead

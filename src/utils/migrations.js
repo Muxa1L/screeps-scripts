@@ -99,6 +99,26 @@ const MIGRATIONS = [
             }
         },
     },
+    {
+        version: 8,
+        description: 'force source slot recompute (fix stale reachable flags)',
+        run: function () {
+            // The isSlotReachable check now samples multiple exit tiles instead
+            // of just the first. Force a recompute by clearing the slot data so
+            // ensureRegistry rebuilds slots with corrected reachability on the
+            // next tick. We preserve claimedBy by only clearing the reachable
+            // flag, which triggers recomputeSlots on the next ensureRegistry call.
+            if (!Memory.sources) return;
+            for (const id in Memory.sources) {
+                const src = Memory.sources[id];
+                if (!src.slots) continue;
+                for (let i = 0; i < src.slots.length; i++) {
+                    // Mark for recompute; ensureRegistry will re-evaluate
+                    src.slots[i].reachable = undefined;
+                }
+            }
+        },
+    },
 ];
 
 function runMigrations() {
