@@ -96,7 +96,7 @@ module.exports = {
                 move.action(creep, 'withdraw@link->storage');
                 const wRes = creep.withdraw(linkTarget, RESOURCE_ENERGY);
                 if (wRes === ERR_NOT_IN_RANGE) {
-                move.moveCreep(creep, linkTarget, { visualizePathStyle: { stroke: '#aaffaa' } });
+                    move.moveCreep(creep, linkTarget, { visualizePathStyle: { stroke: '#aaffaa' } });
                     return true;
                 }
                 return wRes === OK || wRes === ERR_FULL || wRes === ERR_NOT_ENOUGH_RESOURCES;
