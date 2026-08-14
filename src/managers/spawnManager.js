@@ -204,6 +204,17 @@ function tryRoleSpawn(spawn, role, allowCheapFallback) {
             if (fallback && fallback.cost < (target ? target.cost : Infinity)) {
                 return spawnBody(spawn, fallback.body, name, role, extraMemFor(role, spawn));
             }
+        } else if (available >= target.cost * 0.75) {
+            // Near-miss: room has energy in storage/links but spawn can't
+            // quite afford the full body (shortfall < 25%). Spawn the best
+            // affordable body to avoid a deadlock where the spawn waits for
+            // extensions to fill but the distributor that should fill them
+            // is stuck or idle. The slightly weaker body is far better than
+            // no creep at all for potentially thousands of ticks.
+            const fallback = bodies.bestBodyForAvailable(role, cap, available);
+            if (fallback && fallback.cost < target.cost) {
+                return spawnBody(spawn, fallback.body, name, role, extraMemFor(role, spawn));
+            }
         }
     }
     // Only allow cheap body fallback from the emergency bootstrap path

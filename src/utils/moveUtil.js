@@ -134,7 +134,20 @@ function moveCreep(creep, target, opts) {
     // intents even when the creep is physically blocked. The position-based
     // detection above is the sole source of truth for actual movement.
     if (mvr === ERR_NO_PATH) {
-        memorySchema.setMoveFailures(creep, memorySchema.getMoveFailures(creep) + 1);
+        // Retry once with ignoreCreeps=true. In congested base clusters
+        // (storage + spawn + extensions packed tightly), the default
+        // creep-avoidance costCallback can make all paths appear blocked,
+        // returning ERR_NO_PATH even though a path exists through creeps.
+        // This is especially common for distributors trying to reach
+        // storage surrounded by other creeps. The retry lets the pathfinder
+        // ignore creep positions and find a structural path.
+        const retryOpts = { reusePath: 2, maxOps: 2000, ignoreCreeps: true };
+        if (opts && opts.visualizePathStyle) retryOpts.visualizePathStyle = opts.visualizePathStyle;
+        const mvr2 = creep.moveTo(target, retryOpts);
+        memorySchema.setLastMoveResult(creep, mvr2);
+        if (mvr2 === ERR_NO_PATH) {
+            memorySchema.setMoveFailures(creep, memorySchema.getMoveFailures(creep) + 1);
+        }
     } else if (mvr === ERR_TIRED || mvr === ERR_BUSY) {
         // transient, keep current count
     } else {
