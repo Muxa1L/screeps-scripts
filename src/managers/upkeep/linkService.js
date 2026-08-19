@@ -47,10 +47,10 @@ function runLink(link) {
     }
 
     let target = null;
-    if (controllerLink && !controllerLink.cooldown &&
+    if (controllerLink &&
         controllerLink.store[RESOURCE_ENERGY] < controllerLink.store.getCapacity(RESOURCE_ENERGY) - 10) {
         target = controllerLink;
-    } else if (storageLink && !storageLink.cooldown &&
+    } else if (storageLink &&
                storageLink.store[RESOURCE_ENERGY] < storageLink.store.getCapacity(RESOURCE_ENERGY) - 10) {
         target = storageLink;
     }

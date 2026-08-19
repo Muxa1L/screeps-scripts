@@ -270,7 +270,15 @@ function getExpansion() {
 function ensureExpansion() {
     if (!Memory.expansion) Memory.expansion = { history: [] };
     if (!Memory.expansion.history) Memory.expansion.history = [];
+    // Trim history to prevent unbounded growth over long sessions.
+    if (Memory.expansion.history.length > 50) Memory.expansion.history.shift();
     return Memory.expansion;
+}
+
+function addExpansionHistory(entry) {
+    const exp = ensureExpansion();
+    exp.history.push(entry);
+    if (exp.history.length > 50) exp.history.splice(0, exp.history.length - 50);
 }
 
 // Per-room memory accessors for expansion fields. Memory.rooms[name] is
@@ -424,6 +432,7 @@ module.exports = {
     getSquads: getSquads,
     getExpansion: getExpansion,
     ensureExpansion: ensureExpansion,
+    addExpansionHistory: addExpansionHistory,
     getRoomBootstrapping: getRoomBootstrapping,
     setRoomBootstrapping: setRoomBootstrapping,
     clearRoomBootstrapping: clearRoomBootstrapping,

@@ -3,6 +3,14 @@ const depositService = require('../../services/depositService');
 const move = require('../../utils/moveUtil');
 const linkService = require('../../managers/upkeep/linkService');
 
+// A storage link is within range 3 of room.storage. This distinguishes it
+// from a controller link (near controller, range ≤ 4) which should NOT be
+// drained by distributors — its energy is for upgraders.
+function isStorageLink(link, room) {
+    if (!link || !link.pos || !room || !room.storage) return false;
+    return link.pos.inRangeTo(room.storage.pos, 3);
+}
+
 // Distributor: a local hauler that withdraws energy from storage and
 // delivers it to spawn/extensions/towers. Unlike taskSupply (which can
 // harvest from any source), the distributor only withdraws from storage,
@@ -16,14 +24,13 @@ module.exports = {
         return creep.getActiveBodyparts(CARRY) > 0;
     },
     tasks: function (room, snap) {
-        // Need either storage or a non-source link with energy to distribute.
+        // Need either storage or a storage link with energy to distribute.
         const storageEnergy = snap.storage ? (snap.storage.store[RESOURCE_ENERGY] || 0) : 0;
-        const sources = snap.sources || [];
         let storageLinkEnergy = 0;
         let storageLink = null;
         if (snap.links) {
             for (let i = 0; i < snap.links.length; i++) {
-                if (!linkService.isSourceLink(snap.links[i], sources)) {
+                if (isStorageLink(snap.links[i], room)) {
                     storageLinkEnergy += snap.links[i].store[RESOURCE_ENERGY] || 0;
                     storageLink = snap.links[i];
                 }
@@ -83,13 +90,12 @@ module.exports = {
             const storageFree = live.store.getFreeCapacity(RESOURCE_ENERGY) || 0;
             if (storageFree <= 0) return false; // storage full
             if (creepEnergy === 0) {
-                // Find the storage link (non-source link with energy).
+                // Find the storage link (near storage, with energy).
                 if (!snap || !snap.links) return false;
-                const sources = snap.sources || [];
                 let linkTarget = null;
                 for (let i = 0; i < snap.links.length; i++) {
                     const l = snap.links[i];
-                    if (linkService.isSourceLink(l, sources)) continue;
+                    if (!isStorageLink(l, creep.room)) continue;
                     if ((l.store[RESOURCE_ENERGY] || 0) >= 50) { linkTarget = l; break; }
                 }
                 if (!linkTarget) return false;
@@ -117,17 +123,16 @@ module.exports = {
         const energy = live.store[RESOURCE_ENERGY] || 0;
         if (energy >= capacity) return false;
 
-        // Refuel phase: withdraw from storage or storage link.
+        // Refuel phase: withdraw from storage link or storage.
         if (creepEnergy === 0) {
             if (!snap) return false;
             // Find a withdraw source: storage link first (it fills up from
             // source links and has no other consumer), then storage.
-            const sources = snap.sources || [];
             let withdrawTarget = null;
             if (snap.links) {
                 for (let i = 0; i < snap.links.length; i++) {
                     const l = snap.links[i];
-                    if (linkService.isSourceLink(l, sources)) continue;
+                    if (!isStorageLink(l, creep.room)) continue;
                     if ((l.store[RESOURCE_ENERGY] || 0) >= 50) {
                         withdrawTarget = l;
                         break;

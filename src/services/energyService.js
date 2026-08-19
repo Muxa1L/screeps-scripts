@@ -3,6 +3,7 @@ const memory = require('../utils/memorySchema');
 const taskBase = require('../tasks/taskBase');
 const move = require('../utils/moveUtil');
 const roomFlags = require('../utils/roomFlags');
+const linkService = require('../managers/upkeep/linkService');
 
 function structureHasEnergy(s) {
     if (!s || !s.store) return false;
@@ -139,8 +140,12 @@ function findEnergySource(creep, snapshot, options) {
     // energy (3.0), above ordinary containers (1.0) but below haul: containers
     // (4.0).
     if (snapshot.links) {
+        const _sources = snapshot.sources || [];
         for (let i = 0; i < snapshot.links.length; i++) {
             const l = snapshot.links[i];
+            // Skip source links — their energy feeds the link pipeline
+            // (source → storage/controller), not direct withdrawal.
+            if (linkService.isSourceLink(l, _sources)) continue;
             const energy = l.store[RESOURCE_ENERGY] || 0;
             if (energy < constants.LINK_WITHDRAW_MIN) continue;
             consider(l, 2.5);

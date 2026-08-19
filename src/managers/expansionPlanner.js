@@ -170,7 +170,7 @@ function tick() {
             // Veto window still open. Cancel if the ClaimTarget flag was removed.
             const flag = Game.flags && Game.flags['ClaimTarget' + t.roomName];
             if (!flag) {
-                exp.history.push({ roomName: t.roomName, claimedTick: null, abandonedTick: Game.time, reason: 'vetoed' });
+                memory.addExpansionHistory({ roomName: t.roomName, claimedTick: null, abandonedTick: Game.time, reason: 'vetoed' });
                 delete exp.target;
             }
             return;

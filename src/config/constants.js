@@ -51,8 +51,9 @@ module.exports = {
     DROPPED_ENERGY_MIN: 100,
     LINK_WITHDRAW_MIN: 50,
     // Screeps link transfers lose 3% of the sent amount (LINK_LOSS_RATIO).
-    // runLink sends ceil(targetFree / (1 - LINK_LOSS_RATIO)) to deliver
-    // exactly targetFree after loss, preserving the source's remainder.
+    // runLink sends min(sourceEnergy, targetFree) — the Screeps API rejects
+    // amounts > targetFree with ERR_FULL, so we can't compensate for the 3%
+    // loss by sending more. The target is underfilled by ~3% per transfer.
     LINK_LOSS_RATIO: 0.03,
 
     // Construction planning

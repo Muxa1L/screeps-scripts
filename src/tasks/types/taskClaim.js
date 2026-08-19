@@ -41,8 +41,7 @@ module.exports = {
         // Enemy-claimed: clear the target and recycle. bootstrapManager will
         // also detect this, but we short-circuit here to avoid wasting ticks.
         if (controller.owner && !controller.my) {
-            exp.history = exp.history || [];
-            exp.history.push({ roomName: roomName, claimedTick: null, abandonedTick: Game.time, reason: 'enemy-claimed' });
+            memory.addExpansionHistory({ roomName: roomName, claimedTick: null, abandonedTick: Game.time, reason: 'enemy-claimed' });
             delete exp.target;
             memory.clearRoomBootstrapping(roomName);
             // Walk to nearest home spawn for recycle.
@@ -71,8 +70,7 @@ module.exports = {
                 return false;
             }
             if (res === ERR_INVALID_TARGET) {
-                exp.history = exp.history || [];
-                exp.history.push({ roomName: roomName, claimedTick: null, abandonedTick: Game.time, reason: 'invalid-target' });
+                memory.addExpansionHistory({ roomName: roomName, claimedTick: null, abandonedTick: Game.time, reason: 'invalid-target' });
                 delete exp.target;
                 return false;
             }

@@ -20,7 +20,7 @@ function tick() {
 
         // If we can see the room and the controller is owned by an enemy, abort.
         if (room && room.controller && room.controller.owner && !room.controller.my) {
-            exp.history.push({ roomName: roomName, claimedTick: null, abandonedTick: Game.time, reason: 'enemy-claimed' });
+            memory.addExpansionHistory({ roomName: roomName, claimedTick: null, abandonedTick: Game.time, reason: 'enemy-claimed' });
             memory.clearRoomBootstrapping(roomName);
             if (exp.target && exp.target.roomName === roomName) delete exp.target;
             continue;
@@ -33,7 +33,7 @@ function tick() {
         if (spawns.length > 0 && room.controller && room.controller.my && room.controller.level >= 2) {
             memory.clearRoomBootstrapping(roomName);
             if (exp.target && exp.target.roomName === roomName) delete exp.target;
-            exp.history.push({ roomName: roomName, claimedTick: m.claimedTick || Game.time, abandonedTick: null, reason: null });
+            memory.addExpansionHistory({ roomName: roomName, claimedTick: m.claimedTick || Game.time, abandonedTick: null, reason: null });
             continue;
         }
 

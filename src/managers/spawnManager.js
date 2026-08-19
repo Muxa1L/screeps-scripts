@@ -5,6 +5,7 @@ const logger = require('../utils/logger');
 const bodies = require('../economy/creepsBodies');
 const quotas = require('../economy/creepsQuotas');
 const roomManager = require('./roomManager');
+const linkService = require('./upkeep/linkService');
 
 const BUCKET_SPAWN_THRESHOLD = constants.BUCKET_SPAWN_THRESHOLD;
 
@@ -255,7 +256,8 @@ function noIncomeProducer(room) {
     // can bootstrap from them even with an empty storage.
     if (producers === 0) return true;
     const snap = roomManager.get(room.name);
-    const storageLinkEnergy = snap && snap.links ? snap.links.reduce(function (sum, l) { return sum + (l.store[RESOURCE_ENERGY] || 0); }, 0) : 0;
+    const _sources = snap && snap.sources ? snap.sources : [];
+    const storageLinkEnergy = snap && snap.links ? snap.links.reduce(function (sum, l) { return linkService.isSourceLink(l, _sources) ? sum : sum + (l.store[RESOURCE_ENERGY] || 0); }, 0) : 0;
     const storageEnergy = snap && snap.storage ? (snap.storage.store[RESOURCE_ENERGY] || 0) : 0;
     const available = storageEnergy + storageLinkEnergy;
     if (counts.miner === 0 && counts.harvester <= 1 && (room.energyAvailable < 200 || available < 200)) return true;
@@ -306,7 +308,8 @@ function tryRunForSpawn(spawn) {
     // try a cheaper role that can withdraw from storage/link and fill the
     // spawn (distributor=100). Without this, the spawn deadlocks waiting
     // for a miner it can't afford while energy sits in links.
-    const storageLinkEnergy = snap && snap.links ? snap.links.reduce(function (sum, l) { return sum + (l.store[RESOURCE_ENERGY] || 0); }, 0) : 0;
+    const _srcs = snap && snap.sources ? snap.sources : [];
+    const storageLinkEnergy = snap && snap.links ? snap.links.reduce(function (sum, l) { return linkService.isSourceLink(l, _srcs) ? sum : sum + (l.store[RESOURCE_ENERGY] || 0); }, 0) : 0;
     const storageEnergy = snap && snap.storage ? (snap.storage.store[RESOURCE_ENERGY] || 0) : 0;
     const totalAvailable = storageEnergy + storageLinkEnergy;
     if (role && totalAvailable > 200) {
