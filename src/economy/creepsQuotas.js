@@ -155,6 +155,83 @@ function storageRatio(storage) {
     return (storage.store[RESOURCE_ENERGY] || 0) / capacity;
 }
 
+// Total CARRY parts needed to move energy from all actively-mined sources to
+// their deposit points (containers/links/storage). Per source: 10 e/t output
+// (5-WORK miner saturating the source) × round trip (2 × distance) / 50 e per
+// CARRY. Sources with no live miner claim contribute nothing.
+function haulerDemand(roomName) {
+    let totalCarry = 0;
+    const sources = Memory.sources || {};
+    for (const id in sources) {
+        const src = sources[id];
+        if (src.roomName !== roomName) continue;
+        // Only count sources actually being mined right now.
+        let mined = false;
+        if (src.slots) {
+            for (let i = 0; i < src.slots.length; i++) {
+                if (src.slots[i].claimedBy && Game.creeps[src.slots[i].claimedBy]) { mined = true; break; }
+            }
+        }
+        if (!mined) continue;
+        const dist = haulerPathDistance(roomName, id);
+        if (!dist) continue;
+        totalCarry += Math.ceil((10 * 2 * dist) / 50);
+    }
+    return totalCarry;
+}
+
+// Cached path distance from a source to its dropoff (nearest of container
+// adjacent tile / link / storage). Falls back to linear distance on failure.
+const _distCache = {};
+function haulerPathDistance(roomName, sourceId) {
+    const key = roomName + ':' + sourceId;
+    if (_distCache[key] && Game.time - _distCache[key].tick < 3000) return _distCache[key].dist;
+    const room = Game.rooms[roomName];
+    if (!room) return null;
+    const src = room.find(FIND_SOURCES, { filter: function (s) { return s.id === sourceId; } })[0];
+    if (!src) return null;
+    let best = null;
+    // Nearest deposit target: containers, links, or storage.
+    const targets = room.find(FIND_STRUCTURES, {
+        filter: function (s) {
+            return s.structureType === STRUCTURE_CONTAINER ||
+                   s.structureType === STRUCTURE_LINK ||
+                   s.structureType === STRUCTURE_STORAGE;
+        },
+    });
+    for (let i = 0; i < targets.length; i++) {
+        const d = src.pos.getRangeTo(targets[i]);
+        if (best === null || d < best) best = d;
+    }
+    if (best === null) best = 10; // sensible default when no structures yet
+    _distCache[key] = { dist: best, tick: Game.time };
+    return best;
+}
+
+// CARRY parts in the biggest hauler body the room can currently afford to
+// spawn (based on energyCapacityAvailable).
+function haulerCarryCapacity(rcl) {
+    const bodies = require('./creepsBodies');
+    const haulerTable = bodies.BODIES && bodies.BODIES.hauler;
+    if (!haulerTable) return 12; // fallback: 600-cost body
+    const keys = Object.keys(haulerTable).map(Number).sort(function (a, b) { return a - b; });
+    // Biggest body within the room's spawn capacity for this RCL.
+    const caps = { 1: 300, 2: 400, 3: 800, 4: 1300, 5: 1800, 6: 2300, 7: 5300, 8: 12300 };
+    const cap = caps[rcl] || 1800;
+    let bestCarry = 4; // smallest sensible fallback
+    for (let i = 0; i < keys.length; i++) {
+        const body = haulerTable[keys[i]];
+        let cost = 0;
+        let carry = 0;
+        for (let j = 0; j < body.length; j++) {
+            cost += body[j] === CARRY ? 50 : body[j] === MOVE ? 50 : 100;
+            if (body[j] === CARRY) carry++;
+        }
+        if (cost <= cap && carry > bestCarry) bestCarry = carry;
+    }
+    return bestCarry;
+}
+
 function constructionBacklog(sites) {
     if (!sites || sites.length === 0) return 0;
     let remaining = 0;
@@ -164,12 +241,33 @@ function constructionBacklog(sites) {
     return remaining;
 }
 
-function contextualQuota(rcl, controller, storage, constructionSites) {
+function contextualQuota(rcl, controller, storage, constructionSites, roomName) {
     const q = dynamicQuota(rcl, controller);
     const ratio = storageRatio(storage);
     const backlog = constructionBacklog(constructionSites);
     const baseUpgraders = q.upgrader || 0;
     const baseBuilders = q.builder || 0;
+
+    // Hauler sizing by throughput math instead of a fixed quota: each source
+    // with an active miner produces up to 10 e/t; a hauler round trip is
+    // ~2 × pathDistance ticks carrying 50 e per CARRY part, so the room needs
+    // totalCarry = output × 2 × avgDistance / 50 CARRY parts. Convert that to
+    // whole haulers using the biggest affordable hauler body and clamp to
+    // [base-1 .. base+1] so the formula nudges the baseline rather than
+    // replacing it (protects against pathing spikes and dead ticks).
+    if (roomName) {
+        const neededCarry = haulerDemand(roomName);
+        if (neededCarry > 0) {
+            const carryPerHauler = haulerCarryCapacity(rcl);
+            if (carryPerHauler > 0) {
+                const baseHaulers = q.hauler || 1;
+                q.hauler = Math.max(
+                    Math.max(1, baseHaulers - 1),
+                    Math.min(baseHaulers + 1, Math.ceil(neededCarry / carryPerHauler))
+                );
+            }
+        }
+    }
 
     if (storage && ratio >= STORAGE_FULL_THRESHOLD) {
         q.upgrader = Math.min(6, Math.max(baseUpgraders, baseUpgraders + 2));
@@ -187,7 +285,7 @@ function contextualQuota(rcl, controller, storage, constructionSites) {
     return q;
 }
 
-function nextRoleToSpawn(creepCounts, rcl, controller, storage, constructionSites) {
+function nextRoleToSpawn(creepCounts, rcl, controller, storage, constructionSites, roomName) {
     // Income-continuity guard: at RCL 3+, if no miner AND no harvester exist,
     // spawn a harvester first — it can deposit to the spawn directly (via
     // idle-deposit/supply), unlike a miner which needs haulers to move energy
@@ -197,7 +295,7 @@ function nextRoleToSpawn(creepCounts, rcl, controller, storage, constructionSite
         return 'harvester';
     }
     const q = controller
-        ? contextualQuota(rcl, controller, storage, constructionSites)
+        ? contextualQuota(rcl, controller, storage, constructionSites, roomName)
         : quotasFor(rcl);
     for (let i = 0; i < ROLE_PRIORITY.length; i++) {
         const role = ROLE_PRIORITY[i];

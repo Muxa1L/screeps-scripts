@@ -305,7 +305,7 @@ function tryRunForSpawn(spawn) {
         level: room.controller.level,
     };
     const snap = roomManager.get(room.name);
-    const role = quotas.nextRoleToSpawn(counts, rcl, controllerState, snap && snap.storage, snap && snap.constructionSites);
+    const role = quotas.nextRoleToSpawn(counts, rcl, controllerState, snap && snap.storage, snap && snap.constructionSites, room.name);
 
     // Emergency bootstrap: if storage or storage link has energy but spawn
     // can't afford the role returned by nextRoleToSpawn (e.g. miner=400),
