@@ -268,6 +268,61 @@ function noIncomeProducer(room) {
     return false;
 }
 
+// True when the room is hard-stuck: the spawn cannot afford even the
+// cheapest productive body ([WORK] = 100), there is no income producer,
+// and energy sits unreachable in storage/links.
+function roomHardStuck(room, snap) {
+    if (room.energyAvailable >= 100) return false;
+    const storageEnergy = snap && snap.storage ? (snap.storage.store[RESOURCE_ENERGY] || 0) : 0;
+    const linkEnergy = snap && snap.links ? snap.links.reduce(function (sum, l) { return sum + (l.store[RESOURCE_ENERGY] || 0); }, 0) : 0;
+    return (storageEnergy + linkEnergy) >= 100 && noIncomeProducer(room);
+}
+
+// A no-MOVE creep can only ever operate on the tile it stands on: it is
+// worth keeping only if an energy source it can withdraw from is adjacent.
+function nearUsableSource(creep, snap) {
+    const chebyshev = function (a, b) {
+        return Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y));
+    };
+    if (snap && snap.storage && (snap.storage.store[RESOURCE_ENERGY] || 0) >= 50 && chebyshev(creep.pos, snap.storage.pos) <= 1) return true;
+    if (snap && snap.links) {
+        for (let i = 0; i < snap.links.length; i++) {
+            const l = snap.links[i];
+            if ((l.store[RESOURCE_ENERGY] || 0) >= 50 && chebyshev(creep.pos, l.pos) <= 1) return true;
+        }
+    }
+    return false;
+}
+
+// Hard-starvation escape: recycle stranded emergency no-MOVE creeps so
+// their build cost is refunded into the spawn. In a dead room (empty-handed
+// [CARRY]-only creeps stranded away from storage, no producers, spawn unable
+// to afford any body) those creeps are inert dead weight forever; recycling
+// them liquidates their bodies back into energy so the spawn can afford a
+// real moving creep that restarts income. Safe no-op otherwise: every gate
+// in roomHardStuck must hold, and creeps that can still work one day
+// (standing next to a usable source, or carrying energy) are kept.
+function recycleStrandedNoMove(spawn) {
+    const room = spawn.room;
+    const snap = roomManager.get(room.name);
+    if (!roomHardStuck(room, snap)) return false;
+    let recycled = 0;
+    for (const name in Game.creeps) {
+        const creep = Game.creeps[name];
+        if (!creep || creep.room.name !== room.name) continue;
+        if (creep.getActiveBodyparts(MOVE) > 0) continue;
+        if (creep.getActiveBodyparts(WORK) > 0) continue;
+        if ((creep.store[RESOURCE_ENERGY] || 0) > 0) continue;
+        if (nearUsableSource(creep, snap)) continue;
+        if (spawn.recycleCreep(creep) === OK) recycled++;
+    }
+    if (recycled > 0) {
+        logger.periodic('spawnRecycle', 20, 'tick', 'recycled ' + recycled + ' stranded no-MOVE creep(s) to fund bootstrap');
+        return true;
+    }
+    return false;
+}
+
 function tick() {
     if (Game.cpu.bucket !== undefined && Game.cpu.bucket < BUCKET_SPAWN_THRESHOLD && Game.shard && Game.shard.name !== 'sim') return;
     for (const sn in Game.spawns) {
@@ -297,6 +352,13 @@ function tryRunForSpawn(spawn) {
 
     if (rcl >= 3) {
         sourceRegistry.ensureRegistry(room);
+    }
+
+    // Hard-starvation escape: recycle stranded emergency no-MOVE creeps
+    // so their build cost is refunded into the spawn (see helper below).
+    if (recycleStrandedNoMove(spawn)) {
+        summaryLog(spawn, creepCountByRole(room.name), rcl);
+        return;
     }
 
     const counts = creepCountByRole(room.name);
