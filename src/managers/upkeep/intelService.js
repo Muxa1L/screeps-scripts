@@ -32,12 +32,18 @@ function buildQueue() {
             queue.push(neighbor);
         }
     }
-    // Also include any existing intel rooms that have gone stale so they stay observed.
+    // Also include existing intel rooms that have gone stale so they stay
+    // observed. Only stale entries are queued — otherwise every room ever
+    // seen cycles through the observer rotation forever, diluting frontier
+    // coverage and growing Memory without bound.
     const intel = memory.getIntel();
     if (intel && intel.rooms) {
+        const STALE_TICKS = 5000;
         const entries = [];
         for (const rn in intel.rooms) {
-            entries.push({ name: rn, lastSeen: intel.rooms[rn].lastSeen || 0 });
+            const lastSeen = intel.rooms[rn].lastSeen || 0;
+            if (Game.time - lastSeen < STALE_TICKS) continue;
+            entries.push({ name: rn, lastSeen: lastSeen });
         }
         entries.sort(function (a, b) { return a.lastSeen - b.lastSeen; });
         for (let i = 0; i < entries.length; i++) {

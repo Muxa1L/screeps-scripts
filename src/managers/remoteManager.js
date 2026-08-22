@@ -130,8 +130,13 @@ function updateThreats(entry) {
     if (armedHostiles > 0 || hostiles.length >= 2) {
         setStatus(entry, 'contested');
     } else if (entry.status === 'contested') {
-        // Require clear period before returning to active.
-        const lastThreat = entry.threats.length > 0 ? entry.threats[entry.threats.length - 1].detectedTick : Game.time;
+        // Require clear period before returning to active. Use the most
+        // recent threat tick across all recorded threats, not just the last
+        // array element (insertion order ≠ time order).
+        let lastThreat = Game.time;
+        for (let i = 0; i < entry.threats.length; i++) {
+            if (entry.threats[i].detectedTick > lastThreat) lastThreat = entry.threats[i].detectedTick;
+        }
         if (Game.time - lastThreat > 100) setStatus(entry, 'active');
     }
 }

@@ -31,19 +31,17 @@ function reverseRoute(route, fromRoom) {
 }
 
 function readCache(from, to) {
-    const rr = memory.ensureRemoteRooms();
-    // Cache under both endpoints so the return trip reuses the computed
-    // route instead of recomputing Game.map.findRoute in the reverse
-    // direction. Forward stored at rr[to].routes[from]; reverse mirror at
-    // rr[from].routes[to] (written by writeCache with flipped exits).
-    const entryTo = rr[to];
+    // Use a dedicated namespace — Memory.remoteRooms is remote-room STATE
+    // (status, threats, reservations) owned by remoteManager; storing route
+    // caches there creates status-less entries that leak into reserve/defend
+    // task generation and slot accounting.
+    const rc = memory.ensureRouteCache();
+    const entryTo = rc[to];
     if (entryTo && entryTo.routes && entryTo.routes[from] &&
         Game.time - entryTo.routes[from].tick < REMOTE_ROUTE_TTL) {
         return entryTo.routes[from].route;
     }
-    // Check 2: the reverse mirror (to→from stored at rr[from].routes[to])
-    // is a standard-format route for the from→to direction.
-    const entryFrom = rr[from];
+    const entryFrom = rc[from];
     if (entryFrom && entryFrom.routes && entryFrom.routes[to] &&
         Game.time - entryFrom.routes[to].tick < REMOTE_ROUTE_TTL) {
         return entryFrom.routes[to].route;
@@ -52,15 +50,15 @@ function readCache(from, to) {
 }
 
 function writeCache(from, to, route) {
-    const rr = memory.ensureRemoteRooms();
-    if (!rr[to]) rr[to] = {};
-    if (!rr[to].routes) rr[to].routes = {};
-    rr[to].routes[from] = { route: route, tick: Game.time };
+    const rc = memory.ensureRouteCache();
+    if (!rc[to]) rc[to] = {};
+    if (!rc[to].routes) rc[to].routes = {};
+    rc[to].routes[from] = { route: route, tick: Game.time };
     // Mirror the reverse direction with flipped exit constants so the return
     // trip hits the cache on the first call instead of recomputing findRoute.
-    if (!rr[from]) rr[from] = {};
-    if (!rr[from].routes) rr[from].routes = {};
-    rr[from].routes[to] = { route: reverseRoute(route, from), tick: Game.time };
+    if (!rc[from]) rc[from] = {};
+    if (!rc[from].routes) rc[from].routes = {};
+    rc[from].routes[to] = { route: reverseRoute(route, from), tick: Game.time };
 }
 
 function getRoute(from, to, options) {

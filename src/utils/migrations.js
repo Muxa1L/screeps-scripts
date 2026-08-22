@@ -139,8 +139,12 @@ function runMigrations() {
         try {
             m.run();
             Memory.migrations.applied.push(m.version);
+            // Track the highest successfully applied version so a failed
+            // migration is retried next tick instead of being skipped forever.
+            Memory.migrated = Math.max(Memory.migrated || 0, m.version);
         } catch (e) {
-            // Record the failure but continue; the next tick will retry.
+            // Record the failure but continue; the next tick will retry
+            // because Memory.migrated was NOT bumped past this version.
             if (!Memory.migrations.failures) Memory.migrations.failures = [];
             Memory.migrations.failures.push({
                 version: m.version,
@@ -149,9 +153,8 @@ function runMigrations() {
             });
         }
     }
-    Memory.migrated = Math.max(Memory.migrated, MIGRATIONS.length);
     Memory.migrations.lastTick = Game.time;
-    Memory.migrations.lastVersion = MIGRATIONS.length;
+    Memory.migrations.lastVersion = Memory.migrated;
 }
 
 // Dev-only: reset migrations to re-run from a given version.

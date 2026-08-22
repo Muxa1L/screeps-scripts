@@ -178,6 +178,9 @@ function tick() {
             if (newLeader) {
                 memory.setSquadId(newLeader, sid);
                 memory.setSquadRole(newLeader, 'leader');
+                // Point the medic at its new leader so follow/heal preference
+                // and combatIdleFallback track the replacement, not the dead id.
+                entry.medic.memory.squadLeader = newLeader.id;
                 lockPairing(newLeader.id);
                 entry.leader = newLeader;
                 squads[sid].leaderId = newLeader.id;

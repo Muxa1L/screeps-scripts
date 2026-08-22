@@ -42,7 +42,7 @@ function isReservedByNonAlly(roomName) {
     const res = room.controller.reservation;
     if (!res) return false;
     // Treat any non-self reservation as a blocker for v1.
-    const me = Game.username || null;
+    const me = memory.myUsername();
     return res.username !== me;
 }
 
@@ -212,7 +212,7 @@ function tick() {
         } else {
             pos = new RoomPosition(25, 25, best.roomName);
         }
-        try { Game.flags.createFlag(pos, 'ClaimTarget' + best.roomName, COLOR_PURPLE, COLOR_PURPLE); }
+        try { pos.createFlag('ClaimTarget' + best.roomName, COLOR_PURPLE, COLOR_PURPLE); }
         catch (e) { /* ignore - flag may already exist or room not visible */ }
     }
 }

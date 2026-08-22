@@ -36,7 +36,7 @@ function isReservedByNonAlly(roomName) {
     if (!room || !room.controller) return false;
     const res = room.controller.reservation;
     if (!res) return false;
-    const me = Game.username || null;
+    const me = memory.myUsername();
     return res.username !== me;
 }
 

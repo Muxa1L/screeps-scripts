@@ -26,6 +26,9 @@ module.exports = {
         const rr = memory.getRemoteRooms();
         for (const name in rr) {
             const entry = rr[name];
+            // Skip status-less entries (route-cache leftovers or malformed
+            // data) — only real remote-room STATE entries generate tasks.
+            if (!entry.status) continue;
             if (entry.status === 'pending') continue;
             if (entry.status === 'abandoned') continue;
             if (entry.status === 'contested') continue;

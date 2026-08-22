@@ -170,6 +170,17 @@ function setEmergencyNoMove(creep) {
     ensureCreepMemory(creep)._emergencyNoMove = true;
 }
 
+// Position anchor for genuine stuck detection (position unchanged over time),
+// distinct from task tenure which is not idleness.
+function getStuckPos(creep) {
+    return ensureCreepMemory(creep)._stuckPos || null;
+}
+
+function setStuckPos(creep, tick) {
+    const m = ensureCreepMemory(creep);
+    m._stuckPos = { x: creep.pos.x, y: creep.pos.y, roomName: creep.pos.roomName, tick: tick };
+}
+
 function getRenewComplete(creep) {
     return ensureCreepMemory(creep)._renewComplete || 0;
 }
@@ -290,6 +301,30 @@ function addExpansionHistory(entry) {
     const exp = ensureExpansion();
     exp.history.push(entry);
     if (exp.history.length > 50) exp.history.splice(0, exp.history.length - 50);
+}
+
+// Dedicated namespace for route-cache data (kept separate from
+// Memory.remoteRooms which holds remote-room STATE owned by remoteManager).
+function ensureRouteCache() {
+    if (!Memory.routeCache) Memory.routeCache = {};
+    return Memory.routeCache;
+}
+
+// Resolve the owning player's username. Game.username does not exist in the
+// Screeps API; derive it from any owned spawn (owner.username) and cache it.
+let _cachedUsername = null;
+function myUsername() {
+    if (_cachedUsername) return _cachedUsername;
+    if (Memory.username) { _cachedUsername = Memory.username; return _cachedUsername; }
+    for (const sn in Game.spawns) {
+        const s = Game.spawns[sn];
+        if (s.owner && s.owner.username) {
+            _cachedUsername = s.owner.username;
+            Memory.username = _cachedUsername;
+            return _cachedUsername;
+        }
+    }
+    return null;
 }
 
 // Per-room memory accessors for expansion fields. Memory.rooms[name] is
@@ -419,6 +454,8 @@ module.exports = {
     getObsoleteRecycling: getObsoleteRecycling,
     getEmergencyNoMove: getEmergencyNoMove,
     setEmergencyNoMove: setEmergencyNoMove,
+    getStuckPos: getStuckPos,
+    setStuckPos: setStuckPos,
     setObsoleteRecycling: setObsoleteRecycling,
     clearObsoleteRecycling: clearObsoleteRecycling,
     getRenewComplete: getRenewComplete,
@@ -446,6 +483,8 @@ module.exports = {
     getExpansion: getExpansion,
     ensureExpansion: ensureExpansion,
     addExpansionHistory: addExpansionHistory,
+    ensureRouteCache: ensureRouteCache,
+    myUsername: myUsername,
     getRoomBootstrapping: getRoomBootstrapping,
     setRoomBootstrapping: setRoomBootstrapping,
     clearRoomBootstrapping: clearRoomBootstrapping,

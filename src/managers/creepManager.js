@@ -82,7 +82,11 @@ function runCreep(creep) {
     if (typeof creep.getActiveBodyparts === 'function' && creep._bpCacheTick !== Game.time) {
         creep._bpCacheTick = Game.time;
         creep._bpCache = {};
-        const orig = creep.getActiveBodyparts.bind(creep);
+        // Store the NATIVE method once and always wrap that — re-binding the
+        // current (already wrapped) function each tick grows an unbounded
+        // closure chain over a renewed creep's lifetime.
+        if (!creep._bpNative) creep._bpNative = creep.getActiveBodyparts.bind(creep);
+        const orig = creep._bpNative;
         creep.getActiveBodyparts = function (part) {
             if (creep._bpCache[part] !== undefined) return creep._bpCache[part];
             const v = orig(part);
