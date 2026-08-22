@@ -159,6 +159,17 @@ function clearObsoleteRecycling(creep) {
     delete ensureCreepMemory(creep)._obsoleteRecycling;
 }
 
+// Emergency no-MOVE creeps (e.g. [CARRY]-only bootstrap distributors) are
+// spawned intentionally without MOVE during a total colony deadlock. They are
+// exempt from the no-MOVE auto-recycle so the bootstrap can actually run.
+function getEmergencyNoMove(creep) {
+    return ensureCreepMemory(creep)._emergencyNoMove || false;
+}
+
+function setEmergencyNoMove(creep) {
+    ensureCreepMemory(creep)._emergencyNoMove = true;
+}
+
 function getRenewComplete(creep) {
     return ensureCreepMemory(creep)._renewComplete || 0;
 }
@@ -406,6 +417,8 @@ module.exports = {
     setRecycling: setRecycling,
     clearRecycling: clearRecycling,
     getObsoleteRecycling: getObsoleteRecycling,
+    getEmergencyNoMove: getEmergencyNoMove,
+    setEmergencyNoMove: setEmergencyNoMove,
     setObsoleteRecycling: setObsoleteRecycling,
     clearObsoleteRecycling: clearObsoleteRecycling,
     getRenewComplete: getRenewComplete,

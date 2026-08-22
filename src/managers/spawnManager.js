@@ -59,6 +59,10 @@ function spawnBody(spawn, body, name, role, extraMem) {
         if (Game.time % 200 === 0) console.log('[' + Game.time + '] [spawn-fail] ' + name + ' (' + role + ') -> ' + res);
         return false;
     }
+    // No-MOVE bodies are intentional emergency bootstrap creeps; exempt them
+    // from the no-MOVE auto-recycle in creepRunner.renewOrRecycle.
+    const hasMove = body.indexOf(MOVE) !== -1;
+    if (!hasMove) mem._emergencyNoMove = true;
     logger.event('spawn', '[' + Game.time + '] [spawn] ' + name + ' (' + role + ') cost=' + bodies.bodyCost(body));
     return true;
 }

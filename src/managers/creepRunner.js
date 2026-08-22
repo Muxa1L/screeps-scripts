@@ -353,7 +353,7 @@ function applyTaskAssignment(creep, assigned, claimCounts) {
 }
 
 function renewOrRecycle(creep) {
-    if (creep.getActiveBodyparts(MOVE) === 0) {
+    if (creep.getActiveBodyparts(MOVE) === 0 && !memory.getEmergencyNoMove(creep)) {
         logger.event('creep', '[' + Game.time + '] [no-move] ' + creep.name + ' has no MOVE parts; recycling');
         const spawn = spawnUtil.nearestSpawn(creep);
         if (!spawn) {
