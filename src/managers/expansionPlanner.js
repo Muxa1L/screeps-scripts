@@ -156,6 +156,22 @@ function pickBest(candidates) {
     return best ? { roomName: best, score: bestScore } : null;
 }
 
+// A room counts as recently failed if its last history entry has no
+// claimedTick and the attempt happened within CLAIM_RETRY_COOLDOWN ticks.
+function recentlyFailed(roomName) {
+    const COOLDOWN = 30000; // ~1.5 h of game time; long enough to not churn claimers
+    const exp = memory.getExpansion();
+    if (!exp || !exp.history) return false;
+    for (let i = exp.history.length - 1; i >= 0; i--) {
+        const entry = exp.history[i];
+        if (entry.roomName !== roomName) continue;
+        // Most recent entry for this room decides.
+        if (entry.claimedTick) return false;
+        return Game.time - (entry.abandonedTick || 0) < COOLDOWN;
+    }
+    return false;
+}
+
 function tick() {
     if (!Memory.flags || !Memory.flags.expansion) return;
     if (Game.time % INTERVAL !== 0 && !(Game.shard && Game.shard.name === 'sim')) return;
@@ -191,7 +207,10 @@ function tick() {
     }
     if (!qualifies) return;
 
-    const candidates = findCandidates();
+    // Skip rooms that recently failed an expansion attempt (vetoed,
+    // enemy-claimed, invalid-target). Without this the planner immediately
+    // re-picks the same failing room and the claimer shuttles until TTL death.
+    const candidates = findCandidates().filter(function (name) { return !recentlyFailed(name); });
     if (candidates.length === 0) return;
     const best = pickBest(candidates);
     if (!best) return;

@@ -499,6 +499,7 @@ function combatIdleFallback(creep) {
     // Move toward the nearest visible hostile, or any known hostile position from snapshots.
     const nearest = creep.pos.findClosestByRange(FIND_HOSTILE_CREEPS);
     if (nearest) {
+        memory.setLastCombatTick(creep, Game.time);
         logger.setAction(creep, 'patrol->hostile@' + nearest.id);
         move.moveCreep(creep, nearest, { visualizePathStyle: { stroke: '#ff0000' }, reusePath: 10 });
         return;
@@ -512,6 +513,26 @@ function combatIdleFallback(creep) {
             const exitPos = creep.pos.findClosestByRange(exitDir);
             if (exitPos) {
                 move.moveCreep(creep, exitPos, { visualizePathStyle: { stroke: '#ff0000' }, reusePath: 20 });
+                return;
+            }
+        }
+    }
+    // Nothing to fight; demobilize if peacetime drags on — maintaining a
+    // standing army in peacetime wastes spawn energy and CPU (best practice:
+    // recycle defenders once the threat has clearly passed). Track how long
+    // the creep has been threat-free; recycle after DEMOB_THRESHOLD ticks.
+    const role = memory.getRole(creep);
+    if (role === 'fighter' || role === 'healer') {
+        const lastThreat = memory.getLastCombatTick(creep);
+        if (!lastThreat) {
+            memory.setLastCombatTick(creep, Game.time);
+        } else if (Game.time - lastThreat > constants.DEMOB_IDLE_TICKS) {
+            const spawn = spawnUtil.nearestSpawn(creep);
+            if (spawn) {
+                logger.event('demob', '[' + Game.time + '] [demobilize] ' + creep.name + ' (' + role + ') peacetime for ' + (Game.time - lastThreat) + ' ticks');
+                if (spawn.recycleCreep(creep) === ERR_NOT_IN_RANGE) {
+                    move.moveCreep(creep, spawn, { visualizePathStyle: { stroke: '#888888' }, reusePath: 10 });
+                }
                 return;
             }
         }

@@ -91,6 +91,10 @@ module.exports = {
     SQUAD_RETREAT_HP_RATIO: 0.4,
     SQUAD_FORMATION_RANGE: 2,
     SQUAD_TARGET_LATCH_TICKS: 5,
+
+    // Recycle defenders (fighter/healer) after this many consecutive
+    // peacetime ticks — maintaining a standing army in peace is wasted energy.
+    DEMOB_IDLE_TICKS: 600,
     // Per-squad pairing lock TTL: once a squad claims an unpaired fighter as
     // its new leader, other squads skip that fighter for this many ticks to
     // avoid a last-writer-wins race on findUnpairedFighter.

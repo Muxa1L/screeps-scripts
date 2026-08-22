@@ -53,6 +53,9 @@ module.exports = {
             live;
         if (!enemy || enemy.hits <= 0) return false;
 
+        // Active engagement — refresh the peacetime demob timer.
+        memory.setLastCombatTick(creep, Game.time);
+
         const inRange1 = creep.pos.inRangeTo(enemy, 1);
         if (inRange1 && rangedParts > 0 && attackParts === 0) {
             creep.rangedMassAttack();

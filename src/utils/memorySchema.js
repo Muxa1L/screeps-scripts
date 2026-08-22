@@ -181,6 +181,16 @@ function setStuckPos(creep, tick) {
     m._stuckPos = { x: creep.pos.x, y: creep.pos.y, roomName: creep.pos.roomName, tick: tick };
 }
 
+// Last tick this combat creep saw a hostile (or otherwise engaged). Used by
+// the peacetime demobilization check in combatIdleFallback.
+function getLastCombatTick(creep) {
+    return ensureCreepMemory(creep)._lastCombatTick || 0;
+}
+
+function setLastCombatTick(creep, tick) {
+    ensureCreepMemory(creep)._lastCombatTick = tick;
+}
+
 function getRenewComplete(creep) {
     return ensureCreepMemory(creep)._renewComplete || 0;
 }
@@ -456,6 +466,8 @@ module.exports = {
     setEmergencyNoMove: setEmergencyNoMove,
     getStuckPos: getStuckPos,
     setStuckPos: setStuckPos,
+    getLastCombatTick: getLastCombatTick,
+    setLastCombatTick: setLastCombatTick,
     setObsoleteRecycling: setObsoleteRecycling,
     clearObsoleteRecycling: clearObsoleteRecycling,
     getRenewComplete: getRenewComplete,
