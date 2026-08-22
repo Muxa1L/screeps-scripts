@@ -42,7 +42,15 @@ function moveCreep(creep, target, opts) {
         memorySchema.setMoveFailures(creep, 0);
         return;
     }
-    if (creep.fatigue > 0) return;
+    if (creep.fatigue > 0) {
+        // Update position tracking even during fatigue so the next tick
+        // doesn't falsely count a stall — the creep physically can't move
+        // when fatigued, so this is not a failure.
+        creep.memory._lastMoveX = creep.pos.x;
+        creep.memory._lastMoveY = creep.pos.y;
+        memorySchema.setLastMoveResult(creep, null);
+        return;
+    }
 
     // Stable hauler/miner loops benefit from a longer path cache on roads.
     // Combat/follow paths override this with a caller-provided reusePath when

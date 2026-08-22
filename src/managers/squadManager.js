@@ -200,7 +200,17 @@ function tick() {
         const s = squads[sid];
         const leaderAlive = s.leaderId && liveById[s.leaderId];
         const medicAlive = s.medicId && liveById[s.medicId];
-        if (!leaderAlive && !medicAlive) delete squads[sid];
+        // Delete if both dead, or if the squad is broken and the remaining
+        // creep no longer references the squadId (stale entry cleanup).
+        if (!leaderAlive && !medicAlive) {
+            delete squads[sid];
+        } else if (s.status === 'broken') {
+            const leader = s.leaderId && Game.getObjectById(s.leaderId);
+            const medic = s.medicId && Game.getObjectById(s.medicId);
+            const leaderRef = leader && memory.getSquadId(leader) === sid;
+            const medicRef = medic && memory.getSquadId(medic) === sid;
+            if (!leaderRef && !medicRef) delete squads[sid];
+        }
     }
 }
 

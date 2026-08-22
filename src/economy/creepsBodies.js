@@ -63,6 +63,7 @@ const HAULER_BODIES = {
 // ratio — on roads 1 MOVE handles 2 CARRY, giving max speed with minimal
 // cost. No WORK parts needed.
 const DISTRIBUTOR_BODIES = {
+    50:   [CARRY],
     100:  [CARRY, MOVE],
     150:  [CARRY, CARRY, MOVE],
     300:  [CARRY, CARRY, CARRY, CARRY, MOVE, MOVE],

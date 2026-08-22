@@ -55,9 +55,14 @@ module.exports = {
             sourceRegistry.releaseClaim(creep.name);
             memory.clearSourceId(creep);
             const fallbackSource = Game.getObjectById(sourceId);
-            if (fallbackSource && creep.getActiveBodyparts(CARRY) > 0 && creep.pos.isNearTo(fallbackSource)) {
+            if (fallbackSource && creep.pos.isNearTo(fallbackSource)) {
+                // Already adjacent: harvest directly so energy isn't wasted.
                 creep.harvest(fallbackSource);
                 move.action(creep, 'mine-fallback@' + sourceId);
+            } else if (fallbackSource) {
+                // Not at the source yet; move toward it so we don't idle.
+                move.moveCreep(creep, fallbackSource, { visualizePathStyle: { stroke: '#ffaa00' } });
+                move.action(creep, 'mine->' + sourceId);
             }
             // Re-evaluate next tick; the 5-tick blacklist from `return false`
             // is intentionally avoided so a freshly-freed slot is picked up
@@ -150,12 +155,11 @@ function adjacentDeposit(creep, snap) {
     if (!snap) return null;
     // Prefer links first — they send energy to the storage link, keeping
     // the haul pipeline flowing without haulers walking to the source.
-    // Use range 2 because linkStrategy places links within range 1-3 of
-    // the source, and miner slots can be 2 tiles from the link.
+    // Use range 1 (isNearTo) because creep.transfer requires adjacent.
     if (snap.links) {
         for (let i = 0; i < snap.links.length; i++) {
             const l = snap.links[i];
-            if (creep.pos.inRangeTo(l, 2) &&
+            if (creep.pos.inRangeTo(l, 1) &&
                 (l.store.getFreeCapacity(RESOURCE_ENERGY) || 0) > 0) {
                 return l;
             }
