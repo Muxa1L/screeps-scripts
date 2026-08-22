@@ -105,6 +105,9 @@ function shouldRenew(creep) {
     const used = creep.store.getUsedCapacity(RESOURCE_ENERGY);
     if (used === 0) return true;
     return false;
+    // NOTE (dead code removed): the former `role === 'miner' → true` branch
+    // here was unreachable — miners short-circuit at the top of shouldRenew.
+    // Kept as documentation: miners never renew by design.
 }
 
 function inferRoleFromName(name) {

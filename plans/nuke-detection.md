@@ -1,9 +1,10 @@
 # Nuke Detection — Evacuation & Safe-Mode
 
-Status: **Planned**. Closes the v2 item from `plans/defense.md`. v1
-scope: detect incoming nukes via `FIND_NUKES`, trigger safe mode
-automatically when `timeToLand < 5000`, evacuate non-combat creeps
-from the threatened room.
+Status: **Implemented** (v1 detection + safe-mode trigger live in
+`src/managers/upkeep/nukeService.js`, wired via upkeepManager).
+Evacuation (cross-room creep retreat) is deferred until a second owned
+room exists. v1 scope shipped: detect incoming nukes via `FIND_NUKES`,
+trigger safe mode automatically when `timeToLand` is low.
 
 ## Goal
 

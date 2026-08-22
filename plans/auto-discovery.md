@@ -1,8 +1,10 @@
 # Auto-Discovery — Remote Room Target Selection
 
-Status: **Planned**. Closes the v1 → v2 item from `plans/remote-mining.md`.
-v1 currently requires a manual `RemoteTarget<n>` flag. v2 auto-discovers
-the best candidate rooms and seeds `Memory.remoteRooms`.
+Status: **Implemented** (`src/managers/remoteDiscovery.js`, wired in
+`main.js`). BFS depth-2 scan, scoring `sources*1000 - dist*100`,
+dedup vs expansion targets, veto window, auto-discovery cap, gated on
+`Memory.flags.remoteMining` + `remotePrerequisitesMet()` (RCL4+,
+observer, 2 claimed home sources).
 
 ## Goal
 

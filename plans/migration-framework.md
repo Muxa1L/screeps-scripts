@@ -1,11 +1,9 @@
 # Migration Framework — Schema Versioning & Rollback Safety
 
-Status: **Planned**. The current `globals.js` runs a one-shot migration
-when `Memory.migrated !== <expected>`, but multiple feature plans
-have added new top-level memory keys (`Memory.intel`, `Memory.squads`,
-`Memory.remoteRooms`, `Memory.expansion`, `Memory.labs`, `Memory.market`,
-`Memory.power`, `Memory.nuke`) without bumping the migration version.
-This plan ships a real migration framework.
+Status: **Implemented** (`src/utils/migrations.js` — 8 versioned
+idempotent migrations, `Memory.migrated` tracks the highest
+successfully-applied version; failures are recorded and retried).
+Roll-forward/backward helpers included (`resetMigrations`).
 
 ## Goal
 

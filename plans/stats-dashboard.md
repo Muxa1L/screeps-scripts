@@ -1,11 +1,9 @@
 # Stats Dashboard — Per-Module CPU, GCL/RCL Trends, Energy Income
 
-Status: **Planned**. v1 scope: a `statsService` that runs once per
-100 ticks, aggregates per-module CPU, GCL/RCL progression, and
-energy income from the existing snapshot, and writes a `console.log`
-ASCII table. Optionally exposes a queryable API for the in-game
-`Game.cpu.getHeapStatistics()` and the existing `Memory.stats` ring
-buffer.
+Status: **Implemented** (`src/utils/statsService.js` — per-module CPU
+via `safeRunTimed`, ring buffer in `Memory.stats`). Known caveat:
+the "100-tick window" samples only the boundary tick (see 7th review);
+window accumulation is a future improvement.
 
 ## Goal
 

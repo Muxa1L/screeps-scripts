@@ -1,8 +1,7 @@
 # CI — Lint + Test on Push & PR
 
-Status: **Planned**. v1 scope: a single GitHub Actions workflow that
-runs `npm run lint` and `npm test` on every push and pull request.
-No deploy step (deploy requires credentials).
+Status: **Implemented** (`.github/workflows/ci.yml` runs lint+test on
+Node 22/24 for pushes and PRs; `build.yml` handles the Screeps deploy).
 
 ## Goal
 
