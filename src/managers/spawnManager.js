@@ -393,6 +393,16 @@ function tryRunForSpawn(spawn) {
                     return;
                 }
             }
+            // Hard-deadlock alarm: storage holds energy but even the cheapest
+            // body costs more than the spawn can ever accumulate on its own
+            // (no creeps = no income = no recycle refunds). Screeps has no
+            // body cheaper than CARRY(50), so below 50 this state is only
+            // escapable by manual intervention. Shout loudly every 100 ticks.
+            if (room.energyAvailable < 50 && Game.time % 100 === 0) {
+                console.log('[!!!] DEADLOCK: energyAvailable=' + room.energyAvailable +
+                    ' < cheapest body (50) with storage=' + storageEnergy +
+                    '. No in-game recovery possible — manual respawn or creep donation required.');
+            }
         }
     }
 
