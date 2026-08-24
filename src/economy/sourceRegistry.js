@@ -197,7 +197,17 @@ function claimSlot(sourceId, creepName) {
                 const slot = free[i];
                 const slotPos = new RoomPosition(slot.x, slot.y, src.roomName);
                 for (let j = 0; j < depositStructs.length; j++) {
-                    const d = slotPos.getRangeTo(depositStructs[j]);
+                    // Only consider deposits this miner can actually use from
+                    // its slot: transfer/pickup require adjacency. A container
+                    // 2+ tiles away is hauler territory, not the miner's.
+                    if (!slotPos.isNearTo(depositStructs[j])) continue;
+                    // Prefer the deposit NEAREST THE SOURCE: with a high
+                    // WORK:CARRY ratio every harvest tick can overflow the
+                    // carry into whatever sits on the mined tile itself — a
+                    // container directly under/next-to the miner catches that
+                    // overflow instead of letting it drop and decay.
+                    const d = slotPos.getRangeTo(depositStructs[j]) +
+                        depositStructs[j].pos.getRangeTo(src.x, src.y);
                     if (d < bestDist) {
                         bestDist = d;
                         bestSlot = slot;
