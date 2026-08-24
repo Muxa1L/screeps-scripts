@@ -38,6 +38,24 @@ function isSlotReachable(room, slot) {
     return false;
 }
 
+// A live miner standing on a slot is proof the slot works — the reachability
+// sampler can produce false negatives (transient creeps blocking sampled
+// paths at compute time), and those stick for up to 500 ticks. Trust reality
+// over the cached flag when a creep is physically on the tile.
+function reconcileReachableWithOccupants(sourceId) {
+    if (!Memory.sources || !Memory.sources[sourceId]) return;
+    const src = Memory.sources[sourceId];
+    for (let i = 0; i < src.slots.length; i++) {
+        const slot = src.slots[i];
+        if (!slot.claimedBy) continue;
+        const creep = Game.creeps[slot.claimedBy];
+        if (creep && creep.pos.x === slot.x && creep.pos.y === slot.y &&
+            creep.pos.roomName === src.roomName && slot.reachable === false) {
+            slot.reachable = true;
+        }
+    }
+}
+
 function computeSlots(room, source) {
     const slots = [];
     for (let i = 0; i < SLOT_TILES.length; i++) {
@@ -144,6 +162,9 @@ function freeSlot(sourceId) {
 function claimSlot(sourceId, creepName) {
     if (!Memory.sources || !Memory.sources[sourceId]) return false;
     const src = Memory.sources[sourceId];
+    // A miner physically standing on a slot proves it's reachable — clear
+    // stale false negatives from the reachability sampler before filtering.
+    reconcileReachableWithOccupants(sourceId);
     // First, check if this creep already has a slot.
     for (let i = 0; i < src.slots.length; i++) {
         if (src.slots[i].claimedBy === creepName) return true;
