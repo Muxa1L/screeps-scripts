@@ -314,6 +314,9 @@ function recycleStrandedNoMove(spawn) {
         if (!creep || creep.room.name !== room.name) continue;
         if (creep.getActiveBodyparts(MOVE) > 0) continue;
         if (creep.getActiveBodyparts(WORK) > 0) continue;
+        // Emergency bootstrap creeps are no-MOVE by design — they ARE the
+        // recovery plan, not stranded junk. Never recycle them here.
+        if (memory.getEmergencyNoMove(creep)) continue;
         if ((creep.store[RESOURCE_ENERGY] || 0) > 0) continue;
         if (nearUsableSource(creep, snap)) continue;
         if (spawn.recycleCreep(creep) === OK) recycled++;

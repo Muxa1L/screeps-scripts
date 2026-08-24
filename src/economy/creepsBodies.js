@@ -61,9 +61,10 @@ const HAULER_BODIES = {
 // Distributors are local haulers (storage → spawn/extensions/towers).
 // They travel short distances on roads, so they use a 2:1 CARRY:MOVE
 // ratio — on roads 1 MOVE handles 2 CARRY, giving max speed with minimal
-// cost. No WORK parts needed.
+// cost. No WORK parts needed. Minimum useful body is [CARRY, MOVE]: without
+// MOVE the creep accumulates fatigue on its first step and can never move
+// again (fatigue only dissipates via MOVE parts).
 const DISTRIBUTOR_BODIES = {
-    50:   [CARRY],
     100:  [CARRY, MOVE],
     150:  [CARRY, CARRY, MOVE],
     300:  [CARRY, CARRY, CARRY, CARRY, MOVE, MOVE],
