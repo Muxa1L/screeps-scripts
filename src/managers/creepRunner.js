@@ -546,8 +546,58 @@ function combatIdleFallback(creep) {
         logger.setAction(creep, 'idle->spawn');
         move.moveCreep(creep, idleSpawn, { visualizePathStyle: { stroke: '#888888' }, reusePath: 10 });
     } else {
+        // Parked AT the spawn: walk a few tiles away so idle creeps don't
+        // form a wall around the spawn chokepoint that blocks working
+        // creeps (fresh miners/harvesters) from pathing out. Each idle creep
+        // claims a free tile at distance 4-6 from the spawn and stands there.
+        if (idleSpawn && memory.getRole(creep) !== 'miner') {
+            let spot = memory.getParkedSpot(creep);
+            const spotValid = spot && spot.roomName === room.name &&
+                Game.map.getRoomLinearDistance(spot.roomName, room.name) === 0;
+            if (!spotValid || (spot.x === creep.pos.x && spot.y === creep.pos.y)) {
+                spot = findParkingSpot(idleSpawn, creep);
+                if (spot) memory.setParkedSpot(creep, spot.x, spot.y, room.name);
+            }
+            if (spot && !(spot.x === creep.pos.x && spot.y === creep.pos.y)) {
+                move.moveCreep(creep, new RoomPosition(spot.x, spot.y, room.name), {
+                    visualizePathStyle: { stroke: '#666666' }, reusePath: 20,
+                });
+                return;
+            }
+            if (!spot) {
+                logger.setAction(creep, 'idle');
+                return;
+            }
+        }
         logger.setAction(creep, 'idle');
     }
+}
+
+// Find a free parking tile 4-6 tiles from the spawn: no structure, no creep,
+// plain or road terrain. Deterministic per-creep offset to spread parkers.
+function findParkingSpot(spawn, creep) {
+    const room = spawn.room;
+    const terrain = room.getTerrain();
+    const nameSum = creep.name.split('').reduce(function (a, ch) { return a + ch.charCodeAt(0); }, 0);
+    for (let ring = 4; ring <= 6; ring++) {
+        for (let attempt = 0; attempt < 16; attempt++) {
+            const angle = ((nameSum + attempt * 137) % 360) * Math.PI / 180;
+            const x = Math.round(spawn.pos.x + Math.cos(angle) * ring);
+            const y = Math.round(spawn.pos.y + Math.sin(angle) * ring);
+            if (x < 1 || x > 48 || y < 1 || y > 48) continue;
+            if (terrain.get(x, y) === TERRAIN_MASK_WALL) continue;
+            const structs = room.lookForAt(LOOK_STRUCTURES, x, y);
+            let blocked = false;
+            for (let i = 0; i < structs.length; i++) {
+                const st = structs[i].structureType;
+                if (st !== STRUCTURE_ROAD && st !== STRUCTURE_RAMPART) { blocked = true; break; }
+            }
+            if (blocked) continue;
+            if (room.lookForAt(LOOK_CREEPS, x, y).length > 0) continue;
+            return { x: x, y: y };
+        }
+    }
+    return null;
 }
 
 function findClosestHostileRoom(fromRoomName) {

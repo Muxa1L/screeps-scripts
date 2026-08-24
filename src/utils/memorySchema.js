@@ -191,6 +191,20 @@ function setLastCombatTick(creep, tick) {
     ensureCreepMemory(creep)._lastCombatTick = tick;
 }
 
+// Designated parking tile for idle creeps, so they don't cluster around the
+// spawn and block working creeps from pathing out of the spawn chokepoint.
+function getParkedSpot(creep) {
+    return ensureCreepMemory(creep)._parkedSpot || null;
+}
+
+function setParkedSpot(creep, x, y, roomName) {
+    ensureCreepMemory(creep)._parkedSpot = { x: x, y: y, roomName: roomName };
+}
+
+function clearParkedSpot(creep) {
+    delete ensureCreepMemory(creep)._parkedSpot;
+}
+
 function getRenewComplete(creep) {
     return ensureCreepMemory(creep)._renewComplete || 0;
 }
@@ -464,6 +478,9 @@ module.exports = {
     getObsoleteRecycling: getObsoleteRecycling,
     getEmergencyNoMove: getEmergencyNoMove,
     setEmergencyNoMove: setEmergencyNoMove,
+    getParkedSpot: getParkedSpot,
+    setParkedSpot: setParkedSpot,
+    clearParkedSpot: clearParkedSpot,
     getStuckPos: getStuckPos,
     setStuckPos: setStuckPos,
     getLastCombatTick: getLastCombatTick,
