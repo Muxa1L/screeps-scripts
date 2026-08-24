@@ -18,9 +18,10 @@ test('quotasFor returns the base quota table for each RCL 0-8', function () {
     assert.deepEqual(quotas.quotasFor(0), {});
     assert.deepEqual(quotas.quotasFor(1), { harvester: 3, upgrader: 1 });
     assert.deepEqual(quotas.quotasFor(2), { harvester: 5, upgrader: 2 });
-    assert.deepEqual(quotas.quotasFor(3), { miner: 2, hauler: 4, upgrader: 3, builder: 1 });
-    assert.deepEqual(quotas.quotasFor(4), { miner: 2, hauler: 3, upgrader: 3, builder: 2 });
-    assert.deepEqual(quotas.quotasFor(8), { miner: 2, hauler: 8, upgrader: 3, builder: 2 });
+    // Current table includes distributor from RCL 3 on (link/storage economy)
+    assert.deepEqual(quotas.quotasFor(3), { miner: 2, hauler: 3, distributor: 2, upgrader: 3, builder: 1 });
+    assert.deepEqual(quotas.quotasFor(4), { miner: 2, hauler: 2, distributor: 3, upgrader: 3, builder: 2 });
+    assert.deepEqual(quotas.quotasFor(8), { miner: 2, hauler: 6, distributor: 4, upgrader: 3, builder: 2 });
 });
 
 test('quotasFor unknown RCL returns the empty RCL 0 table', function () {
@@ -38,10 +39,11 @@ test('RCL 2 has harvesters but no miners/haulers/builders', function () {
     assert.equal(q.builder, undefined);
 });
 
-test('RCL 3 switches to miners+haulers and drops harvesters', function () {
+test('RCL 3 switches to miners+haulers+distributors and drops harvesters', function () {
     const q = quotas.quotasFor(3);
     assert.equal(q.miner, 2);
-    assert.equal(q.hauler, 4);
+    assert.equal(q.hauler, 3);
+    assert.equal(q.distributor, 2);
     assert.equal(q.upgrader, 3);
     assert.equal(q.builder, 1);
     assert.equal(q.harvester, undefined);
@@ -216,12 +218,13 @@ test('spawnPriority returns the ROLE_PRIORITY index for each role', function () 
     assert.equal(quotas.spawnPriority('bootstrapper'), 5);
     assert.equal(quotas.spawnPriority('miner'), 6);
     assert.equal(quotas.spawnPriority('hauler'), 7);
-    assert.equal(quotas.spawnPriority('remoteMiner'), 8);
-    assert.equal(quotas.spawnPriority('remoteHauler'), 9);
-    assert.equal(quotas.spawnPriority('remoteBuilder'), 10);
-    assert.equal(quotas.spawnPriority('harvester'), 11);
-    assert.equal(quotas.spawnPriority('builder'), 12);
-    assert.equal(quotas.spawnPriority('upgrader'), 13);
+    assert.equal(quotas.spawnPriority('distributor'), 8);
+    assert.equal(quotas.spawnPriority('remoteMiner'), 9);
+    assert.equal(quotas.spawnPriority('remoteHauler'), 10);
+    assert.equal(quotas.spawnPriority('remoteBuilder'), 11);
+    assert.equal(quotas.spawnPriority('harvester'), 12);
+    assert.equal(quotas.spawnPriority('builder'), 13);
+    assert.equal(quotas.spawnPriority('upgrader'), 14);
 });
 
 test('spawnPriority returns 999 for an unknown role', function () {

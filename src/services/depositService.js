@@ -1,6 +1,7 @@
 const taskBase = require('../tasks/taskBase');
 const move = require('../utils/moveUtil');
 const roomFlags = require('../utils/roomFlags');
+const linkService = require('../managers/upkeep/linkService');
 
 const DEPOSIT_PRIORITY = {
     [STRUCTURE_SPAWN]: 1,
@@ -77,6 +78,19 @@ function findDeposit(creep, snapshot, options) {
                 if (sourceContainerIds[c.id]) continue; // don't deposit into source containers
                 if (!structureNeedsEnergy(c)) continue;
                 candidates.push(c);
+            }
+        }
+        // Source links are a last-resort deposit (below containers): when
+        // spawns/extensions/towers/storage/containers are all full, dumping
+        // into a source link beams the energy to the storage link instead of
+        // letting it sit in the hauler. Only source links qualify. Callers
+        // can still opt out via excludeTypes[STRUCTURE_LINK].
+        if (snapshot.links && !excludeTypes[STRUCTURE_LINK]) {
+            for (let i = 0; i < snapshot.links.length; i++) {
+                const l = snapshot.links[i];
+                if (!structureNeedsEnergy(l)) continue;
+                if (!linkService.isSourceLink(l, snapshot.sources || [])) continue;
+                candidates.push(l);
             }
         }
         if (candidates.length === 0) return null;

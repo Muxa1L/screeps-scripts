@@ -60,17 +60,18 @@ test('bestBodyForCapacity returns the 300-cost miner tier at 300', function () {
     assert.equal(result.cost, 300);
 });
 
-test('bestBodyForCapacity returns the RCL 3 miner tier at 550 (4W+C+2M)', function () {
+test('bestBodyForCapacity returns the largest affordable miner tier at RCL 3 cap (500: 4W+C+M)', function () {
     // 550 is the RCL 3 spawn energy capacity (300 spawn + 5*50 extensions).
+    // Tier table was recalculated to true costs: 4W+C+M = 500, next tier 600.
     const result = bodies.bestBodyForCapacity('miner', 550);
-    assert.deepEqual(result.body, [WORK, WORK, WORK, WORK, CARRY, MOVE, MOVE]);
-    assert.equal(result.cost, 550);
+    assert.deepEqual(result.body, [WORK, WORK, WORK, WORK, CARRY, MOVE]);
+    assert.equal(result.cost, 500);
 });
 
 test('bestBodyForCapacity returns the largest affordable tier', function () {
-    // 800 picks the 800 tier over 550 when affordable
+    // 800 picks the 750 tier (6W+C+2M) — the largest at or under 800
     const result = bodies.bestBodyForCapacity('miner', 800);
-    assert.equal(result.cost, 800);
+    assert.equal(result.cost, 750);
 });
 
 test('bestBodyForCapacity returns null when capacity is below the cheapest tier', function () {
@@ -113,10 +114,10 @@ test('bestBodyForAvailable returns null when available is below the cheapest tie
 test('bodySummary returns the tier cost keys per role', function () {
     const summary = bodies.bodySummary();
     assert.ok(summary.miner.indexOf(200) !== -1);
-    assert.ok(summary.miner.indexOf(550) !== -1);
+    assert.ok(summary.miner.indexOf(500) !== -1);
     assert.ok(summary.hauler.indexOf(400) !== -1);
     assert.ok(summary.fighter.indexOf(570) !== -1);
-    assert.ok(summary.healer.indexOf(930) !== -1);
+    assert.ok(summary.healer.indexOf(1080) !== -1);
     assert.ok(summary.builder.indexOf(200) !== -1);
     assert.ok(summary.harvester.indexOf(200) !== -1);
     assert.ok(summary.upgrader.indexOf(200) !== -1);

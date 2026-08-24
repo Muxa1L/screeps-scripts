@@ -43,10 +43,14 @@ test('planRamparts skips a structure whose tile already has a rampart', function
 });
 
 test('planRamparts respects the site budget', function () {
+    // EXTENSION was removed from CRITICAL_TYPES (user decision: only
+    // spawn/tower/storage/link are critical). Use two qualifying structures
+    // so the budget=2 test still exercises the cap.
     const structs = [
         mocks.mockStructure('spawn', { pos: { x: 25, y: 25, roomName: 'W1N1' } }),
-        mocks.mockStructure('extension', { pos: { x: 26, y: 25, roomName: 'W1N1' } }),
-        mocks.mockStructure('extension', { pos: { x: 27, y: 25, roomName: 'W1N1' } }),
+        mocks.mockStructure('tower', { pos: { x: 26, y: 25, roomName: 'W1N1' } }),
+        mocks.mockStructure('storage', { pos: { x: 27, y: 25, roomName: 'W1N1' } }),
+        mocks.mockStructure('link', { pos: { x: 28, y: 25, roomName: 'W1N1' } }),
     ];
     const room = makeRoom(structs);
     let calls = 0;

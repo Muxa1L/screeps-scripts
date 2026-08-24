@@ -79,7 +79,7 @@ test('planRoom at RCL 3 with an existing tower does not place another', function
     assert.equal(towerCalls, 0);
 });
 
-test('planRoom at RCL 3 places ramparts over the spawn and extensions', function () {
+test('planRoom at RCL 3 places ramparts over critical structures only', function () {
     const structures = [];
     for (let i = 0; i < 10; i++) {
         structures.push(mocks.mockStructure('extension', { pos: { x: 20 + i, y: 20, roomName: 'W1N1' } }));
@@ -87,6 +87,7 @@ test('planRoom at RCL 3 places ramparts over the spawn and extensions', function
     for (let i = 0; i < 5; i++) {
         structures.push(mocks.mockStructure('container', { pos: { x: 20 + i, y: 21, roomName: 'W1N1' } }));
     }
+    // Only the tower qualifies (EXTENSION was removed from CRITICAL_TYPES).
     structures.push(mocks.mockStructure('tower', { pos: { x: 28, y: 28, roomName: 'W1N1' } }));
     const room = makeStructureRoom(3, structures);
     const rampartTypes = [];
@@ -95,9 +96,7 @@ test('planRoom at RCL 3 places ramparts over the spawn and extensions', function
         return OK;
     };
     planner.planRoom(room);
-    // The tower already exists, so the full MAX_SITES_PER_TICK (3) budget
-    // flows to ramparts. 11 critical structures are available (10 extensions
-    // + 1 tower; the spawn is only in FIND_MY_SPAWNS, not FIND_STRUCTURES),
-    // so 3 rampart sites are placed this planning tick.
-    assert.equal(rampartTypes.length, 3);
+    // Extensions and containers are no longer rampart-protected; the single
+    // existing tower is the only qualifying structure this tick → 1 site.
+    assert.equal(rampartTypes.length, 1);
 });

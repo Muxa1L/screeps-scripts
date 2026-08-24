@@ -31,6 +31,7 @@ function makeOwnedRoom(name) {
 
 function makeNuke(timeToLand, x, y, roomName) {
     return {
+        id: 'nuke' + x + '_' + y + '_' + roomName,
         timeToLand: timeToLand,
         launchRoomName: 'W1N1',
         pos: { x: x, y: y, roomName: roomName },
@@ -42,9 +43,10 @@ test('detects nukes in owned rooms and records events', function () {
     room._findResults[FIND_NUKES] = [makeNuke(40000, 25, 25, 'W1N1')];
     nukeService.tick();
     const events = memory.getNukeEvents();
-    assert.ok(events['W1N1']);
-    assert.equal(events['W1N1'].timeToLand, 40000);
-    assert.equal(events['W1N1'].pos.x, 25);
+    // Events are keyed room:id (multiple nukes per room possible)
+    assert.ok(events['W1N1:nuke25_25_W1N1']);
+    assert.equal(events['W1N1:nuke25_25_W1N1'].timeToLand, 40000);
+    assert.equal(events['W1N1:nuke25_25_W1N1'].pos.x, 25);
     assert.ok(memory.ensureNuke().stat.nukesDetected > 0);
 });
 
@@ -131,11 +133,13 @@ test('cleans up stale events', function () {
     const room = makeOwnedRoom('W1N1');
     room._findResults[FIND_NUKES] = [makeNuke(40000, 25, 25, 'W1N1')];
     nukeService.tick();
-    assert.ok(memory.getNukeEvents()['W1N1']);
+    // Events are keyed room:id (not just room) since multiple nukes per
+    // room are possible.
+    assert.ok(memory.getNukeEvents()['W1N1:nuke25_25_W1N1']);
     // Simulate time passing beyond TTL
     const oldTick = Game.time;
     Game.time = oldTick + 70000;
     room._findResults[FIND_NUKES] = []; // no nukes anymore
     nukeService.tick();
-    assert.equal(memory.getNukeEvents()['W1N1'], undefined);
+    assert.equal(memory.getNukeEvents()['W1N1:nuke25_25_W1N1'], undefined);
 });

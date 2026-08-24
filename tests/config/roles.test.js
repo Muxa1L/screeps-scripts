@@ -22,8 +22,9 @@ test('allowedSet caches the result per role (identity stable across calls)', fun
     const first = roles.allowedSet('hauler');
     const second = roles.allowedSet('hauler');
     assert.equal(first, second);
-    // Sanity: the cached set has the expected keys.
+    // Sanity: the cached set has the expected keys. Hauler no longer takes
+    // supply (recovery gating sends distributors instead).
     assert.equal(first.haul, true);
     assert.equal(first.sweep, true);
-    assert.equal(first.supply, true);
+    assert.equal(first.supply, undefined);
 });

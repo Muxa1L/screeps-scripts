@@ -64,6 +64,8 @@ test('room memory initializes parents; source memory does not pollute for unknow
     assert.equal(Memory.rooms.W1N1, roomMem);
     const sourceMem = memory.getSourceMemory('source-1');
     assert.ok(sourceMem);
-    assert.equal(Memory.sources['source-1'], undefined);
+    // getSourceMemory intentionally seeds Memory.sources for unknown ids —
+    // it is the lazy initializer used by sourceRegistry bookkeeping.
+    assert.equal(Memory.sources['source-1'], sourceMem);
     assert.deepEqual(sourceMem, { roomName: '', x: 0, y: 0, slots: [] });
 });

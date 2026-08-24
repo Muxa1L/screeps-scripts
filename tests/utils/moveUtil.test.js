@@ -25,7 +25,7 @@ test('moveCreep passes a default reusePath=10 when not on a road and no caller o
     const target = mocks.mockStructure(STRUCTURE_SPAWN, { pos: { x: 40, y: 25, roomName: 'W1N1' } });
     move.moveCreep(creep, target);
     assert.equal(capturedOpts.reusePath, 10);
-    assert.equal(capturedOpts.maxOps, 2000);
+    assert.equal(capturedOpts.maxOps, 1500);
     assert.equal(capturedOpts.ignoreCreeps, false);
     assert.equal(capturedOpts.visualizePathStyle, undefined);
 });

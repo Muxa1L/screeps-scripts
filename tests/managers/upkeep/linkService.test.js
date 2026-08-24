@@ -171,9 +171,13 @@ test('runLink is a no-op on a non-source link (the storage link has no source ne
 
 test('runLink skips a controller link on cooldown and falls back to the storage link', function () {
     mocks.resetGame();
+    // Controller-link cooldown was removed as a transfer blocker (B2, review 5):
+    // cooldown gates SENDING from a link, not RECEIVING. The source link now
+    // fills the controller link even while the controller link is on cooldown;
+    // fallback to storage only happens when the controller link is FULL.
     const sourceLink = makeLink({ id: 'slink', pos: pos(10, 10), energy: 500 });
     const controllerLink = makeLink({
-        id: 'clink', pos: pos(20, 21), energy: 0, capacity: 800, cooldown: 3,
+        id: 'clink', pos: pos(20, 21), energy: 800, capacity: 800,
         controllerPos: pos(20, 20), storage: null,
     });
     const storageLink = makeLink({
@@ -189,9 +193,11 @@ test('runLink skips a controller link on cooldown and falls back to the storage 
 
 // --- runLink loss-aware transfer amount ---
 
-test('runLink transfer amount accounts for the 3% link loss', function () {
+test('runLink caps the transfer amount at the target free capacity (raw amount is checked, loss ignored)', function () {
     mocks.resetGame();
-    // Source has more than enough: targetFree=800, needed=ceil(800/0.97)=825.
+    // Source has more than enough: targetFree=800 → amount=min(1000,800)=800.
+    // Screeps rejects amount > targetFree with ERR_FULL even though the 3%
+    // loss would deliver less than targetFree.
     const sourceLink = makeLink({ id: 'slink', pos: pos(10, 10), energy: 1000, capacity: 1000 });
     const controllerLink = makeLink({
         id: 'clink', pos: pos(20, 21), energy: 0, capacity: 800,
@@ -200,13 +206,13 @@ test('runLink transfer amount accounts for the 3% link loss', function () {
     const source = mocks.mockSource({ id: 'src1', pos: pos(11, 10) });
     withSnap({ sources: [source], links: [sourceLink, controllerLink] }, function () {
         linkService.runLink(sourceLink);
-        assert.equal(sourceLink._lastTransferAmount, 825);
+        assert.equal(sourceLink._lastTransferAmount, 800);
     });
 });
 
 test('runLink caps the transfer amount at the source link energy', function () {
     mocks.resetGame();
-    // Source 500, targetFree=800, needed=825 → amount=min(500,825)=500.
+    // Source 500, targetFree=800 → amount=min(500,800)=500.
     const sourceLink = makeLink({ id: 'slink', pos: pos(10, 10), energy: 500, capacity: 1000 });
     const controllerLink = makeLink({
         id: 'clink', pos: pos(20, 21), energy: 0, capacity: 800,
@@ -219,9 +225,9 @@ test('runLink caps the transfer amount at the source link energy', function () {
     });
 });
 
-test('runLink fills a partial target exactly after loss', function () {
+test('runLink fills a partial target up to its free capacity', function () {
     mocks.resetGame();
-    // Source 1000, target 700/800 → targetFree=100, needed=ceil(100/0.97)=104.
+    // Source 1000, target 700/800 → targetFree=100 → amount=min(1000,100)=100.
     const sourceLink = makeLink({ id: 'slink', pos: pos(10, 10), energy: 1000, capacity: 1000 });
     const controllerLink = makeLink({
         id: 'clink', pos: pos(20, 21), energy: 700, capacity: 800,
@@ -230,6 +236,6 @@ test('runLink fills a partial target exactly after loss', function () {
     const source = mocks.mockSource({ id: 'src1', pos: pos(11, 10) });
     withSnap({ sources: [source], links: [sourceLink, controllerLink] }, function () {
         linkService.runLink(sourceLink);
-        assert.equal(sourceLink._lastTransferAmount, 104);
+        assert.equal(sourceLink._lastTransferAmount, 100);
     });
 });

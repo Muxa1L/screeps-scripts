@@ -104,14 +104,16 @@ test('run moves toward the controller when not in range', function () {
     assert.equal(moved, true);
 });
 
-test('run refuels when energy is below the minEnergy threshold', function () {
+test('run refuels when energy is below the per-tick upgrade cost', function () {
     mocks.resetGame();
     const ctrl = makeController('c1', pos(26, 25), 5000);
     const source = mocks.mockSource({ id: 'src1', pos: pos(25, 26) });
-    // capacity 50 -> minEnergy = max(1*1, floor(25)) = 25; energy 10 < 25
+    // minEnergy = perTickCost = workParts * UPGRADE_CONTROLLER_POWER = 1*1 = 1.
+    // energy must be BELOW that (0) to trigger refueling; with 10 energy the
+    // creep upgrades instead of walking to a source.
     const creep = mocks.mockCreep({
         name: 'U1', pos: pos(25, 25), parts: { work: 1, carry: 1 },
-        store: { [RESOURCE_ENERGY]: 10 }, capacity: 50,
+        store: { [RESOURCE_ENERGY]: 0 }, capacity: 50,
     });
     let harvested = false;
     creep.harvest = function () { harvested = true; return OK; };
@@ -126,7 +128,7 @@ test('run releases the task when below minEnergy and no source is available', fu
     const ctrl = makeController('c1', pos(26, 25), 5000);
     const creep = mocks.mockCreep({
         name: 'U1', pos: pos(25, 25), parts: { work: 1, carry: 1 },
-        store: { [RESOURCE_ENERGY]: 10 }, capacity: 50,
+        store: { [RESOURCE_ENERGY]: 0 }, capacity: 50,
     });
     const snap = { controller: ctrl, sources: [] };
     assert.equal(taskUpgrade.run(creep, { target: ctrl }, snap), false);
