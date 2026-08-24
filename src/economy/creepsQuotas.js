@@ -173,11 +173,31 @@ function haulerDemand(roomName) {
             }
         }
         if (!mined) continue;
+        // Sources with a link-adjacent claimed slot don't need haulers — the
+        // miner transfers straight into the link and the link pipeline does
+        // the hauling. Counting them over-provisions carriers that idle.
+        if (sourceHasLinkDeposit(src, roomName)) continue;
         const dist = haulerPathDistance(roomName, id);
         if (!dist) continue;
         totalCarry += Math.ceil((10 * 2 * dist) / 50);
     }
     return totalCarry;
+}
+
+// True when the source has a link within transfer range of its claimed
+// miner's slot (link exists near source AND the claim is live).
+function sourceHasLinkDeposit(src, roomName) {
+    const room = Game.rooms[roomName];
+    if (!room) return false;
+    const links = room.find(FIND_MY_STRUCTURES, { filter: { structureType: STRUCTURE_LINK } });
+    if (links.length === 0) return false;
+    for (let i = 0; i < links.length; i++) {
+        const link = links[i];
+        const dx = Math.abs(link.pos.x - src.x);
+        const dy = Math.abs(link.pos.y - src.y);
+        if (dx <= 2 && dy <= 2) return true;
+    }
+    return false;
 }
 
 // Cached path distance from a source to its dropoff (nearest of container
