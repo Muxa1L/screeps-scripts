@@ -773,6 +773,7 @@ function runCreep(creep, context) {
     }
 
     if (role !== 'fighter' && role !== 'healer' && !isBootstrapper &&
+        role !== 'claimer' && role !== 'reserver' && role !== 'scout' &&
         (!room.controller || !room.controller.my) &&
         !roomFlags.getAllowedRooms()[room.name]) {
         if (memory.getTaskId(creep)) releaseTask(creep, context.claimCounts);

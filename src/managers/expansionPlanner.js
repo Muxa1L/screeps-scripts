@@ -136,11 +136,22 @@ function mineralPenalty(roomName) {
 }
 
 function scoreCandidate(roomName) {
+    // Hostile-gated rooms (invader cores, player outposts visible via intel)
+    // are disqualified entirely — a claim into a defended room wastes a
+    // 1400-tick claimer. Visible rooms with hostiles inside are skipped;
+    // intel-recorded threat rooms are penalized heavily instead.
+    const room = Game.rooms[roomName];
+    if (room && room.find(FIND_HOSTILE_CREEPS).length > 0) return -Infinity;
+    if (room && room.controller && room.controller.safeMode &&
+        room.controller.safeMode > 0 && !room.controller.my) return -Infinity;
+    const intelRoom = Memory.intel && Memory.intel.rooms && Memory.intel.rooms[roomName];
+    let threatPenalty = 0;
+    if (intelRoom && (intelRoom.threatLevel || 0) > 0) threatPenalty = 500 * intelRoom.threatLevel;
     const sources = sourceCount(roomName);
     const dist = distanceFromNearestOwned(roomName);
     const swamp = swampRatio(roomName);
     const mineral = mineralPenalty(roomName);
-    return sources * 1000 - dist * 100 - mineral - swamp * 200;
+    return sources * 1000 - dist * 100 - mineral - swamp * 200 - threatPenalty;
 }
 
 function pickBest(candidates) {
