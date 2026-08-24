@@ -297,6 +297,18 @@ function nextRoleToSpawn(creepCounts, rcl, controller, storage, constructionSite
     const q = controller
         ? contextualQuota(rcl, controller, storage, constructionSites, roomName)
         : quotasFor(rcl);
+    // Recovery gating: haulers/distributors are only worth energy when there
+    // is actually something to move. During a rebuild (no miners → empty
+    // containers; empty storage/links) their quotas drop to zero so the spawn
+    // spends energy on producers instead of carriers that would stand idle.
+    if ((creepCounts.miner || 0) === 0) {
+        q.hauler = 0;
+    }
+    const stE = storage ? (storage.store[RESOURCE_ENERGY] || 0) : 0;
+    if (stE < 100) {
+        q.distributor = 0;
+        q.hauler = Math.min(q.hauler || 0, 1);
+    }
     for (let i = 0; i < ROLE_PRIORITY.length; i++) {
         const role = ROLE_PRIORITY[i];
         const target = q[role];
