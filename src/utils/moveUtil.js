@@ -103,10 +103,10 @@ function moveCreep(creep, target, opts) {
         reusePath: callerReuse !== null ? callerReuse : (roadReuse !== null ? roadReuse : 10),
         maxOps: 1500,
         ignoreCreeps: callerIgnoreCreeps !== null ? callerIgnoreCreeps : false,
-        // Store the cached path in Screeps' short serialized form (~3x smaller
-        // than the default) — cuts Memory footprint and per-tick Memory
-        // serialization CPU across every moving creep.
-        serialize: true,
+        // NOTE: do NOT pass serialize:true here. On this engine version
+        // moveTo throws "path is not an array" every tick with that option
+        // (verified live), silently freezing the creep — the error propagates
+        // up to safeRun and _lastMoveResult never gets recorded.
     };
     // Only add creep-avoidance costCallback when ignoreCreeps is false.
     // When ignoreCreeps is true, the caller wants to path THROUGH creeps,
@@ -153,7 +153,7 @@ function moveCreep(creep, target, opts) {
         // This is especially common for distributors trying to reach
         // storage surrounded by other creeps. The retry lets the pathfinder
         // ignore creep positions and find a structural path.
-        const retryOpts = { reusePath: 2, maxOps: 1500, ignoreCreeps: true, serialize: true };
+        const retryOpts = { reusePath: 2, maxOps: 1500, ignoreCreeps: true };
         if (opts && opts.visualizePathStyle) retryOpts.visualizePathStyle = opts.visualizePathStyle;
         const mvr2 = creep.moveTo(target, retryOpts);
         memorySchema.setLastMoveResult(creep, mvr2);
