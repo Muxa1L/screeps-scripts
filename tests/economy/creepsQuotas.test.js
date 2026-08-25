@@ -93,27 +93,28 @@ test('contextualQuota with null storage returns the base (pre-RCL 4 safe)', func
     assert.deepEqual(q, quotas.quotasFor(3));
 });
 
-test('contextualQuota with full storage (ratio>=0.8) adds 2 upgraders capped at 6', function () {
+test('contextualQuota with full storage (ratio>=0.3) adds 2 upgraders capped at 6', function () {
     const storage = makeStorage(9000, 10000); // ratio 0.9
     const q = quotas.contextualQuota(3, { ticksToDowngrade: 20000 }, storage, []);
     assert.equal(q.upgrader, 5); // base 3 + 2 = 5, capped at 6
 });
 
-test('contextualQuota with low storage (ratio<=0.2) halves upgraders unless urgent', function () {
-    const storage = makeStorage(1000, 10000); // ratio 0.1
+test('contextualQuota with low storage (ratio<=0.01) halves upgraders unless urgent', function () {
+    const storage = makeStorage(50, 10000); // ratio 0.005
     const q = quotas.contextualQuota(3, { ticksToDowngrade: 20000 }, storage, []);
     assert.equal(q.upgrader, 1); // max(1, floor(3/2)) = max(1,1) = 1
 });
 
 test('contextualQuota with low storage but urgent keeps upgraders', function () {
-    const storage = makeStorage(1000, 10000); // ratio 0.1
+    const storage = makeStorage(50, 10000); // ratio 0.005
     const q = quotas.contextualQuota(3, { ticksToDowngrade: 500 }, storage, []);
     // Urgent path already set upgrader; the low-storage halve is skipped when urgent
     assert.equal(q.upgrader, 4); // URGENT at RCL 3: max(3, min(4, floor(10/2)=5)) = 4
 });
 
 test('contextualQuota with mid storage leaves upgraders unchanged', function () {
-    const storage = makeStorage(5000, 10000); // ratio 0.5
+    // 0.15 is between LOW (0.01) and FULL (0.3): no boost, no cut
+    const storage = makeStorage(1500, 10000); // ratio 0.15
     const q = quotas.contextualQuota(3, { ticksToDowngrade: 20000 }, storage, []);
     assert.equal(q.upgrader, 3); // base RCL 3
 });
