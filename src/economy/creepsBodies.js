@@ -83,6 +83,10 @@ const HARVESTER_BODIES = {
     1600:[WORK, WORK, WORK, WORK, WORK, WORK, WORK, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE],
 };
 
+const SCOUT_BODIES = {
+    50: [MOVE], // Minimal scout: one tick per tile, dies quickly but cheap
+};
+
 const UPGRADER_BODIES = {
     200:  [WORK, CARRY, MOVE],
     300:  [WORK, CARRY, CARRY, MOVE, MOVE],

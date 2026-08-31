@@ -29,6 +29,12 @@ function isHighway(roomName) {
 }
 
 function isOwnedByOther(roomName) {
+    // Prefer cached intel; fall back to live controller check.
+    const cartographer = require('../../services/cartographer');
+    const intel = cartographer.getIntel(roomName);
+    if (intel && intel.owner) {
+        return intel.owner !== memory.myUsername();
+    }
     const room = Game.rooms[roomName];
     if (!room || !room.controller) return false;
     if (room.controller.my) return false;
@@ -37,6 +43,12 @@ function isOwnedByOther(roomName) {
 }
 
 function isReservedByNonAlly(roomName) {
+    const cartographer = require('../../services/cartographer');
+    const intel = cartographer.getIntel(roomName);
+    if (intel && intel.reservation) {
+        const me = memory.myUsername();
+        return intel.reservation !== me;
+    }
     const room = Game.rooms[roomName];
     if (!room || !room.controller) return false;
     const res = room.controller.reservation;

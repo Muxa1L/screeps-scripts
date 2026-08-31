@@ -35,6 +35,32 @@ function findDeposit(creep, snapshot, options) {
     const excludeId = options.excludeId || null;
     const excludeTypes = options.excludeTypes || {};
 
+    // Non-energy resources: storage (primary), terminal (RCL6+), container (fallback).
+    // Skip source links — they only accept energy.
+    if (resourceType !== RESOURCE_ENERGY) {
+        const candidates = [];
+        if (snapshot.storage && !excludeTypes[STRUCTURE_STORAGE]) {
+            const cap = snapshot.storage.store ? (snapshot.storage.store.getCapacity(resourceType) || 0) : 0;
+            const has = snapshot.storage.store ? (snapshot.storage.store[resourceType] || 0) : 0;
+            if (cap > 0 && (cap - has) > 0) candidates.push(snapshot.storage);
+        }
+        if (snapshot.terminal && !excludeTypes[STRUCTURE_TERMINAL]) {
+            const cap = snapshot.terminal.store ? (snapshot.terminal.store.getCapacity(resourceType) || 0) : 0;
+            const has = snapshot.terminal.store ? (snapshot.terminal.store[resourceType] || 0) : 0;
+            if (cap > 0 && (cap - has) > 0) candidates.push(snapshot.terminal);
+        }
+        if (snapshot.containers) {
+            for (let i = 0; i < snapshot.containers.length; i++) {
+                const c = snapshot.containers[i];
+                if (excludeId && c.id === excludeId) continue;
+                const cap = c.store ? (c.store.getCapacity(resourceType) || 0) : 0;
+                const has = c.store ? (c.store[resourceType] || 0) : 0;
+                if (cap > 0 && (cap - has) > 0) candidates.push(c);
+            }
+        }
+        return candidates.length > 0 ? candidates[0] : null;
+    }
+
     if (resourceType === RESOURCE_ENERGY) {
         const candidates = [];
         const priorityIds = roomFlags.getPriorityContainerIds(creep.pos.roomName);
