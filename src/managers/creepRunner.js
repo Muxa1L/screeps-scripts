@@ -631,9 +631,6 @@ function runIdleFallback(creep, room) {
     if (capacity > 0 && energy > 0) {
         const snap = roomManager.get(room.name);
         if (snap) {
-            // Haulers should only deposit to storage/priority-containers in idle
-            // fallback — energy structures are the distributor's job. Without
-            // this, haulers dump into spawn/extensions and storage stays empty.
             const opts = {};
             if (role === 'hauler') {
                 opts.excludeTypes = { [STRUCTURE_SPAWN]: true, [STRUCTURE_EXTENSION]: true, [STRUCTURE_TOWER]: true };
