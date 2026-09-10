@@ -469,7 +469,7 @@ function handleMoveFailures(creep, claimCounts) {
     return true;
 }
 
-function combatIdleFallback(creep) {
+function combatIdleFallback(creep, room) {
     // Healer with a squad leader: stick with the leader even when no damaged
     // friendly is visible, so the healer is in position to heal the moment
     // the fighter takes damage. If the leader is dead/gone, clear the stale
@@ -619,7 +619,7 @@ function findClosestHostileRoom(fromRoomName) {
 function runIdleFallback(creep, room) {
     const role = memory.getRole(creep);
     if (role === 'fighter' || role === 'healer') {
-        combatIdleFallback(creep);
+        combatIdleFallback(creep, room);
         return;
     }
     const capacity = creep.store.getCapacity(RESOURCE_ENERGY) || 0;

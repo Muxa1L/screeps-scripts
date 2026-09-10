@@ -34,6 +34,6 @@ export default [
         },
     },
     {
-        ignores: ["node_modules/**", "eslint.config.mjs", "dist/**", "coverage/**"],
+        ignores: ["node_modules/**", "eslint.config.mjs", "dist/**", "coverage/**", "scripts/diagnose.mjs", "scripts/*.mjs"],
     },
 ];
