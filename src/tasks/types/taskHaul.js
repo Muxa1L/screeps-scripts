@@ -39,17 +39,26 @@ module.exports = {
         const container = task.target ? Game.getObjectById(task.target.id) : null;
         if (!container || !container.store) return false;
 
-        // Pick the first non-empty resource in store (energy by default,
-        // or a mineral when full and storage has space for it).
-        let resourceType = RESOURCE_ENERGY;
+        // Haul is energy-only. If the creep is carrying minerals (from a
+        // prior sweep task), deliver them first before collecting energy.
+        let mineralType = null;
         for (const r in creep.store) {
             if (creep.store[r] > 0 && r !== RESOURCE_ENERGY) {
-                resourceType = r;
+                mineralType = r;
                 break;
             }
         }
+        if (mineralType && snap.storage) {
+            const dep = depositService.findDeposit(creep, snap, { resourceType: mineralType });
+            if (dep) {
+                move.action(creep, 'mineral-deposit@' + dep.id);
+                depositService.transferTo(creep, dep, mineralType);
+                return true;
+            }
+        }
+
         const energy = (creep.store[RESOURCE_ENERGY] || 0);
-        const freeCapacity = creep.store.getFreeCapacity(resourceType) || 0;
+        const freeCapacity = creep.store.getFreeCapacity(RESOURCE_ENERGY) || 0;
         const hauledFrom = memory.getHauledFrom(creep);
 
         if (energy === 0) {
@@ -62,7 +71,6 @@ module.exports = {
             const deposit = depositService.findDeposit(creep, snap, {
                 excludeId: container.id,
                 excludeTypes: { [STRUCTURE_SPAWN]: true, [STRUCTURE_EXTENSION]: true, [STRUCTURE_TOWER]: true },
-                resourceType: resourceType,
             });
             if (!deposit) {
                 // No deposit available; keep hauling this container rather than
@@ -70,7 +78,7 @@ module.exports = {
                 return true;
             }
             const hadEnergy = energy;
-            const stillCarrying = depositService.transferTo(creep, deposit, resourceType);
+            const stillCarrying = depositService.transferTo(creep, deposit, RESOURCE_ENERGY);
             // Keep the haul task after a successful delivery so the creep can
             // reselect a source container in the next tick without a full
             // task-release/reassignment cycle. Release only when the creep is

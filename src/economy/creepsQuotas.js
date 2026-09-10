@@ -184,8 +184,9 @@ function haulerDemand(roomName) {
     return totalCarry;
 }
 
-// True when the source has a link within transfer range of its claimed
-// miner's slot (link exists near source AND the claim is live).
+// True when the source has a link within transfer range of any claimed
+// miner's slot (link exists near source AND at least one slot is adjacent
+// to the link). Checks slot positions, not just the source center.
 function sourceHasLinkDeposit(src, roomName) {
     const room = Game.rooms[roomName];
     if (!room) return false;
@@ -193,6 +194,18 @@ function sourceHasLinkDeposit(src, roomName) {
     if (links.length === 0) return false;
     for (let i = 0; i < links.length; i++) {
         const link = links[i];
+        // Check if the link is adjacent (range 1) to any slot position
+        if (src.slots) {
+            for (let j = 0; j < src.slots.length; j++) {
+                const slot = src.slots[j];
+                if (slot.claimedBy && Game.creeps[slot.claimedBy]) {
+                    if (Math.abs(link.pos.x - slot.x) <= 1 && Math.abs(link.pos.y - slot.y) <= 1) {
+                        return true;
+                    }
+                }
+            }
+        }
+        // Fallback: link within range 2 of source center (covers unclaimed slots)
         const dx = Math.abs(link.pos.x - src.x);
         const dy = Math.abs(link.pos.y - src.y);
         if (dx <= 2 && dy <= 2) return true;
@@ -322,7 +335,7 @@ function nextRoleToSpawn(creepCounts, rcl, controller, storage, constructionSite
     // containers; empty storage/links) their quotas drop to zero so the spawn
     // spends energy on producers instead of carriers that would stand idle.
     if ((creepCounts.miner || 0) === 0) {
-        q.hauler = 0;
+        q.hauler = Math.min(q.hauler || 0, 1); // keep 1 hauler alive during miner respawn window
     }
     const stE = storage ? (storage.store[RESOURCE_ENERGY] || 0) : 0;
     if (stE < 100) {

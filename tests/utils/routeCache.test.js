@@ -7,7 +7,7 @@ const routeCache = require('../../src/utils/routeCache');
 
 test('getRoute caches Game.map.findRoute result', function () {
     mocks.resetGame();
-    Memory.remoteRooms = { E2N1: { routes: {} } };
+    Memory.routeCache = {};
     let calls = 0;
     Game.map.findRoute = function () { calls++; return [{ exit: FIND_EXIT_RIGHT, room: 'E2N1' }]; };
 
@@ -21,7 +21,10 @@ test('getRoute caches Game.map.findRoute result', function () {
 
 test('getRoute recomputes when force is true', function () {
     mocks.resetGame();
-    Memory.remoteRooms = { E2N2: { routes: { 'E1N1': { route: [{ exit: FIND_EXIT_RIGHT, room: 'E2N1' }], tick: Game.time } } } };
+    // Pre-seed cache with a route so force=true must bypass it.
+    Memory.routeCache = {
+        E2N2: { routes: { E1N1: { route: [{ exit: FIND_EXIT_RIGHT, room: 'E2N2' }], tick: Game.time } } },
+    };
     let calls = 0;
     Game.map.findRoute = function () { calls++; return [{ exit: FIND_EXIT_BOTTOM, room: 'E1N2' }, { exit: FIND_EXIT_RIGHT, room: 'E2N2' }]; };
 
@@ -32,7 +35,9 @@ test('getRoute recomputes when force is true', function () {
 
 test('getNextStep returns the correct next exit', function () {
     mocks.resetGame();
-    Memory.remoteRooms = { E2N1: { routes: { 'E1N1': { route: [{ exit: FIND_EXIT_RIGHT, room: 'E2N1' }], tick: Game.time } } } };
+    Memory.routeCache = {
+        E2N1: { routes: { E1N1: { route: [{ exit: FIND_EXIT_RIGHT, room: 'E2N1' }], tick: Game.time } } },
+    };
     Game.map.findRoute = function () { return [{ exit: FIND_EXIT_RIGHT, room: 'E2N1' }]; };
 
     const step = routeCache.getNextStep('E1N1', 'E2N1', 'E1N1');
@@ -42,7 +47,9 @@ test('getNextStep returns the correct next exit', function () {
 
 test('getNextStep returns ROUTE_DONE when already at destination', function () {
     mocks.resetGame();
-    Memory.remoteRooms = { E2N1: { routes: { 'E1N1': { route: [{ exit: FIND_EXIT_RIGHT, room: 'E2N1' }], tick: Game.time } } } };
+    Memory.routeCache = {
+        E2N1: { routes: { E1N1: { route: [{ exit: FIND_EXIT_RIGHT, room: 'E2N1' }], tick: Game.time } } },
+    };
     Game.map.findRoute = function () { return [{ exit: FIND_EXIT_RIGHT, room: 'E2N1' }]; };
 
     const step = routeCache.getNextStep('E1N1', 'E2N1', 'E2N1');

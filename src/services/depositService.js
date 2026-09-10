@@ -58,7 +58,10 @@ function findDeposit(creep, snapshot, options) {
                 if (cap > 0 && (cap - has) > 0) candidates.push(c);
             }
         }
-        return candidates.length > 0 ? candidates[0] : null;
+        if (candidates.length === 0) return null;
+        const priorityIds = roomFlags.getPriorityContainerIds(creep.pos.roomName);
+        candidates.sort(function (a, b) { return scoreDeposit(creep, a, priorityIds) - scoreDeposit(creep, b, priorityIds); });
+        return candidates[0];
     }
 
     if (resourceType === RESOURCE_ENERGY) {

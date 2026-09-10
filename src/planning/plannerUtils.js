@@ -25,15 +25,38 @@ function hasStructureOrSiteAt(pos, type) {
     return false;
 }
 
+// Structures that block new construction on a tile. Roads, containers,
+// and ramparts can coexist with most other structures — they should NOT
+// prevent placement of extensions, storage, towers, links, etc.
+var BLOCKING_TYPES = {
+    'spawn': true,
+    'extension': true,
+    'tower': true,
+    'storage': true,
+    'link': true,
+    'lab': true,
+    'terminal': true,
+    'nuker': true,
+    'powerSpawn': true,
+    'observer': true,
+    'extractor': true,
+    'factory': true,
+    'constructedWall': true,
+};
+
 function isTileAvailable(room, x, y) {
     if (x < 1 || x > 48 || y < 1 || y > 48) return false;
-    const pos = new RoomPosition(x, y, room.name);
-    const terrain = pos.lookFor(LOOK_TERRAIN);
+    var pos = new RoomPosition(x, y, room.name);
+    var terrain = pos.lookFor(LOOK_TERRAIN);
     if (terrain[0] === 'wall') return false;
-    const structures = pos.lookFor(LOOK_STRUCTURES);
-    if (structures.length > 0) return false;
-    const sites = pos.lookFor(LOOK_CONSTRUCTION_SITES);
-    if (sites.length > 0) return false;
+    var structures = pos.lookFor(LOOK_STRUCTURES);
+    for (var i = 0; i < structures.length; i++) {
+        if (BLOCKING_TYPES[structures[i].structureType]) return false;
+    }
+    var sites = pos.lookFor(LOOK_CONSTRUCTION_SITES);
+    for (var j = 0; j < sites.length; j++) {
+        if (BLOCKING_TYPES[sites[j].structureType]) return false;
+    }
     return true;
 }
 

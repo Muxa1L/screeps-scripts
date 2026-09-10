@@ -152,10 +152,26 @@ function depositAvailable(snap, excludeContainerId) {
         const cap = snap.storage.store.getCapacity(RESOURCE_ENERGY) || 0;
         if ((snap.storage.store[RESOURCE_ENERGY] || 0) < cap) return true;
     }
+    // Filter source-adjacent containers — they are haul sources, not
+    // deposit targets. Mirrors findDeposit's sourceContainerIds logic.
+    var sourceContainerIds = {};
+    if (snap.sources && snap.containers) {
+        for (var si = 0; si < snap.sources.length; si++) {
+            var src = snap.sources[si];
+            for (var ci = 0; ci < snap.containers.length; ci++) {
+                var con = snap.containers[ci];
+                if (src.pos && con.pos && src.pos.roomName === con.pos.roomName &&
+                    Math.abs(src.pos.x - con.pos.x) <= 2 && Math.abs(src.pos.y - con.pos.y) <= 2) {
+                    sourceContainerIds[con.id] = true;
+                }
+            }
+        }
+    }
     if (snap.containers) {
         for (let i = 0; i < snap.containers.length; i++) {
             const c = snap.containers[i];
             if (c.id === excludeContainerId) continue;
+            if (sourceContainerIds[c.id]) continue;
             const cap = c.store.getCapacity(RESOURCE_ENERGY) || 0;
             if ((c.store[RESOURCE_ENERGY] || 0) < cap) return true;
         }

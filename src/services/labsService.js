@@ -78,7 +78,6 @@ function findAllLabs(roomName) {
 // range 2 with sufficient stock of the right minerals, and cooldown=0.
 function canRunReaction(outputLabId, inputAId, inputBId, resourceA, resourceB, amount) {
     if (!outputLabId) return false;
-    const room = Game.rooms;
     // Cheap: look up the live lab object via Game.getObjectById.
     if (typeof Game === 'undefined') return false;
     const out = Game.getObjectById(outputLabId);

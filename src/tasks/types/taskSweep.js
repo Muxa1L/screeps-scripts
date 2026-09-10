@@ -44,7 +44,7 @@ module.exports = {
         if (creep.store.getCapacity() === 0) return false;
         const remaining = t.store ? _.sum(t.store) : (t.amount || 0);
         if (remaining <= 0) return false;
-        if (creep.store.getFreeCapacity() === 0) {
+        if (creep.store.getFreeCapacity(RESOURCE_ENERGY) === 0 && creep.store.getFreeCapacity() === 0) {
             const carried = Object.keys(creep.store);
             for (let i = 0; i < carried.length; i++) {
                 const rtype = carried[i];

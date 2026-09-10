@@ -24,8 +24,16 @@ function addRoad(room, from, to, planned) {
         const pos = new RoomPosition(step.x, step.y, room.name);
         const terrain = pos.lookFor(LOOK_TERRAIN);
         if (terrain[0] === 'wall') continue;
-        const structures = pos.lookFor(LOOK_STRUCTURES);
-        if (structures.length > 0) continue;
+        var structures = pos.lookFor(LOOK_STRUCTURES);
+        var blocked = false;
+        for (var s = 0; s < structures.length; s++) {
+            var st = structures[s].structureType;
+            if (st !== STRUCTURE_ROAD && st !== STRUCTURE_CONTAINER && st !== STRUCTURE_RAMPART) {
+                blocked = true;
+                break;
+            }
+        }
+        if (blocked) continue;
         if (hasRoadAt(pos)) continue;
         return pos;
     }

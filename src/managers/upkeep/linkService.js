@@ -1,7 +1,7 @@
 const roomManager = require('../roomManager');
 const constants = require('../../config/constants');
 
-const LINK_LOSS_RATIO = constants.LINK_LOSS_RATIO;
+const LINK_LOSS_RATIO = constants.LINK_LOSS_RATIO; // kept for reference — Screeps charges 3% on transfer but the raw amount is what's checked for ERR_FULL
 
 // A link is a "source link" if it sits within range 3 of any source. This
 // matches linkStrategy's findPositionNear(source.pos, 1, 3) placement. Shared
