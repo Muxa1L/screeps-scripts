@@ -570,7 +570,11 @@ function combatIdleFallback(creep, room) {
             let spot = memory.getParkedSpot(creep);
             const spotValid = spot && spot.roomName === room.name &&
                 Game.map.getRoomLinearDistance(spot.roomName, room.name) === 0;
-            if (!spotValid || (spot.x === creep.pos.x && spot.y === creep.pos.y)) {
+            // Only pick a new parking spot if we don't have one yet or the
+            // old one is invalid. If we're already standing on our spot, stay
+            // put — re-picking every tick causes the fighter to oscillate
+            // between parking spots.
+            if (!spotValid) {
                 spot = findParkingSpot(idleSpawn, creep);
                 if (spot) memory.setParkedSpot(creep, spot.x, spot.y, room.name);
             }
