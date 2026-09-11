@@ -523,19 +523,10 @@ function combatIdleFallback(creep, room) {
         move.moveCreep(creep, nearest, { visualizePathStyle: { stroke: '#ff0000' }, reusePath: 10 });
         return;
     }
-    // No hostile in this room; try to path toward an adjacent known hostile room.
-    const hostileRoom = findClosestHostileRoom(creep.pos.roomName);
-    if (hostileRoom) {
-        logger.setAction(creep, 'patrol->room@' + hostileRoom);
-        const exitDir = Game.map.findExit(creep.pos.roomName, hostileRoom);
-        if (exitDir !== ERR_NO_PATH && exitDir !== ERR_INVALID_ARGS) {
-            const exitPos = creep.pos.findClosestByRange(exitDir);
-            if (exitPos) {
-                move.moveCreep(creep, exitPos, { visualizePathStyle: { stroke: '#ff0000' }, reusePath: 20 });
-                return;
-            }
-        }
-    }
+    // No hostile in this room; do NOT chase into adjacent rooms — that
+    // causes oscillation (fighter enters hostile room, hostile moves/dies,
+    // fighter returns home, sees hostile again, repeats). Cross-room
+    // combat is handled by squad tasks, not idle patrol.
     // Nothing to fight; demobilize if peacetime drags on — maintaining a
     // standing army in peacetime wastes spawn energy and CPU (best practice:
     // recycle defenders once the threat has clearly passed). Track how long
