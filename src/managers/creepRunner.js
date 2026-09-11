@@ -549,7 +549,7 @@ function combatIdleFallback(creep, room) {
     }
     // Nothing to fight; idle near the nearest spawn.
     const idleSpawn = spawnUtil.nearestSpawn(creep);
-    if (idleSpawn && !creep.pos.isNearTo(idleSpawn)) {
+    if (idleSpawn && !creep.pos.inRangeTo(idleSpawn, 3)) {
         logger.setAction(creep, 'idle->spawn');
         move.moveCreep(creep, idleSpawn, { visualizePathStyle: { stroke: '#888888' }, reusePath: 10 });
     } else {
