@@ -42,8 +42,15 @@ module.exports = {
         const latchedTick = memory.getSquadTargetTick(creep);
         const latchValid = latchedId && Game.time - latchedTick < SQUAD_TARGET_LATCH_TICKS;
 
+        var hostileCount = 0;
+        if (creep.room) {
+            var allHostiles = creep.room.find(FIND_HOSTILE_CREEPS);
+            for (var hi = 0; hi < allHostiles.length; hi++) {
+                if (creep.pos.inRangeTo(allHostiles[hi], 4)) hostileCount++;
+            }
+        }
         if (creep.hits < creep.hitsMax * SQUAD_RETREAT_HP_RATIO ||
-            creep.pos.findInRange(FIND_HOSTILE_CREEPS, 4).length > 2) {
+            hostileCount > 2) {
             const retreat = creep.pos.findClosestByRange(FIND_MY_SPAWNS);
             if (retreat) {
                 move.action(creep, 'retreating@' + (live ? live.id : target.id || '?'));

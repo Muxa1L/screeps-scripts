@@ -3,7 +3,7 @@ const move = require('../../utils/moveUtil');
 const memory = require('../../utils/memorySchema');
 const constants = require('../../config/constants');
 
-const SQUAD_RETREAT_HP_RATIO = constants.SQUAD_RETREAT_HP_RATIO;
+const SQUAD_RETREAT_HP_RATIO = 0.4; // taskHeal: retreat when leader or healer below this
 
 module.exports = {
     type: 'heal',
