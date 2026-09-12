@@ -83,7 +83,7 @@ function setupCombatTaskMocks(hostiles, damagedFriendlies) {
 
 test('collectCombatTasks returns defend tasks for fighter from snapshotted rooms', function () {
     mocks.resetGame();
-    Game.rooms['W1N1'] = { name: 'W1N1' };
+    Game.rooms['W1N1'] = { name: 'W1N1', controller: { my: true } };
     const hostile = { id: 'h1', hits: 100, hitsMax: 100 };
     const restore = setupCombatTaskMocks([hostile], []);
     try {
@@ -98,7 +98,7 @@ test('collectCombatTasks returns defend tasks for fighter from snapshotted rooms
 
 test('collectCombatTasks returns heal tasks for healer', function () {
     mocks.resetGame();
-    Game.rooms['W1N1'] = { name: 'W1N1' };
+    Game.rooms['W1N1'] = { name: 'W1N1', controller: { my: true } };
     const hurt = { id: 'f1', hits: 50, hitsMax: 100 };
     const restore = setupCombatTaskMocks([], [hurt]);
     try {
@@ -113,7 +113,7 @@ test('collectCombatTasks returns heal tasks for healer', function () {
 
 test('collectCombatTasks skips rooms without a snapshot', function () {
     mocks.resetGame();
-    Game.rooms['W1N1'] = { name: 'W1N1' };
+    Game.rooms['W1N1'] = { name: 'W1N1', controller: { my: true } };
     Game.rooms['W2N2'] = { name: 'W2N2' }; // no snapshot -> skipped
     const hostile = { id: 'h1', hits: 100, hitsMax: 100 };
     const restore = setupCombatTaskMocks([hostile], []);
@@ -128,7 +128,7 @@ test('collectCombatTasks skips rooms without a snapshot', function () {
 
 test('runCreep combat task cache: collectCombatTasks runs once per role per tick', function () {
     mocks.resetGame();
-    Game.rooms['W1N1'] = { name: 'W1N1' };
+    Game.rooms['W1N1'] = { name: 'W1N1', controller: { my: true } };
     const hostile = { id: 'h1', hits: 100, hitsMax: 100 };
     let tasksGetCalls = 0;
     const restore = setupCombatTaskMocks([hostile], []);
