@@ -711,6 +711,10 @@ function collectCombatTasks(role) {
     const out = [];
     const types = role === 'healer' ? ['heal'] : ['defend'];
     for (const roomName in Game.rooms) {
+        // Only defend owned rooms — sending fighters into foreign rooms
+        // (keeper lairs, enemy territory) gets them killed.
+        const gameRoom = Game.rooms[roomName];
+        if (!gameRoom || !gameRoom.controller || !gameRoom.controller.my) continue;
         const snap = roomManager.get(roomName);
         if (!snap) continue;
         for (let t = 0; t < types.length; t++) {
