@@ -515,7 +515,18 @@ function combatIdleFallback(creep, room) {
         }
     }
 
-    // Move toward the nearest visible hostile, or any known hostile position from snapshots.
+    // Retreat if badly damaged — don't suicide chasing hostiles.
+    if (creep.hits < creep.hitsMax * 0.5) {
+        const retreatSpawn = spawnUtil.nearestSpawn(creep);
+        if (retreatSpawn) {
+            logger.setAction(creep, 'retreat->spawn@' + retreatSpawn.id);
+            move.moveCreep(creep, retreatSpawn, { visualizePathStyle: { stroke: '#ff0000' }, reusePath: 5 });
+            return;
+        }
+    }
+
+    // Move toward the nearest visible hostile, but only if we're not
+    // badly outnumbered (don't charge into a superior force alone).
     const nearest = creep.pos.findClosestByRange(FIND_HOSTILE_CREEPS);
     if (nearest) {
         memory.setLastCombatTick(creep, Game.time);

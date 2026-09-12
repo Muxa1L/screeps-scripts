@@ -32,6 +32,10 @@ module.exports = {
         const rangedParts = creep.getActiveBodyparts(RANGED_ATTACK);
         if (attackParts === 0 && rangedParts === 0) return false;
 
+        // Don't pursue hostiles into adjacent rooms — chasing beyond the
+        // owned room leads fighters into keeper lairs / enemy bases.
+        if (live.pos.roomName !== creep.pos.roomName) return false;
+
         // Honor mutual squad retreat: if the squad manager flagged retreat
         // via squadTarget or the creep is below threshold, run to spawn.
         const latchedId = memory.getSquadTarget(creep);
