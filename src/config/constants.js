@@ -88,7 +88,7 @@ module.exports = {
     GHOST_GRACE_TICKS: 10,
 
     // Squad coordination
-    SQUAD_RETREAT_HP_RATIO: 0.4,
+    SQUAD_RETREAT_HP_RATIO: 0.6,
     SQUAD_FORMATION_RANGE: 2,
     SQUAD_TARGET_LATCH_TICKS: 5,
 

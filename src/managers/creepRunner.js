@@ -515,8 +515,11 @@ function combatIdleFallback(creep, room) {
         }
     }
 
-    // Retreat if badly damaged — don't suicide chasing hostiles.
-    if (creep.hits < creep.hitsMax * 0.5) {
+    // Retreat if damaged or outnumbered — don't suicide against
+    // superior forces. A lone fighter charging 3 hostiles dies.
+    const myHp = creep.hits / creep.hitsMax;
+    const hostilesNear = creep.pos.findInRange(FIND_HOSTILE_CREEPS, 5);
+    if (myHp < 0.7 || hostilesNear.length > 1) {
         const retreatSpawn = spawnUtil.nearestSpawn(creep);
         if (retreatSpawn) {
             logger.setAction(creep, 'retreat->spawn@' + retreatSpawn.id);
