@@ -38,6 +38,25 @@ module.exports = {
         const controller = room ? room.controller : null;
         if (!controller) return false;
 
+        // Already ours: target was claimed successfully (perhaps by a
+        // previous claimer). Clear the target and recycle this creep.
+        if (controller.my) {
+            if (exp.target) {
+                exp.target.claimedTick = Game.time;
+                memory.setRoomBootstrapping(roomName, memory.getHomeRoom(creep));
+            }
+            delete exp.target;
+            const home = memory.getHomeRoom(creep) || creep.pos.roomName;
+            const spawnUtil = require('../../utils/spawnUtil');
+            const spawn = spawnUtil.nearestSpawnInRoom(creep, home);
+            if (spawn && !creep.pos.isNearTo(spawn)) {
+                move.moveCreep(creep, spawn, { visualizePathStyle: { stroke: '#888888' } });
+            } else if (spawn) {
+                spawn.recycleCreep(creep);
+            }
+            return false;
+        }
+
         // Enemy-claimed: clear the target and recycle. bootstrapManager will
         // also detect this, but we short-circuit here to avoid wasting ticks.
         if (controller.owner && !controller.my) {
