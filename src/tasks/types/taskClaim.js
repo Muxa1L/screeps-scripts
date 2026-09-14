@@ -38,6 +38,23 @@ module.exports = {
         const controller = room ? room.controller : null;
         if (!controller) return false;
 
+        // Abort if the room is dangerous: hostiles present, enemy-claimed,
+        // or keeper lair nearby. Don't waste a 1400-tick claimer suiciding.
+        if (room.find(FIND_HOSTILE_CREEPS).length > 0) {
+            memory.addExpansionHistory({ roomName: roomName, claimedTick: null, abandonedTick: Game.time, reason: 'hostiles-present' });
+            delete exp.target;
+            memory.clearRoomBootstrapping(roomName);
+            const home = memory.getHomeRoom(creep) || creep.pos.roomName;
+            const spawnUtil = require('../../utils/spawnUtil');
+            const spawn = spawnUtil.nearestSpawnInRoom(creep, home);
+            if (spawn && !creep.pos.isNearTo(spawn)) {
+                move.moveCreep(creep, spawn, { visualizePathStyle: { stroke: '#888888' } });
+            } else if (spawn) {
+                spawn.recycleCreep(creep);
+            }
+            return false;
+        }
+
         // Already ours: target was claimed successfully (perhaps by a
         // previous claimer). Clear the target and recycle this creep.
         if (controller.my) {
