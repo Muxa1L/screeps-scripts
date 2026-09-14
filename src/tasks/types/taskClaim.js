@@ -38,9 +38,8 @@ module.exports = {
         const controller = room ? room.controller : null;
         if (!controller) return false;
 
-        // Abort if the room is dangerous: hostiles present, enemy-claimed,
-        // or keeper lair nearby. Don't waste a 1400-tick claimer suiciding.
-        if (room.find(FIND_HOSTILE_CREEPS).length > 0) {
+        // Abort if the room is dangerous: hostiles present.
+        if (room.find && room.find(FIND_HOSTILE_CREEPS).length > 0) {
             memory.addExpansionHistory({ roomName: roomName, claimedTick: null, abandonedTick: Game.time, reason: 'hostiles-present' });
             delete exp.target;
             memory.clearRoomBootstrapping(roomName);
