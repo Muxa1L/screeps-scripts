@@ -27,7 +27,39 @@ module.exports = {
         const exp = memory.getExpansion();
         if (!exp || !exp.target || exp.target.roomName !== roomName) return false;
 
+        // Pre-flight: if the target room is visible and has hostiles, abort
+        // BEFORE entering. Entering and then retreating is too late — the
+        // claimer dies at the room border before the hostile check fires.
+        var targetRoom = Game.rooms[roomName];
+        if (targetRoom && targetRoom.find && targetRoom.find(FIND_HOSTILE_CREEPS).length > 0) {
+            memory.addExpansionHistory({ roomName: roomName, claimedTick: null, abandonedTick: Game.time, reason: 'hostiles-visible' });
+            delete exp.target;
+            memory.clearRoomBootstrapping(roomName);
+            var home0 = memory.getHomeRoom(creep) || creep.pos.roomName;
+            var spawnUtil0 = require('../../utils/spawnUtil');
+            var spawn0 = spawnUtil0.nearestSpawnInRoom(creep, home0);
+            if (spawn0 && !creep.pos.isNearTo(spawn0)) {
+                move.moveCreep(creep, spawn0, { visualizePathStyle: { stroke: '#888888' } });
+            } else if (spawn0) {
+                spawn0.recycleCreep(creep);
+            }
+            return false;
+        }
+
         if (creep.pos.roomName !== roomName) {
+            // If damaged while transiting, hostiles are attacking — retreat.
+            if (creep.hits < creep.hitsMax) {
+                memory.addExpansionHistory({ roomName: roomName, claimedTick: null, abandonedTick: Game.time, reason: 'attacked-in-transit' });
+                delete exp.target;
+                memory.clearRoomBootstrapping(roomName);
+                var homeR = memory.getHomeRoom(creep) || creep.pos.roomName;
+                var spawnR = require('../../utils/spawnUtil').nearestSpawnInRoom(creep, homeR);
+                if (spawnR) {
+                    creep.moveTo(spawnR, { reusePath: 5, visualizePathStyle: { stroke: '#ff0000' } });
+                    if (creep.pos.isNearTo(spawnR)) spawnR.recycleCreep(creep);
+                }
+                return false;
+            }
             // Cross-room movement — ignore creeps so the claimer doesn't get
             // stuck behind friendly creeps clustering near the spawn.
             creep.moveTo(new RoomPosition(25, 25, roomName), { reusePath: 10, ignoreCreeps: true, visualizePathStyle: { stroke: '#ff00ff' } });
